@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
 import { exportJSON, defaultDB } from '../lib/store'
+import { statsToCSV, gamesToCSV } from '../lib/csv'
 import type { DB } from '../lib/domain'
 import type { Api } from '../App'
 
@@ -7,14 +8,27 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
   const [newName, setNewName] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
-  function download() {
-    const blob = new Blob([exportJSON(db)], { type: 'application/json' })
+  /** テキストをファイルとしてダウンロードさせる。 */
+  function saveFile(text: string, filename: string, mime: string) {
+    const blob = new Blob([text], { type: mime })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `mahjong-${new Date().toISOString().slice(0, 10)}.json`
+    a.download = filename
     a.click()
     URL.revokeObjectURL(url)
+  }
+
+  const today = () => new Date().toISOString().slice(0, 10)
+
+  function downloadJSON() {
+    saveFile(exportJSON(db), `mahjong-${today()}.json`, 'application/json')
+  }
+
+  // CSV は Excel が UTF-8 と判別できるよう先頭に BOM を付ける（日本語の文字化け対策）。
+  function downloadCSV(text: string, name: string) {
+    const bom = String.fromCharCode(0xfeff)
+    saveFile(bom + text, `mahjong-${name}-${today()}.csv`, 'text/csv;charset=utf-8')
   }
 
   function onImport(e: React.ChangeEvent<HTMLInputElement>) {
@@ -136,8 +150,9 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
       {/* データ */}
       <div className="card">
         <h2>データ</h2>
+        <h3 className="sec">バックアップ（JSON）</h3>
         <div className="row wrap">
-          <button className="btn" onClick={download}>
+          <button className="btn" onClick={downloadJSON}>
             JSONで書き出し
           </button>
           <button className="btn" onClick={() => fileRef.current?.click()}>
@@ -152,8 +167,24 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
           />
         </div>
         <p className="muted" style={{ marginTop: 8 }}>
-          データはこの端末のブラウザ内（localStorage）にのみ保存されます。バックアップや別端末への移動は
-          書き出し／読み込みで。
+          データはこの端末のブラウザ内（localStorage）にのみ保存されます。別端末への移動や復元は、
+          この JSON の書き出し／読み込みで（局ログまで含めて完全に往復できます）。
+        </p>
+
+        <h3 className="sec" style={{ marginTop: 14 }}>
+          表計算用に書き出し（CSV）
+        </h3>
+        <div className="row wrap">
+          <button className="btn" onClick={() => downloadCSV(statsToCSV(db), 'stats')}>
+            成績をCSVで書き出し
+          </button>
+          <button className="btn" onClick={() => downloadCSV(gamesToCSV(db), 'games')}>
+            半荘結果をCSVで書き出し
+          </button>
+        </div>
+        <p className="muted" style={{ marginTop: 8 }}>
+          Excel やスプレッドシートで開いて見る・分析するための書き出しです（読み込みは JSON
+          のみ）。半荘結果は「1半荘×1人＝1行」で出るので、そのまま並べ替え・集計できます。
         </p>
         <div className="row" style={{ marginTop: 12 }}>
           <button
