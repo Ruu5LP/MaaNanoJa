@@ -1,11 +1,26 @@
 import { useEffect, useMemo, useState } from 'react'
-import { loadDB, saveDB, normalizeDB, uid } from './lib/store.js'
-import RecordView from './views/RecordView.jsx'
-import HistoryView from './views/HistoryView.jsx'
-import StatsView from './views/StatsView.jsx'
-import SettingsView from './views/SettingsView.jsx'
+import { loadDB, saveDB, normalizeDB, uid } from './lib/store'
+import type { DB, Game } from './lib/domain'
+import RecordView from './views/RecordView'
+import HistoryView from './views/HistoryView'
+import StatsView from './views/StatsView'
+import SettingsView from './views/SettingsView'
 
-const TABS = [
+/** 画面から呼ぶ、DBを更新するアクション群。状態更新はここに集約する。 */
+export interface Api {
+  addPlayer(name: string): void
+  renamePlayer(id: string, name: string): void
+  removePlayer(id: string): void
+  updateRules(patch: Partial<DB['rules']>): void
+  addGame(game: Omit<Game, 'id'>): void
+  updateGame(id: string, patch: Partial<Game>): void
+  removeGame(id: string): void
+  replaceDB(next: unknown): void
+}
+
+type TabId = 'record' | 'stats' | 'history' | 'settings'
+
+const TABS: { id: TabId; label: string; ico: string }[] = [
   { id: 'record', label: '記録', ico: '🀄' },
   { id: 'stats', label: '成績', ico: '📊' },
   { id: 'history', label: '履歴', ico: '📜' },
@@ -13,16 +28,15 @@ const TABS = [
 ]
 
 export default function App() {
-  const [db, setDB] = useState(() => loadDB())
-  const [tab, setTab] = useState('record')
+  const [db, setDB] = useState<DB>(() => loadDB())
+  const [tab, setTab] = useState<TabId>('record')
 
   useEffect(() => {
     saveDB(db)
   }, [db])
 
-  const api = useMemo(
+  const api = useMemo<Api>(
     () => ({
-      // プレイヤー
       addPlayer(name) {
         const nm = name.trim()
         if (!nm) return
@@ -37,11 +51,9 @@ export default function App() {
       removePlayer(id) {
         setDB((d) => ({ ...d, players: d.players.filter((p) => p.id !== id) }))
       },
-      // ルール
       updateRules(patch) {
         setDB((d) => ({ ...d, rules: { ...d.rules, ...patch } }))
       },
-      // 対局
       addGame(game) {
         setDB((d) => ({ ...d, games: [...d.games, { ...game, id: 'g-' + uid() }] }))
       },
@@ -54,7 +66,6 @@ export default function App() {
       removeGame(id) {
         setDB((d) => ({ ...d, games: d.games.filter((g) => g.id !== id) }))
       },
-      // データ全体
       replaceDB(next) {
         setDB(normalizeDB(next))
       },
@@ -76,11 +87,7 @@ export default function App() {
 
       <nav className="tabbar">
         {TABS.map((t) => (
-          <button
-            key={t.id}
-            className={tab === t.id ? 'active' : ''}
-            onClick={() => setTab(t.id)}
-          >
+          <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
             <span className="ico">{t.ico}</span>
             {t.label}
           </button>

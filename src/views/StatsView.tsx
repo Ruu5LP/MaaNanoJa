@@ -1,18 +1,19 @@
 import { useMemo } from 'react'
-import { computeStats } from '../lib/stats.js'
+import { computeStats } from '../lib/stats'
+import type { DB } from '../lib/domain'
 
 const RANK_COLORS = ['var(--rank1)', 'var(--rank2)', 'var(--rank3)', 'var(--rank4)']
 const RANK_LABELS = ['1位', '2位', '3位', '4位']
 
-function pct(x) {
+function pct(x: number | null): string {
   return x == null ? '—' : `${(x * 100).toFixed(1)}%`
 }
-function signed(x, digits = 1) {
+function signed(x: number | null, digits = 1): string {
   if (x == null) return '—'
   return `${x > 0 ? '+' : ''}${x.toFixed(digits)}`
 }
 
-export default function StatsView({ db }) {
+export default function StatsView({ db }: { db: DB }) {
   const stats = useMemo(() => computeStats(db), [db])
 
   if (stats.length === 0) {
@@ -41,12 +42,16 @@ export default function StatsView({ db }) {
                   className="fill"
                   style={{
                     background: s.totalScore >= 0 ? 'var(--accent)' : 'var(--danger)',
-                    left: s.totalScore >= 0 ? '50%' : `${50 - (Math.abs(s.totalScore) / maxAbs) * 50}%`,
+                    left:
+                      s.totalScore >= 0 ? '50%' : `${50 - (Math.abs(s.totalScore) / maxAbs) * 50}%`,
                     width: `${(Math.abs(s.totalScore) / maxAbs) * 50}%`,
                   }}
                 />
               </div>
-              <span className={`num ${s.totalScore >= 0 ? 'pos' : 'neg'}`} style={{ textAlign: 'right' }}>
+              <span
+                className={`num ${s.totalScore >= 0 ? 'pos' : 'neg'}`}
+                style={{ textAlign: 'right' }}
+              >
                 {signed(s.totalScore)}
               </span>
             </div>
@@ -118,7 +123,9 @@ export default function StatsView({ db }) {
                 <tr key={s.playerId}>
                   <td>{s.name}</td>
                   <td className="num">{s.games}</td>
-                  <td className={`num ${s.totalScore >= 0 ? 'pos' : 'neg'}`}>{signed(s.totalScore)}</td>
+                  <td className={`num ${s.totalScore >= 0 ? 'pos' : 'neg'}`}>
+                    {signed(s.totalScore)}
+                  </td>
                   <td className={`num ${s.avgScore >= 0 ? 'pos' : 'neg'}`}>{signed(s.avgScore)}</td>
                   <td className="num">{s.avgRank.toFixed(2)}</td>
                   <td className="num">{pct(s.topRate)}</td>

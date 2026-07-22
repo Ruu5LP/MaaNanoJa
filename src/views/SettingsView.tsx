@@ -1,9 +1,11 @@
 import { useRef, useState } from 'react'
-import { exportJSON, defaultDB } from '../lib/store.js'
+import { exportJSON, defaultDB } from '../lib/store'
+import type { DB } from '../lib/domain'
+import type { Api } from '../App'
 
-export default function SettingsView({ db, api }) {
+export default function SettingsView({ db, api }: { db: DB; api: Api }) {
   const [newName, setNewName] = useState('')
-  const fileRef = useRef(null)
+  const fileRef = useRef<HTMLInputElement>(null)
 
   function download() {
     const blob = new Blob([exportJSON(db)], { type: 'application/json' })
@@ -15,25 +17,26 @@ export default function SettingsView({ db, api }) {
     URL.revokeObjectURL(url)
   }
 
-  function onImport(e) {
+  function onImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
     if (!file) return
+    const input = e.target
     const reader = new FileReader()
     reader.onload = () => {
       try {
-        const next = JSON.parse(reader.result)
+        const next = JSON.parse(String(reader.result))
         if (confirm('現在のデータを読み込んだ内容で置き換えます。よろしいですか？')) {
           api.replaceDB(next)
         }
       } catch {
         alert('JSONの読み込みに失敗しました。')
       }
-      e.target.value = ''
+      input.value = ''
     }
     reader.readAsText(file)
   }
 
-  const usedPlayerIds = new Set(db.games.flatMap((g) => g.playerIds || []))
+  const usedPlayerIds = new Set(db.games.flatMap((g) => g.playerIds))
 
   return (
     <div className="view">
@@ -43,10 +46,7 @@ export default function SettingsView({ db, api }) {
         <div className="stack">
           {db.players.map((p) => (
             <div className="row" key={p.id}>
-              <input
-                value={p.name}
-                onChange={(e) => api.renamePlayer(p.id, e.target.value)}
-              />
+              <input value={p.name} onChange={(e) => api.renamePlayer(p.id, e.target.value)} />
               <button
                 className="btn sm danger"
                 disabled={usedPlayerIds.has(p.id)}
@@ -106,7 +106,9 @@ export default function SettingsView({ db, api }) {
             />
           </label>
         </div>
-        <h3 className="sec" style={{ marginTop: 12 }}>順位ウマ</h3>
+        <h3 className="sec" style={{ marginTop: 12 }}>
+          順位ウマ
+        </h3>
         <div className="grid2">
           {['1位', '2位', '3位', '4位'].map((lbl, i) => (
             <label className="field" key={i}>
@@ -115,7 +117,7 @@ export default function SettingsView({ db, api }) {
                 type="number"
                 value={db.rules.uma[i]}
                 onChange={(e) => {
-                  const uma = [...db.rules.uma]
+                  const uma = [...db.rules.uma] as DB['rules']['uma']
                   uma[i] = Number(e.target.value) || 0
                   api.updateRules({ uma })
                 }}
@@ -126,7 +128,8 @@ export default function SettingsView({ db, api }) {
         <p className="muted" style={{ marginTop: 8 }}>
           オカは（返し点 − 持ち点）× 人数 を1位に自動加算。同点は上家（起家に近い方）優先。
           現在の設定: {db.rules.startPoints.toLocaleString()}点持ち /{' '}
-          {db.rules.returnPoints.toLocaleString()}点返し / ウマ {db.rules.uma.join(', ')}。
+          {db.rules.returnPoints.toLocaleString()}
+          点返し / ウマ {db.rules.uma.join(', ')}。
         </p>
       </div>
 
@@ -156,7 +159,11 @@ export default function SettingsView({ db, api }) {
           <button
             className="btn danger"
             onClick={() => {
-              if (confirm('すべてのデータを消して初期状態（過去9試合入り）に戻します。よろしいですか？')) {
+              if (
+                confirm(
+                  'すべてのデータを消して初期状態（過去9試合入り）に戻します。よろしいですか？',
+                )
+              ) {
                 api.replaceDB(defaultDB())
               }
             }}

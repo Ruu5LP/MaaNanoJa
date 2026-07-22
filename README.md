@@ -34,18 +34,25 @@
 ```bash
 npm install
 npm run dev      # 開発サーバー
-npm run build    # 本番ビルド（dist/）
+npm run build    # 本番ビルド（型チェック込み, dist/）
 npm run preview  # ビルド結果をプレビュー
 npm test         # スコア計算のテスト（既存スプレッドシートの9試合と一致するか検証）
+npm run check    # typecheck + lint + format:check + test（コミット前に緑にする）
 ```
 
 ビルドは相対パス出力（`base: './'`）なので、`dist/` をそのまま開いても・任意の静的ホスティングに置いても動く。
 
 ## 技術
 
-- React 18 + Vite
+- React 18 + Vite + TypeScript（strict）
+- テスト: Vitest / Lint: ESLint / 整形: Prettier（CIでゲート化）
 - 外部サービス・バックエンドなし。すべてブラウザ内で完結。
+
+## 開発ルール・仕様
+
+- **[CLAUDE.md](./CLAUDE.md)** — 設計ガイド（どこに・何を・どう書くか、守るべきルール）。作業前にまず読む。
+- **[SPEC.md](./SPEC.md)** — 振る舞いの仕様（スコア計算・データモデル・不変条件）。
 
 ## テスト
 
-`src/lib/scoring.test.js` に、既存スプレッドシートの過去9試合の最終持ち点 → スコアが**完全一致**することを検証するテストがある。和了点の早見表・点数移動（ロン/ツモ/流局）も併せて検証。
+`src/lib/scoring.test.ts` に、既存スプレッドシートの過去9試合の最終持ち点 → スコアが**完全一致**することを検証するテストがある。和了点の早見表・点数移動（ロン/ツモ/流局）も併せて検証。「実行できる仕様」として維持する。

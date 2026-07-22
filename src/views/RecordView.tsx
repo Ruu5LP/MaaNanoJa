@@ -1,67 +1,92 @@
 import { useMemo, useState } from 'react'
-import { WINDS, initialState, replay, roundLabel, gameResults, pointsCheck } from '../lib/game.js'
-import { uid } from '../lib/store.js'
+import { WINDS, replay, roundLabel, gameResults, pointsCheck } from '../lib/game'
+import { uid } from '../lib/store'
+import type { GameResult } from '../lib/scoring'
+import type { DB, Game, Hand, HandType, Rules } from '../lib/domain'
+import type { Api } from '../App'
 
 const HAN_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
 const FU_OPTIONS = [20, 25, 30, 40, 50, 60, 70, 80, 90, 100, 110]
 
-function todayStr() {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+type NameFn = (pid: string) => string
+type SaveFn = (game: Omit<Game, 'id'>) => void
+
+type Mode = 'quick' | 'live'
+
+interface Draft {
+  mode: Mode
+  date: string
+  note: string
+  playerIds: string[] // 席順（起家順, 長さ4）
+  hands: Hand[]
+  finalPoints: Record<string, number>
 }
 
-export default function RecordView({ db, api, onDone }) {
-  const [draft, setDraft] = useState(null)
+function todayStr(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`
+}
+
+function draftToGame(
+  draft: Draft,
+  hands: Hand[],
+  finalPoints: Record<string, number>,
+): Omit<Game, 'id'> {
+  return {
+    date: draft.date,
+    note: draft.note,
+    playerIds: draft.playerIds,
+    hands,
+    finalPoints,
+    createdAt: Date.now(),
+  }
+}
+
+export default function RecordView({ db, api, onDone }: { db: DB; api: Api; onDone: () => void }) {
+  const [draft, setDraft] = useState<Draft | null>(null)
+
+  const save: SaveFn = (game) => {
+    api.addGame(game)
+    setDraft(null)
+    onDone()
+  }
 
   if (!draft) return <SetupView db={db} onStart={setDraft} />
   if (draft.mode === 'quick')
-    return (
-      <QuickView
-        db={db}
-        draft={draft}
-        setDraft={setDraft}
-        onSave={(game) => {
-          api.addGame(game)
-          setDraft(null)
-          onDone()
-        }}
-        onCancel={() => setDraft(null)}
-      />
-    )
+    return <QuickView db={db} draft={draft} onSave={save} onCancel={() => setDraft(null)} />
   return (
     <LiveView
       db={db}
       draft={draft}
       setDraft={setDraft}
-      onSave={(game) => {
-        api.addGame(game)
-        setDraft(null)
-        onDone()
-      }}
+      onSave={save}
       onCancel={() => setDraft(null)}
     />
   )
 }
 
 /* ---------- セットアップ ---------- */
-function SetupView({ db, onStart }) {
-  const [seats, setSeats] = useState([null, null, null, null])
+function SetupView({ db, onStart }: { db: DB; onStart: (draft: Draft) => void }) {
+  const [seats, setSeats] = useState<(string | null)[]>([null, null, null, null])
   const [date, setDate] = useState(todayStr())
   const [note, setNote] = useState('')
 
-  const chosen = seats.filter(Boolean)
+  const chosen = seats.filter((s): s is string => Boolean(s))
   const ready = chosen.length === 4 && new Set(chosen).size === 4
-  const available = (slotIdx) =>
+  const available = (slotIdx: number) =>
     db.players.filter((p) => !seats.includes(p.id) || seats[slotIdx] === p.id)
 
-  function begin(mode) {
+  function begin(mode: Mode) {
+    const playerIds = seats as string[]
     onStart({
       mode,
       date,
       note,
-      playerIds: seats,
+      playerIds,
       hands: [],
-      finalPoints: Object.fromEntries(seats.map((pid) => [pid, db.rules.startPoints])),
+      finalPoints: Object.fromEntries(playerIds.map((pid) => [pid, db.rules.startPoints])),
     })
   }
 
@@ -82,7 +107,11 @@ function SetupView({ db, onStart }) {
               </label>
               <label className="field">
                 メモ（任意）
-                <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="例: 7月定例" />
+                <input
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="例: 7月定例"
+                />
               </label>
             </div>
 
@@ -92,7 +121,7 @@ function SetupView({ db, onStart }) {
                 <div className="slot" key={i}>
                   <span className="wind">{WINDS[i]}</span>
                   <select
-                    value={sid || ''}
+                    value={sid ?? ''}
                     onChange={(e) => {
                       const v = e.target.value || null
                       setSeats((s) => s.map((x, idx) => (idx === i ? v : x)))
@@ -129,13 +158,23 @@ function SetupView({ db, onStart }) {
 }
 
 /* ---------- かんたん入力（最終点のみ） ---------- */
-function QuickView({ db, draft, onSave, onCancel }) {
-  const [pts, setPts] = useState(() => ({ ...draft.finalPoints }))
-  const name = (pid) => db.players.find((p) => p.id === pid)?.name || '?'
+function QuickView({
+  db,
+  draft,
+  onSave,
+  onCancel,
+}: {
+  db: DB
+  draft: Draft
+  onSave: SaveFn
+  onCancel: () => void
+}) {
+  const [pts, setPts] = useState<Record<string, string | number>>(() => ({ ...draft.finalPoints }))
+  const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '?'
 
-  const game = { ...draft, hands: [], finalPoints: numify(pts) }
-  const check = pointsCheck(game, db.rules)
-  const results = check.ok || true ? safeResults(game, db.rules) : []
+  const game = draftToGame(draft, [], numify(pts))
+  const check = pointsCheck({ ...game, id: 'draft' }, db.rules)
+  const results = safeResults({ ...game, id: 'draft' }, db.rules)
 
   return (
     <div className="view">
@@ -145,7 +184,10 @@ function QuickView({ db, draft, onSave, onCancel }) {
           {draft.playerIds.map((pid, i) => (
             <label className="field" key={pid}>
               <span>
-                <b className="wind" style={{ color: 'var(--accent)' }}>{WINDS[i]}</b> {name(pid)}
+                <b className="wind" style={{ color: 'var(--accent)' }}>
+                  {WINDS[i]}
+                </b>{' '}
+                {name(pid)}
               </span>
               <input
                 type="number"
@@ -179,29 +221,43 @@ function QuickView({ db, draft, onSave, onCancel }) {
 }
 
 /* ---------- 局ログ入力（ライブ） ---------- */
-function LiveView({ db, draft, setDraft, onSave, onCancel }) {
+function LiveView({
+  db,
+  draft,
+  setDraft,
+  onSave,
+  onCancel,
+}: {
+  db: DB
+  draft: Draft
+  setDraft: React.Dispatch<React.SetStateAction<Draft | null>>
+  onSave: SaveFn
+  onCancel: () => void
+}) {
   const rules = db.rules
-  const name = (pid) => db.players.find((p) => p.id === pid)?.name || '?'
-  const { state } = useMemo(() => replay(draft, rules), [draft, rules])
+  const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '?'
+  const gameForReplay: Game = { ...draft, id: 'draft' }
+  const { state } = useMemo(() => replay({ ...draft, id: 'draft' }, rules), [draft, rules])
   const [finishing, setFinishing] = useState(false)
 
-  function addHand(hand) {
-    setDraft((d) => ({ ...d, hands: [...d.hands, { ...hand, id: uid() }] }))
+  function addHand(hand: Hand) {
+    setDraft((d) => (d ? { ...d, hands: [...d.hands, hand] } : d))
   }
   function undo() {
-    setDraft((d) => ({ ...d, hands: d.hands.slice(0, -1) }))
+    setDraft((d) => (d ? { ...d, hands: d.hands.slice(0, -1) } : d))
   }
 
-  const dealerId = draft.playerIds[state.dealerIndex]
-  const game = { ...draft, hands: draft.hands }
+  const dealerId = draft.playerIds[state.dealerIndex] ?? ''
 
   if (finishing) {
-    const results = gameResults(game, rules)
-    const check = pointsCheck(game, rules)
+    const game = draftToGame(draft, draft.hands, { ...state.points })
+    const gameWithId: Game = { ...game, id: 'draft' }
+    const results = gameResults(gameWithId, rules)
+    const check = pointsCheck(gameWithId, rules)
     return (
       <div className="view">
         <div className="card">
-          <h2>{roundLabelForEnd(draft, rules)} 終了・結果</h2>
+          <h2>{roundLabel(state)} 終了・結果</h2>
           {!check.ok && (
             <div className="checkline warn">
               最終持ち点の合計が {check.diff > 0 ? '+' : ''}
@@ -236,20 +292,15 @@ function LiveView({ db, draft, setDraft, onSave, onCancel }) {
               <div className="nm">
                 {WINDS[i]} {name(pid)}
               </div>
-              <div className={`pt ${state.points[pid] < 0 ? 'neg' : ''}`}>
-                {state.points[pid].toLocaleString()}
+              <div className={`pt ${(state.points[pid] ?? 0) < 0 ? 'neg' : ''}`}>
+                {(state.points[pid] ?? 0).toLocaleString()}
               </div>
               {pid === dealerId && <div className="badge">親</div>}
             </div>
           ))}
         </div>
 
-        <HandForm
-          db={db}
-          playerIds={draft.playerIds}
-          dealerId={dealerId}
-          onAdd={addHand}
-        />
+        <HandForm db={db} playerIds={draft.playerIds} dealerId={dealerId} onAdd={addHand} />
       </div>
 
       <div className="card">
@@ -263,7 +314,7 @@ function LiveView({ db, draft, setDraft, onSave, onCancel }) {
         {draft.hands.length === 0 ? (
           <p className="muted">まだ局がありません。上のフォームから追加してください。</p>
         ) : (
-          <HandLog game={game} rules={rules} name={name} />
+          <HandLog game={gameForReplay} rules={rules} name={name} />
         )}
       </div>
 
@@ -279,17 +330,27 @@ function LiveView({ db, draft, setDraft, onSave, onCancel }) {
   )
 }
 
-function HandForm({ db, playerIds, dealerId, onAdd }) {
-  const [type, setType] = useState('ron')
+function HandForm({
+  db,
+  playerIds,
+  dealerId,
+  onAdd,
+}: {
+  db: DB
+  playerIds: string[]
+  dealerId: string
+  onAdd: (hand: Hand) => void
+}) {
+  const [type, setType] = useState<HandType>('ron')
   const [winner, setWinner] = useState('')
   const [loser, setLoser] = useState('')
   const [han, setHan] = useState(3)
   const [fu, setFu] = useState(30)
-  const [riichi, setRiichi] = useState([])
-  const [tenpai, setTenpai] = useState([])
-  const name = (pid) => db.players.find((p) => p.id === pid)?.name || '?'
+  const [riichi, setRiichi] = useState<string[]>([])
+  const [tenpai, setTenpai] = useState<string[]>([])
+  const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '?'
 
-  function toggle(list, setList, pid) {
+  function toggle(list: string[], setList: (v: string[]) => void, pid: string) {
     setList(list.includes(pid) ? list.filter((x) => x !== pid) : [...list, pid])
   }
   function reset() {
@@ -301,37 +362,39 @@ function HandForm({ db, playerIds, dealerId, onAdd }) {
     setTenpai([])
   }
   function submit() {
-    const base = { type, riichi }
+    const id = uid()
     if (type === 'ron') {
       if (!winner || !loser || winner === loser) return
-      onAdd({ ...base, winner, loser, han: Number(han), fu: Number(fu) })
+      onAdd({ id, type, winner, loser, han, fu, riichi })
     } else if (type === 'tsumo') {
       if (!winner) return
-      onAdd({ ...base, winner, han: Number(han), fu: Number(fu) })
+      onAdd({ id, type, winner, han, fu, riichi })
     } else if (type === 'draw') {
-      onAdd({ ...base, tenpai })
+      onAdd({ id, type, tenpai, riichi })
     } else {
-      onAdd({ ...base })
+      onAdd({ id, type: 'abortive', riichi })
     }
     reset()
   }
 
   const needScore = type === 'ron' || type === 'tsumo'
   const canSubmit =
-    (type === 'ron' && winner && loser && winner !== loser) ||
-    (type === 'tsumo' && winner) ||
+    (type === 'ron' && !!winner && !!loser && winner !== loser) ||
+    (type === 'tsumo' && !!winner) ||
     type === 'draw' ||
     type === 'abortive'
+
+  const TYPE_LABELS: [HandType, string][] = [
+    ['ron', 'ロン'],
+    ['tsumo', 'ツモ'],
+    ['draw', '流局'],
+    ['abortive', '途中流局'],
+  ]
 
   return (
     <div style={{ marginTop: 14 }}>
       <div className="seg-control" style={{ marginBottom: 10 }}>
-        {[
-          ['ron', 'ロン'],
-          ['tsumo', 'ツモ'],
-          ['draw', '流局'],
-          ['abortive', '途中流局'],
-        ].map(([v, l]) => (
+        {TYPE_LABELS.map(([v, l]) => (
           <button key={v} className={type === v ? 'active' : ''} onClick={() => setType(v)}>
             {l}
           </button>
@@ -369,17 +432,21 @@ function HandForm({ db, playerIds, dealerId, onAdd }) {
           <div className="grid2">
             <label className="field">
               翻
-              <select value={han} onChange={(e) => setHan(e.target.value)}>
+              <select value={han} onChange={(e) => setHan(Number(e.target.value))}>
                 {HAN_OPTIONS.map((h) => (
                   <option key={h} value={h}>
-                    {h}翻{h >= 13 ? '（役満）' : h >= 5 ? '' : ''}
+                    {h}翻{h >= 13 ? '（役満）' : ''}
                   </option>
                 ))}
               </select>
             </label>
             <label className="field">
-              符{Number(han) >= 5 ? '（満貫以上は不問）' : ''}
-              <select value={fu} onChange={(e) => setFu(e.target.value)} disabled={Number(han) >= 5}>
+              符{han >= 5 ? '（満貫以上は不問）' : ''}
+              <select
+                value={fu}
+                onChange={(e) => setFu(Number(e.target.value))}
+                disabled={han >= 5}
+              >
                 {FU_OPTIONS.map((f) => (
                   <option key={f} value={f}>
                     {f}符
@@ -393,7 +460,9 @@ function HandForm({ db, playerIds, dealerId, onAdd }) {
 
       {type === 'draw' && (
         <div style={{ marginTop: 4 }}>
-          <div className="muted" style={{ marginBottom: 6 }}>テンパイ者</div>
+          <div className="muted" style={{ marginBottom: 6 }}>
+            テンパイ者
+          </div>
           <div className="row wrap">
             {playerIds.map((pid) => (
               <button
@@ -410,7 +479,9 @@ function HandForm({ db, playerIds, dealerId, onAdd }) {
 
       {type !== 'abortive' && (
         <div style={{ marginTop: 12 }}>
-          <div className="muted" style={{ marginBottom: 6 }}>立直した人</div>
+          <div className="muted" style={{ marginBottom: 6 }}>
+            立直した人
+          </div>
           <div className="row wrap">
             {playerIds.map((pid) => (
               <button
@@ -437,22 +508,23 @@ function HandForm({ db, playerIds, dealerId, onAdd }) {
   )
 }
 
-function HandLog({ game, rules, name }) {
+function HandLog({ game, rules, name }: { game: Game; rules: Rules; name: NameFn }) {
   const { steps } = replay(game, rules)
   return (
     <div className="hand-list">
       {steps.map((s, i) => (
         <div className="hand-row" key={s.hand.id || i}>
-          <span className="muted" style={{ minWidth: 62 }}>{s.label}</span>
-          {renderHandSummary(s, name)}
+          <span className="muted" style={{ minWidth: 62 }}>
+            {s.label}
+          </span>
+          {renderHandSummary(s.hand, name)}
         </div>
       ))}
     </div>
   )
 }
 
-function renderHandSummary(step, name) {
-  const h = step.hand
+function renderHandSummary(h: Hand, name: NameFn) {
   if (h.type === 'ron')
     return (
       <>
@@ -475,25 +547,27 @@ function renderHandSummary(step, name) {
     return (
       <>
         <span className="tag draw">流局</span>
-        <span>テンパイ: {(h.tenpai || []).map(name).join('・') || 'なし'}</span>
+        <span>テンパイ: {h.tenpai.map(name).join('・') || 'なし'}</span>
       </>
     )
-  return (
-    <>
-      <span className="tag draw">途中流局</span>
-    </>
-  )
+  return <span className="tag draw">途中流局</span>
 }
 
-function scoreText(h) {
-  if (h.han >= 5) {
-    const label = h.han >= 13 ? '役満' : h.han >= 11 ? '三倍満' : h.han >= 8 ? '倍満' : h.han >= 6 ? '跳満' : '満貫'
-    return label
-  }
+function scoreText(h: { han: number; fu: number }): string {
+  if (h.han >= 5)
+    return h.han >= 13
+      ? '役満'
+      : h.han >= 11
+        ? '三倍満'
+        : h.han >= 8
+          ? '倍満'
+          : h.han >= 6
+            ? '跳満'
+            : '満貫'
   return `${h.han}翻${h.fu}符`
 }
 
-function ResultPreview({ results, name }) {
+function ResultPreview({ results, name }: { results: GameResult[]; name: NameFn }) {
   const rankColors = ['var(--rank1)', 'var(--rank2)', 'var(--rank3)', 'var(--rank4)']
   return (
     <div className="table-wrap" style={{ marginTop: 12 }}>
@@ -524,18 +598,13 @@ function ResultPreview({ results, name }) {
   )
 }
 
-function roundLabelForEnd(draft, rules) {
-  const { state } = replay(draft, rules)
-  return roundLabel(state)
-}
-
-function numify(pts) {
-  const out = {}
+function numify(pts: Record<string, string | number>): Record<string, number> {
+  const out: Record<string, number> = {}
   for (const k of Object.keys(pts)) out[k] = Number(pts[k]) || 0
   return out
 }
 
-function safeResults(game, rules) {
+function safeResults(game: Game, rules: Rules): GameResult[] {
   try {
     return gameResults(game, rules)
   } catch {
