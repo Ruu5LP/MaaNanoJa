@@ -20,7 +20,12 @@
 
   --radius: 12px;
   --radius-sm: 8px;
-  font-family: system-ui, -apple-system, 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    'Hiragino Kaku Gothic ProN',
+    'Noto Sans JP',
+    sans-serif;
 }
 
 * {

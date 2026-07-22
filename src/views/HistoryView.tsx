@@ -1,10 +1,14 @@
 import { useState } from 'react'
-import { WINDS, gameResults, replay, roundLabel } from '../lib/game.js'
+import { gameResults, replay } from '../lib/game'
+import type { DB, Game, Hand, Rules } from '../lib/domain'
+import type { Api } from '../App'
 
 const RANK_COLORS = ['var(--rank1)', 'var(--rank2)', 'var(--rank3)', 'var(--rank4)']
 
-export default function HistoryView({ db, api }) {
-  const name = (pid) => db.players.find((p) => p.id === pid)?.name || '(削除)'
+type NameFn = (pid: string) => string
+
+export default function HistoryView({ db, api }: { db: DB; api: Api }) {
+  const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '(削除)'
   const games = [...db.games].reverse()
 
   if (games.length === 0) {
@@ -24,10 +28,20 @@ export default function HistoryView({ db, api }) {
   )
 }
 
-function GameCard({ game, rules, name, api }) {
+function GameCard({
+  game,
+  rules,
+  name,
+  api,
+}: {
+  game: Game
+  rules: Rules
+  name: NameFn
+  api: Api
+}) {
   const [open, setOpen] = useState(false)
   const results = gameResults(game, rules)
-  const hasHands = game.hands && game.hands.length > 0
+  const hasHands = game.hands.length > 0
 
   return (
     <div className="card">
@@ -81,13 +95,15 @@ function GameCard({ game, rules, name, api }) {
   )
 }
 
-function HandLog({ game, rules, name }) {
+function HandLog({ game, rules, name }: { game: Game; rules: Rules; name: NameFn }) {
   const { steps } = replay(game, rules)
   return (
     <div className="hand-list" style={{ marginTop: 10 }}>
       {steps.map((s, i) => (
         <div className="hand-row" key={i}>
-          <span className="muted" style={{ minWidth: 62 }}>{s.label}</span>
+          <span className="muted" style={{ minWidth: 62 }}>
+            {s.label}
+          </span>
           {summary(s.hand, name)}
         </div>
       ))}
@@ -95,7 +111,7 @@ function HandLog({ game, rules, name }) {
   )
 }
 
-function summary(h, name) {
+function summary(h: Hand, name: NameFn) {
   if (h.type === 'ron')
     return (
       <>
@@ -109,21 +125,31 @@ function summary(h, name) {
     return (
       <>
         <span className="tag win">ツモ</span>
-        <span>{name(h.winner)}（{scoreText(h)}）</span>
+        <span>
+          {name(h.winner)}（{scoreText(h)}）
+        </span>
       </>
     )
   if (h.type === 'draw')
     return (
       <>
         <span className="tag draw">流局</span>
-        <span>テンパイ: {(h.tenpai || []).map(name).join('・') || 'なし'}</span>
+        <span>テンパイ: {h.tenpai.map(name).join('・') || 'なし'}</span>
       </>
     )
   return <span className="tag draw">途中流局</span>
 }
 
-function scoreText(h) {
+function scoreText(h: { han: number; fu: number }): string {
   if (h.han >= 5)
-    return h.han >= 13 ? '役満' : h.han >= 11 ? '三倍満' : h.han >= 8 ? '倍満' : h.han >= 6 ? '跳満' : '満貫'
+    return h.han >= 13
+      ? '役満'
+      : h.han >= 11
+        ? '三倍満'
+        : h.han >= 8
+          ? '倍満'
+          : h.han >= 6
+            ? '跳満'
+            : '満貫'
   return `${h.han}翻${h.fu}符`
 }

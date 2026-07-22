@@ -1,0 +1,27 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: 型チェック
+        run: npm run typecheck
+      - name: Lint（警告0）
+        run: npm run lint -- --max-warnings 0
+      - name: 整形チェック
+        run: npm run format:check
+      - name: テスト
+        run: npm test
+      - name: ビルド
+        run: npm run build
