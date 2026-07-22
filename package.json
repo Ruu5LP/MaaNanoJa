@@ -1,0 +1,21 @@
+{
+  "name": "mahjong-tracker",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "月イチ麻雀のスコア・放銃・流局などを記録してデータを取るローカルツール",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "vite": "^5.4.11"
+  }
+}
