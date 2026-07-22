@@ -50,7 +50,8 @@ export function roundLabel(state: GameState): string {
 function advance(state: GameState, hand: Hand, seats: string[]): GameState {
   const dealerId = seats[state.dealerIndex]
   let renchan: boolean
-  if (hand.type === 'ron' || hand.type === 'tsumo') renchan = hand.winner === dealerId
+  if (hand.type === 'ron') renchan = hand.wins.some((w) => w.winner === dealerId)
+  else if (hand.type === 'tsumo') renchan = hand.winner === dealerId
   else if (hand.type === 'draw') renchan = hand.tenpai.includes(dealerId ?? '')
   else renchan = true // 途中流局は連荘
 
@@ -76,6 +77,7 @@ export function replay(game: Game, rules: Rules): ReplayResult {
   const seats = game.playerIds
   const steps: HandStep[] = []
   for (const h of game.hands) {
+    if (h.honbaOverride !== undefined) st.honba = h.honbaOverride
     const { delta, potAfter } = handDeltas(seats, st.dealerIndex, h, st.honba, st.pot)
     for (const pid of seats) st.points[pid] = (st.points[pid] ?? 0) + (delta[pid] ?? 0)
     st.pot = potAfter

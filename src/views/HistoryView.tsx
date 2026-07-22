@@ -101,55 +101,49 @@ function HandLog({ game, rules, name }: { game: Game; rules: Rules; name: NameFn
     <div className="hand-list" style={{ marginTop: 10 }}>
       {steps.map((s, i) => (
         <div className="hand-row" key={i}>
-          <span className="muted" style={{ minWidth: 62 }}>
-            {s.label}
-          </span>
-          {summary(s.hand, name)}
+          <div className="hand-row-head">
+            <span className="muted" style={{ minWidth: 62 }}>
+              {s.label}
+            </span>
+            {handTag(s.hand)}
+          </div>
+          <DeltaChips playerIds={game.playerIds} name={name} delta={s.delta} />
         </div>
       ))}
     </div>
   )
 }
 
-function summary(h: Hand, name: NameFn) {
-  if (h.type === 'ron')
-    return (
-      <>
-        <span className="tag win">ロン</span>
-        <span>
-          {name(h.winner)} ← {name(h.loser)}（{scoreText(h)}）
-        </span>
-      </>
-    )
-  if (h.type === 'tsumo')
-    return (
-      <>
-        <span className="tag win">ツモ</span>
-        <span>
-          {name(h.winner)}（{scoreText(h)}）
-        </span>
-      </>
-    )
-  if (h.type === 'draw')
-    return (
-      <>
-        <span className="tag draw">流局</span>
-        <span>テンパイ: {h.tenpai.map(name).join('・') || 'なし'}</span>
-      </>
-    )
+function handTag(h: Hand) {
+  if (h.type === 'ron') return <span className="tag win">ロン</span>
+  if (h.type === 'tsumo') return <span className="tag win">ツモ</span>
+  if (h.type === 'draw') return <span className="tag draw">流局</span>
   return <span className="tag draw">途中流局</span>
 }
 
-function scoreText(h: { han: number; fu: number }): string {
-  if (h.han >= 5)
-    return h.han >= 13
-      ? '役満'
-      : h.han >= 11
-        ? '三倍満'
-        : h.han >= 8
-          ? '倍満'
-          : h.han >= 6
-            ? '跳満'
-            : '満貫'
-  return `${h.han}翻${h.fu}符`
+function DeltaChips({
+  playerIds,
+  name,
+  delta,
+}: {
+  playerIds: string[]
+  name: NameFn
+  delta: Record<string, number>
+}) {
+  return (
+    <div className="delta-chips">
+      {playerIds.map((pid) => {
+        const d = delta[pid] ?? 0
+        return (
+          <span key={pid} className={`delta-chip ${d > 0 ? 'pos' : d < 0 ? 'neg' : ''}`}>
+            <span>{name(pid)}</span>
+            <span>
+              {d > 0 ? '+' : ''}
+              {d.toLocaleString()}
+            </span>
+          </span>
+        )
+      })}
+    </div>
+  )
 }

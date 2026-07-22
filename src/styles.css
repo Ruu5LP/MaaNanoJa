@@ -193,11 +193,34 @@ button.btn.sm {
   gap: 4px;
   background: var(--surface-2);
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-sm);
   padding: 4px 10px;
   font-size: 13px;
 }
 .pill.on {
+  background: var(--accent);
+  color: var(--accent-ink);
+  border-color: var(--accent);
+  font-weight: 700;
+}
+.pill:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.score-cell {
+  display: block;
+  width: 100%;
+  min-width: 64px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  font-size: 15px;
+  text-align: center;
+  cursor: pointer;
+}
+.score-cell.on {
   background: var(--accent);
   color: var(--accent-ink);
   border-color: var(--accent);
@@ -359,13 +382,18 @@ tbody tr:hover td:first-child {
 }
 .hand-row {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 6px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 8px 10px;
   font-size: 13px;
+}
+.hand-row-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 .hand-row .tag {
   font-size: 11px;
@@ -381,6 +409,22 @@ tbody tr:hover td:first-child {
 .hand-row .tag.draw {
   background: #3a3312;
   color: var(--warn);
+}
+.delta-chips {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.delta-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface-3);
+  border-radius: var(--radius-sm);
+  padding: 4px 6px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
 }
 
 .scoreboard {
@@ -436,6 +480,16 @@ tbody tr:hover td:first-child {
   background: var(--accent);
   color: var(--accent-ink);
   font-weight: 700;
+}
+
+.pick-row {
+  display: flex;
+  gap: 6px;
+}
+.pick-row .pill {
+  flex: 1;
+  justify-content: center;
+  text-align: center;
 }
 
 .checkline {

@@ -69,10 +69,8 @@ test('局の点数移動: 子のロン（本場・供託あり）', () => {
   const hand: Hand = {
     id: 'h1',
     type: 'ron',
-    winner: 'B',
+    wins: [{ winner: 'B', han: 3, fu: 40 }],
     loser: 'C',
-    han: 3,
-    fu: 40,
     riichi: ['B'],
   }
   const { delta, potAfter } = handDeltas(seats, 0, hand, 2, 1000)
@@ -83,6 +81,30 @@ test('局の点数移動: 子のロン（本場・供託あり）', () => {
   expect(delta['D']).toBe(0)
   expect(potAfter).toBe(0)
   // 前局の供託1000が場に残っていた分、この局はテーブル全体で+1000（正常）
+  expect(delta['A']! + delta['B']! + delta['C']! + delta['D']!).toBe(1000)
+})
+
+test('局の点数移動: ダブロン（本場・供託は最初の和了者が総取り）', () => {
+  const seats = ['A', 'B', 'C', 'D'] // A=起家(親)
+  // DがAから放銃。BとCがダブロンで和了（B: 30符2翻2000点, C: 30符3翻3900点）。1本場・供託1000。
+  const hand: Hand = {
+    id: 'h1',
+    type: 'ron',
+    wins: [
+      { winner: 'B', han: 2, fu: 30 },
+      { winner: 'C', han: 3, fu: 30 },
+    ],
+    loser: 'D',
+    riichi: [],
+  }
+  const { delta, potAfter } = handDeltas(seats, 0, hand, 1, 1000)
+  // B: 2000 + 300(本場) + 1000(供託) = 3300
+  expect(delta['B']).toBe(3300)
+  // C: 3900 + 300(本場) = 4200（供託は最初の和了者Bが総取り）
+  expect(delta['C']).toBe(4200)
+  expect(delta['D']).toBe(-(2000 + 300 + 3900 + 300))
+  expect(delta['A']).toBe(0)
+  expect(potAfter).toBe(0)
   expect(delta['A']! + delta['B']! + delta['C']! + delta['D']!).toBe(1000)
 })
 

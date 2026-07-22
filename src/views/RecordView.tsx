@@ -1,12 +1,9 @@
 import { useMemo, useState } from 'react'
 import { WINDS, replay, roundLabel, gameResults, pointsCheck } from '../lib/game'
 import { uid } from '../lib/store'
-import type { GameResult } from '../lib/scoring'
+import { scoreTable, manganRow, hanLabel, type GameResult } from '../lib/scoring'
 import type { DB, Game, Hand, HandType, Rules } from '../lib/domain'
 import type { Api } from '../App'
-
-const HAN_OPTIONS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13]
-const FU_OPTIONS = [20, 25, 30, 40, 50, 60, 70, 80, 90, 100, 110]
 
 type NameFn = (pid: string) => string
 type SaveFn = (game: Omit<Game, 'id'>) => void
@@ -239,9 +236,13 @@ function LiveView({
   const gameForReplay: Game = { ...draft, id: 'draft' }
   const { state } = useMemo(() => replay({ ...draft, id: 'draft' }, rules), [draft, rules])
   const [finishing, setFinishing] = useState(false)
+  const [honbaAdjust, setHonbaAdjust] = useState(0)
+  const effectiveHonba = Math.max(0, state.honba + honbaAdjust)
 
   function addHand(hand: Hand) {
-    setDraft((d) => (d ? { ...d, hands: [...d.hands, hand] } : d))
+    const withOverride = honbaAdjust !== 0 ? { ...hand, honbaOverride: effectiveHonba } : hand
+    setDraft((d) => (d ? { ...d, hands: [...d.hands, withOverride] } : d))
+    setHonbaAdjust(0)
   }
   function undo() {
     setDraft((d) => (d ? { ...d, hands: d.hands.slice(0, -1) } : d))
@@ -282,9 +283,31 @@ function LiveView({
     <div className="view">
       <div className="card">
         <div className="row">
-          <h2 style={{ margin: 0 }}>{roundLabel(state)}</h2>
+          <h2 style={{ margin: 0 }}>
+            {WINDS[state.roundWind] ?? '?'}
+            {state.roundNum}局{effectiveHonba ? ` ${effectiveHonba}本場` : ''}
+          </h2>
           <span className="spacer" />
           {state.pot > 0 && <span className="pill">供託 {state.pot}</span>}
+        </div>
+        <div className="row" style={{ marginTop: 8 }}>
+          <span className="muted">積み棒を修正</span>
+          <span className="spacer" />
+          <button
+            className="btn sm ghost"
+            disabled={effectiveHonba <= 0}
+            onClick={() => setHonbaAdjust((n) => n - 1)}
+          >
+            −1
+          </button>
+          <button className="btn sm ghost" onClick={() => setHonbaAdjust((n) => n + 1)}>
+            +1
+          </button>
+          {honbaAdjust !== 0 && (
+            <button className="btn sm ghost" onClick={() => setHonbaAdjust(0)}>
+              元に戻す
+            </button>
+          )}
         </div>
         <div className="scoreboard" style={{ marginTop: 10 }}>
           {draft.playerIds.map((pid, i) => (
@@ -342,10 +365,9 @@ function HandForm({
   onAdd: (hand: Hand) => void
 }) {
   const [type, setType] = useState<HandType>('ron')
-  const [winner, setWinner] = useState('')
+  const [winners, setWinners] = useState<string[]>([])
   const [loser, setLoser] = useState('')
-  const [han, setHan] = useState(3)
-  const [fu, setFu] = useState(30)
+  const [scores, setScores] = useState<Record<string, { han: number; fu: number }>>({})
   const [riichi, setRiichi] = useState<string[]>([])
   const [tenpai, setTenpai] = useState<string[]>([])
   const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '?'
@@ -353,22 +375,47 @@ function HandForm({
   function toggle(list: string[], setList: (v: string[]) => void, pid: string) {
     setList(list.includes(pid) ? list.filter((x) => x !== pid) : [...list, pid])
   }
-  function reset() {
-    setWinner('')
+  function changeType(t: HandType) {
+    setType(t)
+    setWinners([])
     setLoser('')
-    setHan(3)
-    setFu(30)
+    setScores({})
+  }
+  function toggleWinner(pid: string) {
+    if (type === 'tsumo') {
+      setWinners((w) => (w[0] === pid ? [] : [pid]))
+      return
+    }
+    setWinners((w) => (w.includes(pid) ? w.filter((x) => x !== pid) : [...w, pid]))
+    setScores((s) => (s[pid] ? s : { ...s, [pid]: { han: 3, fu: 30 } }))
+    setLoser((l) => (l === pid ? '' : l))
+  }
+  function toggleLoser(pid: string) {
+    setLoser((l) => (l === pid ? '' : pid))
+    setWinners((w) => w.filter((x) => x !== pid))
+  }
+  function reset() {
+    setWinners([])
+    setLoser('')
+    setScores({})
     setRiichi([])
     setTenpai([])
   }
   function submit() {
     const id = uid()
     if (type === 'ron') {
-      if (!winner || !loser || winner === loser) return
-      onAdd({ id, type, winner, loser, han, fu, riichi })
+      if (!winners.length || !loser) return
+      const wins = winners.map((w) => ({
+        winner: w,
+        han: scores[w]?.han ?? 3,
+        fu: scores[w]?.fu ?? 30,
+      }))
+      onAdd({ id, type, wins, loser, riichi })
     } else if (type === 'tsumo') {
-      if (!winner) return
-      onAdd({ id, type, winner, han, fu, riichi })
+      const w = winners[0]
+      if (!w) return
+      const { han, fu } = scores[w] ?? { han: 3, fu: 30 }
+      onAdd({ id, type, winner: w, han, fu, riichi })
     } else if (type === 'draw') {
       onAdd({ id, type, tenpai, riichi })
     } else {
@@ -379,8 +426,8 @@ function HandForm({
 
   const needScore = type === 'ron' || type === 'tsumo'
   const canSubmit =
-    (type === 'ron' && !!winner && !!loser && winner !== loser) ||
-    (type === 'tsumo' && !!winner) ||
+    (type === 'ron' && winners.length > 0 && !!loser) ||
+    (type === 'tsumo' && winners.length === 1) ||
     type === 'draw' ||
     type === 'abortive'
 
@@ -395,7 +442,7 @@ function HandForm({
     <div style={{ marginTop: 14 }}>
       <div className="seg-control" style={{ marginBottom: 10 }}>
         {TYPE_LABELS.map(([v, l]) => (
-          <button key={v} className={type === v ? 'active' : ''} onClick={() => setType(v)}>
+          <button key={v} className={type === v ? 'active' : ''} onClick={() => changeType(v)}>
             {l}
           </button>
         ))}
@@ -403,58 +450,52 @@ function HandForm({
 
       {needScore && (
         <div className="stack">
-          <label className="field">
-            和了者
-            <select value={winner} onChange={(e) => setWinner(e.target.value)}>
-              <option value="">— 選択 —</option>
+          <div>
+            <div className="muted" style={{ marginBottom: 6 }}>
+              和了者
+            </div>
+            <div className="pick-row">
               {playerIds.map((pid) => (
-                <option key={pid} value={pid}>
+                <button
+                  key={pid}
+                  className={`pill ${winners.includes(pid) ? 'on' : ''}`}
+                  disabled={type === 'ron' && pid === loser}
+                  onClick={() => toggleWinner(pid)}
+                >
                   {name(pid)} {pid === dealerId ? '（親）' : ''}
-                </option>
+                </button>
               ))}
-            </select>
-          </label>
-          {type === 'ron' && (
-            <label className="field">
-              放銃者
-              <select value={loser} onChange={(e) => setLoser(e.target.value)}>
-                <option value="">— 選択 —</option>
-                {playerIds
-                  .filter((pid) => pid !== winner)
-                  .map((pid) => (
-                    <option key={pid} value={pid}>
-                      {name(pid)}
-                    </option>
-                  ))}
-              </select>
-            </label>
-          )}
-          <div className="grid2">
-            <label className="field">
-              翻
-              <select value={han} onChange={(e) => setHan(Number(e.target.value))}>
-                {HAN_OPTIONS.map((h) => (
-                  <option key={h} value={h}>
-                    {h}翻{h >= 13 ? '（役満）' : ''}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="field">
-              符{han >= 5 ? '（満貫以上は不問）' : ''}
-              <select
-                value={fu}
-                onChange={(e) => setFu(Number(e.target.value))}
-                disabled={han >= 5}
-              >
-                {FU_OPTIONS.map((f) => (
-                  <option key={f} value={f}>
-                    {f}符
-                  </option>
-                ))}
-              </select>
-            </label>
+            </div>
           </div>
+          {type === 'ron' && (
+            <div>
+              <div className="muted" style={{ marginBottom: 6 }}>
+                放銃者
+              </div>
+              <div className="pick-row">
+                {playerIds.map((pid) => (
+                  <button
+                    key={pid}
+                    className={`pill ${loser === pid ? 'on' : ''}`}
+                    disabled={winners.includes(pid)}
+                    onClick={() => toggleLoser(pid)}
+                  >
+                    {name(pid)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+          {winners.map((pid) => (
+            <ScorePicker
+              key={pid}
+              label={`${name(pid)}${pid === dealerId ? '（親）' : ''}の点数`}
+              winnerIsDealer={pid === dealerId}
+              isTsumo={type === 'tsumo'}
+              value={scores[pid] ?? { han: 3, fu: 30 }}
+              onChange={(han, fu) => setScores((s) => ({ ...s, [pid]: { han, fu } }))}
+            />
+          ))}
         </div>
       )}
 
@@ -463,7 +504,7 @@ function HandForm({
           <div className="muted" style={{ marginBottom: 6 }}>
             テンパイ者
           </div>
-          <div className="row wrap">
+          <div className="pick-row">
             {playerIds.map((pid) => (
               <button
                 key={pid}
@@ -482,7 +523,7 @@ function HandForm({
           <div className="muted" style={{ marginBottom: 6 }}>
             立直した人
           </div>
-          <div className="row wrap">
+          <div className="pick-row">
             {playerIds.map((pid) => (
               <button
                 key={pid}
@@ -508,63 +549,121 @@ function HandForm({
   )
 }
 
+function ScorePicker({
+  label,
+  winnerIsDealer,
+  isTsumo,
+  value,
+  onChange,
+}: {
+  label: string
+  winnerIsDealer: boolean
+  isTsumo: boolean
+  value: { han: number; fu: number }
+  onChange: (han: number, fu: number) => void
+}) {
+  const table = scoreTable(winnerIsDealer, isTsumo)
+  const mangans = manganRow(winnerIsDealer, isTsumo)
+  return (
+    <div style={{ marginTop: 4 }}>
+      <div className="muted" style={{ marginBottom: 6 }}>
+        {label}（翻×符の早見表から選ぶ）
+      </div>
+      <div className="table-wrap">
+        <table className="score-table">
+          <thead>
+            <tr>
+              <th></th>
+              {table[0]!.map((c) => (
+                <th key={c.fu}>{c.fu}符</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {table.map((row) => (
+              <tr key={row[0]!.han}>
+                <th>{row[0]!.han}翻</th>
+                {row.map((c) => (
+                  <td key={c.fu}>
+                    <button
+                      className={`score-cell ${value.han === c.han && value.fu === c.fu ? 'on' : ''}`}
+                      onClick={() => onChange(c.han, c.fu)}
+                    >
+                      {c.total.toLocaleString()}
+                    </button>
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="row wrap" style={{ marginTop: 8 }}>
+        {mangans.map((m) => (
+          <button
+            key={m.han}
+            className={`pill ${value.han === m.han ? 'on' : ''}`}
+            onClick={() => onChange(m.han, m.fu)}
+          >
+            {m.total.toLocaleString()}（{hanLabel(m.han)}）
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function HandLog({ game, rules, name }: { game: Game; rules: Rules; name: NameFn }) {
   const { steps } = replay(game, rules)
   return (
     <div className="hand-list">
       {steps.map((s, i) => (
         <div className="hand-row" key={s.hand.id || i}>
-          <span className="muted" style={{ minWidth: 62 }}>
-            {s.label}
-          </span>
-          {renderHandSummary(s.hand, name)}
+          <div className="hand-row-head">
+            <span className="muted" style={{ minWidth: 62 }}>
+              {s.label}
+            </span>
+            {handTag(s.hand)}
+          </div>
+          <DeltaChips playerIds={game.playerIds} name={name} delta={s.delta} />
         </div>
       ))}
     </div>
   )
 }
 
-function renderHandSummary(h: Hand, name: NameFn) {
-  if (h.type === 'ron')
-    return (
-      <>
-        <span className="tag win">ロン</span>
-        <span>
-          {name(h.winner)} ← {name(h.loser)}（{scoreText(h)}）
-        </span>
-      </>
-    )
-  if (h.type === 'tsumo')
-    return (
-      <>
-        <span className="tag win">ツモ</span>
-        <span>
-          {name(h.winner)}（{scoreText(h)}）
-        </span>
-      </>
-    )
-  if (h.type === 'draw')
-    return (
-      <>
-        <span className="tag draw">流局</span>
-        <span>テンパイ: {h.tenpai.map(name).join('・') || 'なし'}</span>
-      </>
-    )
+function handTag(h: Hand) {
+  if (h.type === 'ron') return <span className="tag win">ロン</span>
+  if (h.type === 'tsumo') return <span className="tag win">ツモ</span>
+  if (h.type === 'draw') return <span className="tag draw">流局</span>
   return <span className="tag draw">途中流局</span>
 }
 
-function scoreText(h: { han: number; fu: number }): string {
-  if (h.han >= 5)
-    return h.han >= 13
-      ? '役満'
-      : h.han >= 11
-        ? '三倍満'
-        : h.han >= 8
-          ? '倍満'
-          : h.han >= 6
-            ? '跳満'
-            : '満貫'
-  return `${h.han}翻${h.fu}符`
+function DeltaChips({
+  playerIds,
+  name,
+  delta,
+}: {
+  playerIds: string[]
+  name: NameFn
+  delta: Record<string, number>
+}) {
+  return (
+    <div className="delta-chips">
+      {playerIds.map((pid) => {
+        const d = delta[pid] ?? 0
+        return (
+          <span key={pid} className={`delta-chip ${d > 0 ? 'pos' : d < 0 ? 'neg' : ''}`}>
+            <span>{name(pid)}</span>
+            <span>
+              {d > 0 ? '+' : ''}
+              {d.toLocaleString()}
+            </span>
+          </span>
+        )
+      })}
+    </div>
+  )
 }
 
 function ResultPreview({ results, name }: { results: GameResult[]; name: NameFn }) {

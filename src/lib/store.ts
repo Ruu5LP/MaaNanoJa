@@ -58,6 +58,16 @@ export function defaultDB(): DB {
   }
 }
 
+/** プレイヤー・対局データすべてを空にした状態（過去9試合のシードも含めない）。 */
+export function emptyDB(): DB {
+  return {
+    version: SCHEMA_VERSION,
+    players: [],
+    rules: { ...DEFAULT_RULES },
+    games: [],
+  }
+}
+
 export function loadDB(): DB {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)

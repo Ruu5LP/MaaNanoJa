@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { exportJSON, defaultDB } from '../lib/store'
+import { exportJSON, defaultDB, emptyDB } from '../lib/store'
 import type { DB } from '../lib/domain'
 import type { Api } from '../App'
 
@@ -169,6 +169,20 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
             }}
           >
             初期化
+          </button>
+          <button
+            className="btn danger"
+            onClick={() => {
+              if (
+                confirm(
+                  'プレイヤー・対局データをすべて消去し、完全に空の状態にします。元に戻せません。よろしいですか？',
+                )
+              ) {
+                api.replaceDB(emptyDB())
+              }
+            }}
+          >
+            全て消去
           </button>
         </div>
       </div>

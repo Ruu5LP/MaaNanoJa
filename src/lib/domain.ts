@@ -30,15 +30,22 @@ interface HandBase {
   id: string
   /** この局で立直した人のID */
   riichi: string[]
+  /** 本場（積み棒）の手動修正。指定時は自動計算の値を上書きしてこの局を計算する。 */
+  honbaOverride?: number
 }
 
-/** ロン和了 */
-export interface RonHand extends HandBase {
-  type: 'ron'
+/** ロンした人1人分の和了内容（ダブロン・トリプルロンでは複数人分になる） */
+export interface RonWin {
   winner: string
-  loser: string
   han: number
   fu: number
+}
+
+/** ロン和了（複数人が同時にロンする＝ダブロン・トリプルロンにも対応） */
+export interface RonHand extends HandBase {
+  type: 'ron'
+  wins: RonWin[]
+  loser: string
 }
 
 /** ツモ和了 */

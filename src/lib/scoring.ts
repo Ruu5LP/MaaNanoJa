@@ -96,12 +96,18 @@ export function handDeltas(
   const dealerId = seats[dealerIndex]
 
   if (hand.type === 'ron') {
-    const winnerIsDealer = hand.winner === dealerId
-    const v = handValue(hand.han, hand.fu)
-    const gain = winnerIsDealer ? v.ronDealer : v.ronNonDealer
+    // ダブロン・トリプルロン: 本場ボーナスは和了者それぞれに、供託は最初の和了者が総取り。
     const honbaPay = honba * 300
-    delta[hand.winner] = (delta[hand.winner] ?? 0) + gain + honbaPay + pot
-    delta[hand.loser] = (delta[hand.loser] ?? 0) - (gain + honbaPay)
+    let totalFromLoser = 0
+    hand.wins.forEach((win, i) => {
+      const winnerIsDealer = win.winner === dealerId
+      const v = handValue(win.han, win.fu)
+      const gain = winnerIsDealer ? v.ronDealer : v.ronNonDealer
+      const potShare = i === 0 ? pot : 0
+      delta[win.winner] = (delta[win.winner] ?? 0) + gain + honbaPay + potShare
+      totalFromLoser += gain + honbaPay
+    })
+    delta[hand.loser] = (delta[hand.loser] ?? 0) - totalFromLoser
     pot = 0
   } else if (hand.type === 'tsumo') {
     const winnerIsDealer = hand.winner === dealerId
@@ -182,6 +188,46 @@ export function computeResults(entries: ResultEntry[], rules: Rules): GameResult
       score: round2(score),
     }
   })
+}
+
+/** 点数早見表の行（翻）・列（符）。1〜4翻は符ごとに点数が変わる。 */
+export const SCORE_TABLE_HANS = [1, 2, 3, 4] as const
+export const SCORE_TABLE_FUS = [20, 25, 30, 40, 50, 60, 70, 80, 90, 100, 110] as const
+/** 満貫以上は符に依存しないので専用の行として扱う。 */
+export const MANGAN_HANS = [5, 6, 8, 11, 13] as const
+
+export function hanLabel(han: number): string | null {
+  if (han >= 13) return '役満'
+  if (han >= 11) return '三倍満'
+  if (han >= 8) return '倍満'
+  if (han >= 6) return '跳満'
+  if (han >= 5) return '満貫'
+  return null
+}
+
+export interface ScoreCell {
+  han: number
+  fu: number
+  total: number
+}
+
+/**
+ * 1〜4翻 × 符 の点数早見表を返す（行=翻、列=符）。
+ * 翻・符を直接選ばせる代わりに、点数早見表からそのまま選べるようにするため。
+ */
+export function scoreTable(winnerIsDealer: boolean, isTsumo: boolean): ScoreCell[][] {
+  return SCORE_TABLE_HANS.map((han) =>
+    SCORE_TABLE_FUS.map((fu) => ({ han, fu, total: agariTotal(han, fu, winnerIsDealer, isTsumo) })),
+  )
+}
+
+/** 満貫〜役満の行（符は計算に影響しないため30固定）。 */
+export function manganRow(winnerIsDealer: boolean, isTsumo: boolean): ScoreCell[] {
+  return MANGAN_HANS.map((han) => ({
+    han,
+    fu: 30,
+    total: agariTotal(han, 30, winnerIsDealer, isTsumo),
+  }))
 }
 
 export function round2(x: number): number {

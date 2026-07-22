@@ -105,20 +105,31 @@ export function computeStats(db: DB): PlayerStats[] {
           const s = byId[pid]
           if (s) s.riichi += 1
         }
-        if (h.type === 'ron' || h.type === 'tsumo') {
+        if (h.type === 'tsumo') {
           const winnerIsDealer = h.winner === dealerId
           const w = byId[h.winner]
           if (w) {
             w.agari += 1
-            w.agariPts += agariTotal(h.han, h.fu, winnerIsDealer, h.type === 'tsumo')
-            if (h.type === 'tsumo') w.tsumo += 1
+            w.agariPts += agariTotal(h.han, h.fu, winnerIsDealer, true)
+            w.tsumo += 1
           }
-          if (h.type === 'ron') {
-            const l = byId[h.loser]
-            if (l) {
-              l.houju += 1
-              l.houjuPts += agariTotal(h.han, h.fu, winnerIsDealer, false)
+        } else if (h.type === 'ron') {
+          // ダブロン・トリプルロンは放銃1回として数え、失点は合算する
+          let houjuPts = 0
+          for (const win of h.wins) {
+            const winnerIsDealer = win.winner === dealerId
+            const w = byId[win.winner]
+            const pts = agariTotal(win.han, win.fu, winnerIsDealer, false)
+            if (w) {
+              w.agari += 1
+              w.agariPts += pts
             }
+            houjuPts += pts
+          }
+          const l = byId[h.loser]
+          if (l) {
+            l.houju += 1
+            l.houjuPts += houjuPts
           }
         } else if (h.type === 'draw') {
           for (const pid of seats) {
