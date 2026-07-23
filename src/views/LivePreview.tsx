@@ -42,10 +42,13 @@ export default function LivePreview({
   live,
   db,
   variant = 'banner',
+  bare = false,
 }: {
   live: LiveInput
   db: DB
   variant?: 'banner' | 'full'
+  /** true のとき、外側の `.view` ラッパを省いてカードだけ返す（対局モニターのグリッドに埋め込む用）。 */
+  bare?: boolean
 }) {
   const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '?'
   const isSetup = live.phase === 'setup'
@@ -59,20 +62,19 @@ export default function LivePreview({
 
   // 観戦画面（記録タブ本体）。
   if (variant === 'full') {
-    return (
-      <div className="view">
-        <div className="card live-full">
-          <div className="live-full-head">
-            <span className="live-dot" />
-            <span className="live-title">
-              {title}
-              {isSetup ? '（席を選んでいます）' : '（観戦）'}
-            </span>
-          </div>
-          {inner}
+    const card = (
+      <div className="card live-full">
+        <div className="live-full-head">
+          <span className="live-dot" />
+          <span className="live-title">
+            {title}
+            {isSetup ? '（席を選んでいます）' : '（観戦）'}
+          </span>
         </div>
+        {inner}
       </div>
     )
+    return bare ? card : <div className="view">{card}</div>
   }
 
   // 上部バナー（記録タブ以外）。畳める。

@@ -7,6 +7,7 @@ import type { Api } from '../App'
 import { usePublishLive, deviceId } from '../useLiveInput'
 import { hasLiveContent, type LiveForm, type LiveInput } from '../lib/live'
 import LivePreview from './LivePreview'
+import { StatsSide } from './StatsPanels'
 
 type NameFn = (pid: string) => string
 type SaveFn = (game: Omit<Game, 'id'>) => void
@@ -82,14 +83,24 @@ export default function RecordView({
       />
     )
 
-  // 入力していないとき: 自分の「新しい半荘」フォームは常に出す（＝入力面は絶対に消さない）。
-  // 別端末が“中身のある”入力をしていれば、その観戦画面を上に添えるだけ（フォームは下に残す）。
-  return (
-    <>
-      {live && hasLiveContent(live) && <LivePreview live={live} db={db} variant="full" />}
-      <SetupView db={db} onStart={setDraft} syncing={syncing} />
-    </>
-  )
+  // 別端末が“中身のある”入力中 → 対局モニター。観戦盤＋（PC幅では）今節の成績サイドを並べ、
+  // 自分の「新しい半荘」フォームは下に残す（＝入力面は絶対に消さない）。
+  // PC幅（≥1024px）は view-wide + monitor-grid で2カラム、スマホでは従来どおり縦に積む（CSS側）。
+  if (live && hasLiveContent(live))
+    return (
+      <div className="view view-wide">
+        <div className="monitor-grid">
+          <LivePreview live={live} db={db} variant="full" bare />
+          <StatsSide db={db} />
+        </div>
+        <div className="monitor-setup">
+          <SetupView db={db} onStart={setDraft} syncing={syncing} bare />
+        </div>
+      </div>
+    )
+
+  // 入力しておらず、他端末の実況も無い → 自分の「新しい半荘」フォームだけ（PC幅では読みやすい幅で中央寄せ）。
+  return <SetupView db={db} onStart={setDraft} syncing={syncing} />
 }
 
 /* ---------- セットアップ ---------- */
@@ -97,10 +108,13 @@ function SetupView({
   db,
   onStart,
   syncing,
+  bare = false,
 }: {
   db: DB
   onStart: (draft: Draft) => void
   syncing: boolean
+  /** true のとき、外側の `.view` ラッパを省いてカードだけ返す（対局モニターの中に置く用）。 */
+  bare?: boolean
 }) {
   const [seats, setSeats] = useState<(string | null)[]>([null, null, null, null])
   const [date, setDate] = useState(todayStr())
@@ -143,71 +157,68 @@ function SetupView({
     })
   }
 
-  return (
-    <div className="view">
-      <div className="card">
-        <h2>新しい半荘</h2>
-        {db.players.length < 4 ? (
-          <p className="muted">
-            プレイヤーが4人未満です。「設定」タブでメンバーを登録してください。
+  const content = (
+    <div className="card">
+      <h2>新しい半荘</h2>
+      {db.players.length < 4 ? (
+        <p className="muted">プレイヤーが4人未満です。「設定」タブでメンバーを登録してください。</p>
+      ) : (
+        <>
+          <div className="grid2" style={{ marginBottom: 12 }}>
+            <label className="field">
+              日付
+              <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+            </label>
+            <label className="field">
+              メモ（任意）
+              <input
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+                placeholder="例: 7月定例"
+              />
+            </label>
+          </div>
+
+          <h3 className="sec">席順（起家＝東から）</h3>
+          <div className="player-picker">
+            {seats.map((sid, i) => (
+              <div className="slot" key={i}>
+                <span className="wind">{WINDS[i]}</span>
+                <select
+                  value={sid ?? ''}
+                  onChange={(e) => {
+                    const v = e.target.value || null
+                    setSeats((s) => s.map((x, idx) => (idx === i ? v : x)))
+                  }}
+                >
+                  <option value="">— 選択 —</option>
+                  {available(i).map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+
+          <div className="row" style={{ marginTop: 14 }}>
+            <button className="btn primary" disabled={!ready} onClick={() => begin('live')}>
+              局ログで記録
+            </button>
+            <button className="btn" disabled={!ready} onClick={() => begin('quick')}>
+              最終点だけ入力
+            </button>
+          </div>
+          <p className="muted" style={{ marginTop: 8 }}>
+            「局ログ」＝和了・放銃・流局を1局ずつ記録（放銃率などのデータが取れる）。
+            「最終点だけ」＝従来どおり終局の持ち点だけ入力。
           </p>
-        ) : (
-          <>
-            <div className="grid2" style={{ marginBottom: 12 }}>
-              <label className="field">
-                日付
-                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
-              </label>
-              <label className="field">
-                メモ（任意）
-                <input
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="例: 7月定例"
-                />
-              </label>
-            </div>
-
-            <h3 className="sec">席順（起家＝東から）</h3>
-            <div className="player-picker">
-              {seats.map((sid, i) => (
-                <div className="slot" key={i}>
-                  <span className="wind">{WINDS[i]}</span>
-                  <select
-                    value={sid ?? ''}
-                    onChange={(e) => {
-                      const v = e.target.value || null
-                      setSeats((s) => s.map((x, idx) => (idx === i ? v : x)))
-                    }}
-                  >
-                    <option value="">— 選択 —</option>
-                    {available(i).map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-            </div>
-
-            <div className="row" style={{ marginTop: 14 }}>
-              <button className="btn primary" disabled={!ready} onClick={() => begin('live')}>
-                局ログで記録
-              </button>
-              <button className="btn" disabled={!ready} onClick={() => begin('quick')}>
-                最終点だけ入力
-              </button>
-            </div>
-            <p className="muted" style={{ marginTop: 8 }}>
-              「局ログ」＝和了・放銃・流局を1局ずつ記録（放銃率などのデータが取れる）。
-              「最終点だけ」＝従来どおり終局の持ち点だけ入力。
-            </p>
-          </>
-        )}
-      </div>
+        </>
+      )}
     </div>
   )
+  return bare ? content : <div className="view">{content}</div>
 }
 
 /* ---------- かんたん入力（最終点のみ） ---------- */
