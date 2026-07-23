@@ -3,6 +3,7 @@ import { loadDB, saveDB, normalizeDB, uid } from './lib/store'
 import type { DB, Game } from './lib/domain'
 import { useLanSync, type SyncMode } from './useLanSync'
 import { useWatchLive } from './useLiveInput'
+import { hasLiveContent } from './lib/live'
 import RecordView from './views/RecordView'
 import HistoryView from './views/HistoryView'
 import StatsView from './views/StatsView'
@@ -99,8 +100,9 @@ export default function App() {
         <span className={`sync-badge sync-${mode}`}>{SYNC_LABEL[mode]}</span>
       </header>
 
-      {/* 記録タブでは観戦画面を本体に出すので、バナーは他タブだけに出す（重複を避ける）。 */}
-      {live && tab !== 'record' && <LivePreview live={live} db={db} />}
+      {/* 記録タブでは観戦画面を本体側に出すので、バナーは他タブだけに出す（重複を避ける）。
+          中身のある実況のときだけ（空の準備中などでは出さない）。 */}
+      {live && hasLiveContent(live) && tab !== 'record' && <LivePreview live={live} db={db} />}
 
       {tab === 'record' && (
         <RecordView

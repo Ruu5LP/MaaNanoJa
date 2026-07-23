@@ -5,7 +5,7 @@ import { scoreTable, manganRow, hanLabel, type GameResult } from '../lib/scoring
 import type { DB, Game, Hand, HandType, Rules } from '../lib/domain'
 import type { Api } from '../App'
 import { usePublishLive, deviceId } from '../useLiveInput'
-import type { LiveForm, LiveInput } from '../lib/live'
+import { hasLiveContent, type LiveForm, type LiveInput } from '../lib/live'
 import LivePreview from './LivePreview'
 
 type NameFn = (pid: string) => string
@@ -67,20 +67,28 @@ export default function RecordView({
     onDone()
   }
 
-  // 自分は入力しておらず、別端末が入力中 → 記録タブ本体を観戦画面にする。
-  if (!draft && live) return <LivePreview live={live} db={db} variant="full" />
-  if (!draft) return <SetupView db={db} onStart={setDraft} syncing={syncing} />
-  if (draft.mode === 'quick')
-    return <QuickView db={db} draft={draft} onSave={save} onCancel={() => setDraft(null)} />
+  // 自分が入力中（draft あり）なら、自分の入力画面だけを出す（自分の実況は自分で映さない）。
+  if (draft)
+    return draft.mode === 'quick' ? (
+      <QuickView db={db} draft={draft} onSave={save} onCancel={() => setDraft(null)} />
+    ) : (
+      <LiveView
+        db={db}
+        draft={draft}
+        setDraft={setDraft}
+        onSave={save}
+        onCancel={() => setDraft(null)}
+        syncing={syncing}
+      />
+    )
+
+  // 入力していないとき: 自分の「新しい半荘」フォームは常に出す（＝入力面は絶対に消さない）。
+  // 別端末が“中身のある”入力をしていれば、その観戦画面を上に添えるだけ（フォームは下に残す）。
   return (
-    <LiveView
-      db={db}
-      draft={draft}
-      setDraft={setDraft}
-      onSave={save}
-      onCancel={() => setDraft(null)}
-      syncing={syncing}
-    />
+    <>
+      {live && hasLiveContent(live) && <LivePreview live={live} db={db} variant="full" />}
+      <SetupView db={db} onStart={setDraft} syncing={syncing} />
+    </>
   )
 }
 
@@ -102,7 +110,8 @@ function SetupView({
   const ready = chosen.length === 4 && new Set(chosen).size === 4
 
   // 席を1人でも選んでいる間は「準備中」の実況を流す（他端末の観戦画面に席選びが映る）。
-  // 誰も選んでいなければ流さない＝待機中の他端末と実況枠を取り合わない。
+  // まだ誰も選んでいない間は“映すものが無い”ので流さないだけ（＝他端末を観戦専用に格下げはしない。
+  // 受信側は実況を自分の入力フォームの上に添えるだけで、フォームは常に触れる）。
   const livePayload = useMemo<LiveInput | null>(
     () =>
       chosen.length === 0

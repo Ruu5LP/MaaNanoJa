@@ -69,6 +69,20 @@ export function shouldShowLive(snapshot: LiveSnapshot | null, myEditor: string):
   return snapshot.now - snapshot.ts < LIVE_STALE_MS
 }
 
+/**
+ * その実況に「観戦画面／バナーとして映すべき中身」があるか（純粋関数）。
+ * - 準備中(setup): 席が1人でも埋まっていれば中身あり（誰も選んでいない空の準備中は映さない）。
+ * - 対局中(playing): 席が4人そろっていれば中身あり（席が欠けた壊れた対局は映さない）。
+ *
+ * ねらい: 中身が無い実況で相手端末の画面を「入力を待っています…」に占領しない。
+ * 受信側は shouldShowLive（鮮度・自分/他人）に加えて、これで「映す価値があるか」を判定する。
+ */
+export function hasLiveContent(live: LiveInput | null): boolean {
+  if (live == null) return false
+  const filled = live.seats.filter((s): s is string => Boolean(s)).length
+  return live.phase === 'setup' ? filled >= 1 : filled === 4
+}
+
 /** 現在の実況を取得する。サーバが居ない/失敗したときは null。 */
 export async function fetchLive(): Promise<LiveSnapshot | null> {
   try {
