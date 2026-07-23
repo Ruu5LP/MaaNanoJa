@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react'
-import { exportJSON, defaultDB, emptyDB } from '../lib/store'
+import { exportJSON, emptyDB } from '../lib/store'
 import type { DB } from '../lib/domain'
 import type { Api } from '../App'
 
@@ -156,20 +156,6 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
           書き出し／読み込みで。
         </p>
         <div className="row" style={{ marginTop: 12 }}>
-          <button
-            className="btn danger"
-            onClick={() => {
-              if (
-                confirm(
-                  'すべてのデータを消して初期状態（過去9試合入り）に戻します。よろしいですか？',
-                )
-              ) {
-                api.replaceDB(defaultDB())
-              }
-            }}
-          >
-            初期化
-          </button>
           <button
             className="btn danger"
             onClick={() => {

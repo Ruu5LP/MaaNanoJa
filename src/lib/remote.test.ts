@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { shouldAdopt, isServerEmpty, type Snapshot } from './remote'
-import { defaultDB } from './store'
+import { emptyDB } from './store'
 
+// db の中身は判定に関係しない（shouldAdopt/isServerEmpty は db が null かどうかだけ見る）。
+// 「サーバにDBが在る」状態を表すのに、非nullなDBとして emptyDB() を使う。
 const snap = (rev: number, empty = false): Snapshot => ({
   rev,
-  db: empty ? null : defaultDB(),
+  db: empty ? null : emptyDB(),
 })
 
 describe('shouldAdopt', () => {

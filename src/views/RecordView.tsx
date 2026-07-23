@@ -83,24 +83,27 @@ export default function RecordView({
       />
     )
 
-  // 別端末が“中身のある”入力中 → 対局モニター。観戦盤＋（PC幅では）今節の成績サイドを並べ、
-  // 自分の「新しい半荘」フォームは下に残す（＝入力面は絶対に消さない）。
-  // PC幅（≥1024px）は view-wide + monitor-grid で2カラム、スマホでは従来どおり縦に積む（CSS側）。
-  if (live && hasLiveContent(live))
-    return (
-      <div className="view view-wide">
-        <div className="monitor-grid">
+  // 入力していないとき。自分の「新しい半荘」フォームは常に出す（＝入力面は絶対に消さない）。
+  // 別端末が“中身のある”入力中なら、その観戦画面＋今節の成績サイドを上に添える（対局モニター）。
+  //
+  // 重要: SetupView は key を固定して「観戦あり／なし」で同じ要素として扱う。
+  // 枝ごとに別々の SetupView を描くと、observ の出入りで再マウントされ、選びかけた席が消える
+  // （さらに発信が途切れて観戦が点滅して戻る）。同一要素にすることで席選びの状態を保つ。
+  // PC幅（≥1024px）だけ view-wide + monitor-grid で2カラム、スマホは縦積み（CSS側）。
+  const watching = !!(live && hasLiveContent(live))
+  return (
+    <div className={`view ${watching ? 'view-wide' : ''}`}>
+      {live && hasLiveContent(live) && (
+        <div className="monitor-grid" key="monitor">
           <LivePreview live={live} db={db} variant="full" bare />
           <StatsSide db={db} />
         </div>
-        <div className="monitor-setup">
-          <SetupView db={db} onStart={setDraft} syncing={syncing} bare />
-        </div>
+      )}
+      <div className={watching ? 'monitor-setup' : ''} key="setup">
+        <SetupView db={db} onStart={setDraft} syncing={syncing} bare />
       </div>
-    )
-
-  // 入力しておらず、他端末の実況も無い → 自分の「新しい半荘」フォームだけ（PC幅では読みやすい幅で中央寄せ）。
-  return <SetupView db={db} onStart={setDraft} syncing={syncing} />
+    </div>
+  )
 }
 
 /* ---------- セットアップ ---------- */

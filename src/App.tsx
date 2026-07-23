@@ -100,9 +100,11 @@ export default function App() {
         <span className={`sync-badge sync-${mode}`}>{SYNC_LABEL[mode]}</span>
       </header>
 
-      {/* 記録タブでは観戦画面を本体側に出すので、バナーは他タブだけに出す（重複を避ける）。
-          中身のある実況のときだけ（空の準備中などでは出さない）。 */}
-      {live && hasLiveContent(live) && tab !== 'record' && <LivePreview live={live} db={db} />}
+      {/* 他端末の実況バナー。記録タブは本体側に観戦を出すので不要。成績タブは成績を見る画面なので
+          邪魔しないよう出さない（Ruuの要望）。＝履歴・設定のときだけ、中身のある実況なら上部に出す。 */}
+      {live && hasLiveContent(live) && tab !== 'record' && tab !== 'stats' && (
+        <LivePreview live={live} db={db} />
+      )}
 
       {tab === 'record' && (
         <RecordView

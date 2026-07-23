@@ -1,5 +1,5 @@
 // localStorage への保存・読み込みと、初期データ。
-import type { DB, Game, Player, Rules } from './domain'
+import type { DB, Rules } from './domain'
 
 export const STORAGE_KEY = 'mahjong-tracker/v1'
 export const SCHEMA_VERSION = 1
@@ -15,50 +15,7 @@ export const DEFAULT_RULES: Rules = {
   tiebreak: 'shimocha', // 同点の扱い: 上家優先
 }
 
-// 既存スプレッドシートの登録メンバー
-const SEED_PLAYERS: Player[] = [
-  { id: 'p-reini', name: 'れいに' },
-  { id: 'p-mosso', name: 'もっそ' },
-  { id: 'p-saaryan', name: 'さーりゃん' },
-  { id: 'p-choukami', name: '超髪' },
-]
-
-// 既存スプレッドシート「点数入力」の過去9試合（最終持ち点, 並びはSEED_PLAYERS順）
-const SEED_GAME_POINTS: number[][] = [
-  [20900, 57600, 14300, 7200],
-  [32700, -4500, 36000, 35800],
-  [21100, 9500, 69500, -100],
-  [22100, 32800, -1400, 46500],
-  [20900, -300, 26100, 53300],
-  [23500, 50800, -800, 26500],
-  [15000, 19500, 31400, 34100],
-  [14900, 24200, 33900, 27000],
-  [21800, 29000, 18700, 30500],
-]
-
-function seedGames(): Game[] {
-  const pids = SEED_PLAYERS.map((p) => p.id)
-  return SEED_GAME_POINTS.map((points, i) => ({
-    id: `seed-${i + 1}`,
-    date: '',
-    note: '過去データ（スプレッドシートより）',
-    playerIds: pids,
-    hands: [],
-    finalPoints: Object.fromEntries(pids.map((pid, idx) => [pid, points[idx] ?? 0])),
-    createdAt: i,
-  }))
-}
-
-export function defaultDB(): DB {
-  return {
-    version: SCHEMA_VERSION,
-    players: SEED_PLAYERS.map((p) => ({ ...p })),
-    rules: { ...DEFAULT_RULES },
-    games: seedGames(),
-  }
-}
-
-/** プレイヤー・対局データすべてを空にした状態（過去9試合のシードも含めない）。 */
+/** プレイヤー・対局データが空の初期状態。最初はここから始める（デモ／過去データは入れない）。 */
 export function emptyDB(): DB {
   return {
     version: SCHEMA_VERSION,
@@ -71,11 +28,11 @@ export function emptyDB(): DB {
 export function loadDB(): DB {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return defaultDB()
+    if (!raw) return emptyDB()
     return normalizeDB(JSON.parse(raw))
   } catch (e) {
-    console.warn('データの読み込みに失敗。初期データを使います。', e)
-    return defaultDB()
+    console.warn('データの読み込みに失敗。空の状態から始めます。', e)
+    return emptyDB()
   }
 }
 
