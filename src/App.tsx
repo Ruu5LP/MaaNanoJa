@@ -1,14 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
 import { loadDB, saveDB, normalizeDB, uid } from './lib/store'
-import type { DB, Game } from './lib/domain'
+import type { DB, Draft, Game } from './lib/domain'
 import { useLanSync, type SyncMode } from './useLanSync'
-import { useWatchLive } from './useLiveInput'
-import { hasLiveContent } from './lib/live'
 import RecordView from './views/RecordView'
 import HistoryView from './views/HistoryView'
 import StatsView from './views/StatsView'
 import SettingsView from './views/SettingsView'
-import LivePreview from './views/LivePreview'
 
 /** 同期状態の表示ラベル。 */
 const SYNC_LABEL: Record<SyncMode, string> = {
@@ -27,6 +24,10 @@ export interface Api {
   updateGame(id: string, patch: Partial<Game>): void
   removeGame(id: string): void
   replaceDB(next: unknown): void
+  /** 進行中の半荘を設定/更新する（null で破棄）。全端末で共有される。 */
+  setDraft(draft: Draft | null): void
+  /** 進行中の半荘を確定保存する（games に追加し、draft を null に戻す）。 */
+  commitDraft(game: Omit<Game, 'id'>): void
 }
 
 type TabId = 'record' | 'stats' | 'history' | 'settings'
@@ -43,11 +44,8 @@ export default function App() {
   const [tab, setTab] = useState<TabId>('record')
 
   // LAN同期（サーバが居れば同期、居なければ何もしない）。
+  // 進行中の半荘(db.draft)も含めてDBまるごと同期されるので、対局中の画面は全端末で自動的に揃う。
   const { mode } = useLanSync(db, setDB)
-  const syncing = mode === 'sync'
-
-  // 他端末が入力中なら、その半荘をライブ表示する（どのタブでも上部にポップで出る）。
-  const live = useWatchLive(syncing)
 
   // localStorage への保存は端末ごとのバックアップとして常に行う。
   useEffect(() => {
@@ -88,6 +86,16 @@ export default function App() {
       replaceDB(next) {
         setDB(normalizeDB(next))
       },
+      setDraft(draft) {
+        setDB((d) => ({ ...d, draft }))
+      },
+      commitDraft(game) {
+        setDB((d) => ({
+          ...d,
+          games: [...d.games, { ...game, id: 'g-' + uid() }],
+          draft: null,
+        }))
+      },
     }),
     [],
   )
@@ -100,21 +108,7 @@ export default function App() {
         <span className={`sync-badge sync-${mode}`}>{SYNC_LABEL[mode]}</span>
       </header>
 
-      {/* 他端末の実況バナー。記録タブは本体側に観戦を出すので不要。成績タブは成績を見る画面なので
-          邪魔しないよう出さない（Ruuの要望）。＝履歴・設定のときだけ、中身のある実況なら上部に出す。 */}
-      {live && hasLiveContent(live) && tab !== 'record' && tab !== 'stats' && (
-        <LivePreview live={live} db={db} />
-      )}
-
-      {tab === 'record' && (
-        <RecordView
-          db={db}
-          api={api}
-          onDone={() => setTab('history')}
-          syncing={syncing}
-          live={live}
-        />
-      )}
+      {tab === 'record' && <RecordView db={db} api={api} onDone={() => setTab('history')} />}
       {tab === 'stats' && <StatsView db={db} />}
       {tab === 'history' && <HistoryView db={db} api={api} />}
       {tab === 'settings' && <SettingsView db={db} api={api} />}

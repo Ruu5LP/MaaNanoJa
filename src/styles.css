@@ -615,135 +615,8 @@ h3.sec {
   margin: 4px 0 8px;
 }
 
-/* ---- 入力中プレビュー（LAN同期の実況。別端末が今打っている半荘を上部に映す） ---- */
-.live-preview {
-  position: sticky;
-  top: 8px;
-  z-index: 15;
-  margin: 8px 16px 0;
-  background: var(--surface-2);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-  overflow: hidden;
-}
-.live-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  width: 100%;
-  background: none;
-  border: none;
-  color: var(--ink);
-  padding: 10px 12px;
-  cursor: pointer;
-  font-size: 13px;
-}
-.live-title {
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-.live-toggle {
-  font-size: 12px;
-  color: var(--ink-2);
-}
-/* 「入力中」を色だけでなく点滅ドットでも示す（色覚多様性への配慮） */
-.live-dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 999px;
-  background: var(--accent);
-  flex: 0 0 auto;
-  animation: live-pulse 1.4s ease-in-out infinite;
-}
-@keyframes live-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.25;
-  }
-}
-.live-body {
-  padding: 0 12px 12px;
-}
-.live-round {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-.live-form {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 10px;
-  font-size: 13px;
-  padding: 8px 10px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-}
-.live-form.muted {
-  color: var(--ink-3);
-}
-.live-loser {
-  color: var(--ink-2);
-}
-.live-riichi {
-  color: var(--warn);
-  font-size: 12px;
-}
-@media (prefers-reduced-motion: reduce) {
-  .live-dot {
-    animation: none;
-  }
-}
-
-/* 観戦画面（記録タブ本体・variant="full"）。カードの中で大きく見せる。 */
-.live-full {
-  border-color: var(--accent);
-}
-.live-full-head {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  margin-bottom: 10px;
-}
-.live-full .live-round {
-  font-size: 16px;
-}
-.live-log {
-  margin-top: 12px;
-}
-.live-log-title {
-  margin-bottom: 6px;
-}
-/* 準備中の未選択の席は控えめに（点線＋薄い文字）。 */
-.scoreboard .p.empty {
-  border-style: dashed;
-  color: var(--ink-3);
-}
-.scoreboard .p.empty .pt {
-  color: var(--ink-3);
-}
-
-/* 対局モニターの成績サイド（PC幅のときだけ観戦の隣に出す）。既定は隠す＝スマホは従来どおり。 */
-.monitor-side {
-  display: none;
-}
-.monitor-side .card:last-child {
-  margin-bottom: 0;
-}
-
 /* ============================================================
-   PC幅（≥1024px）だけの「四分割・一画面」レイアウト。
+   PC幅（≥1024px）だけ、成績タブを「四分割・一画面」レイアウトにする。
    スマホ幅では一切効かない（1カラムのまま）＝入力体験は不変。
    ============================================================ */
 @media (min-width: 1024px) {
@@ -757,7 +630,7 @@ h3.sec {
     margin-left: auto;
     margin-right: auto;
   }
-  /* 成績・対局モニターだけは全幅を使う。 */
+  /* 成績タブだけは全幅を使う。 */
   .view.view-wide {
     max-width: none;
   }
@@ -777,21 +650,5 @@ h3.sec {
   /* 着順分布の4セルは、幅に余裕があるPCでは1行4列に。 */
   .rank-cells {
     grid-template-columns: repeat(4, 1fr);
-  }
-
-  /* 記録タブ（観戦中）：観戦盤＋局ログ ｜ 今節の成績サイド の2カラム。 */
-  .monitor-grid {
-    display: grid;
-    grid-template-columns: 1.5fr 1fr;
-    gap: 14px;
-    align-items: start;
-  }
-  .monitor-grid > .card {
-    margin-bottom: 0;
-  }
-  .monitor-side {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
   }
 }
