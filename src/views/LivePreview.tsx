@@ -1,14 +1,20 @@
-// 入力中プレビュー（実況）。別の端末が今まさに打っている半荘を、読み取り専用でライブ表示する。
+// 入力中プレビュー（実況）。別の端末が今まさに準備・入力している半荘を、読み取り専用でライブ表示する。
 // 表示専用なので操作はできない。データは実況ペイロード（LiveInput）＋共有中の db から組み立てる。
 //
 // 2つの見せ方（variant）を持つ:
 //   - 'banner': 画面上部に貼り付く小さなオーバーレイ（記録タブ以外で、他タブを見ていても気づけるように）。
 //   - 'full'  : 記録タブ本体を占める「観戦画面」。スコアボード＋これまでの局ログ＋今打っている1局をフル表示。
+//
+// 段階（phase）も2つ:
+//   - 'setup'   : 席を選んでいる準備中。誰がどの席かが埋まっていく様子を映す。
+//   - 'playing' : 局ログ入力中。持ち点・局ログ・打っている最中の1局を映す。
 import { useState } from 'react'
 import { replay, roundLabel, WINDS, type HandStep } from '../lib/game'
 import { scoreTable, manganRow } from '../lib/scoring'
 import type { DB, Game, Hand } from '../lib/domain'
 import type { LiveInput, LiveForm } from '../lib/live'
+
+type NameFn = (pid: string) => string
 
 /** 翻符から和了点の合計を早見表で引く（入力者が見ていた点数と一致させる）。無ければ null。 */
 function lookupTotal(han: number, fu: number, isDealer: boolean, isTsumo: boolean): number | null {
@@ -37,19 +43,96 @@ export default function LivePreview({
   db: DB
   variant?: 'banner' | 'full'
 }) {
-  const name = (pid: string) => db.players.find((p) => p.id === pid)?.name ?? '?'
+  const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '?'
+  const isSetup = live.phase === 'setup'
+  const title = isSetup ? '別の端末で準備中' : '別の端末で入力中'
+
+  const inner = isSetup ? (
+    <SetupBoard seats={live.seats} startPoints={db.rules.startPoints} name={name} />
+  ) : (
+    <PlayingBoard live={live} db={db} name={name} withLog={variant === 'full'} />
+  )
+
+  // 観戦画面（記録タブ本体）。
+  if (variant === 'full') {
+    return (
+      <div className="view">
+        <div className="card live-full">
+          <div className="live-full-head">
+            <span className="live-dot" />
+            <span className="live-title">
+              {title}
+              {isSetup ? '（席を選んでいます）' : '（観戦）'}
+            </span>
+          </div>
+          {inner}
+        </div>
+      </div>
+    )
+  }
+
+  // 上部バナー（記録タブ以外）。畳める。
+  return <BannerFrame title={title}>{inner}</BannerFrame>
+}
+
+/** 準備中（席選び）の表示。埋まった席は名前、未選択は「—」。起家＝東が親。 */
+function SetupBoard({
+  seats,
+  startPoints,
+  name,
+}: {
+  seats: (string | null)[]
+  startPoints: number
+  name: NameFn
+}) {
+  return (
+    <>
+      <div className="live-round">席を選んでいます…</div>
+      <div className="scoreboard">
+        {[0, 1, 2, 3].map((i) => {
+          const pid = seats[i] ?? null
+          const isDealer = i === 0
+          return (
+            <div className={`p ${isDealer ? 'dealer' : ''} ${pid ? '' : 'empty'}`} key={i}>
+              <div className="nm">
+                {WINDS[i]} {pid ? name(pid) : '—'}
+              </div>
+              <div className="pt">{pid ? startPoints.toLocaleString() : '—'}</div>
+              {isDealer && <div className="badge">親</div>}
+            </div>
+          )
+        })}
+      </div>
+    </>
+  )
+}
+
+/** 対局中の表示。持ち点＋今打っている1局。full のときは局ログも出す。 */
+function PlayingBoard({
+  live,
+  db,
+  name,
+  withLog,
+}: {
+  live: LiveInput
+  db: DB
+  name: NameFn
+  withLog: boolean
+}) {
+  const playerIds = live.seats.filter((s): s is string => Boolean(s))
   const game: Game = {
     id: 'live',
-    date: '',
+    date: live.date,
     note: '',
-    playerIds: live.playerIds,
+    playerIds,
     hands: live.hands,
     finalPoints: {},
     createdAt: 0,
   }
   const rep = safeReplay(game, db)
+  if (!rep) return <p className="muted">入力を待っています…</p>
 
-  const inner = rep && (
+  return (
     <>
       <div className="live-round">
         {roundLabel({ ...rep.state, honba: Math.max(0, rep.state.honba + live.honbaAdjust) })}
@@ -57,7 +140,7 @@ export default function LivePreview({
       </div>
 
       <div className="scoreboard">
-        {live.playerIds.map((pid, i) => {
+        {playerIds.map((pid, i) => {
           const isDealer = i === rep.state.dealerIndex
           const pt = rep.state.points[pid] ?? 0
           return (
@@ -72,45 +155,21 @@ export default function LivePreview({
         })}
       </div>
 
-      <FormLine
-        form={live.form}
-        dealerId={live.playerIds[rep.state.dealerIndex] ?? ''}
-        name={name}
-      />
+      <FormLine form={live.form} dealerId={playerIds[rep.state.dealerIndex] ?? ''} name={name} />
 
-      {variant === 'full' && (
-        <HandLogMini steps={rep.steps} playerIds={live.playerIds} name={name} />
-      )}
+      {withLog && <HandLogMini steps={rep.steps} playerIds={playerIds} name={name} />}
     </>
   )
-
-  // 観戦画面（記録タブ本体）。
-  if (variant === 'full') {
-    return (
-      <div className="view">
-        <div className="card live-full">
-          <div className="live-full-head">
-            <span className="live-dot" />
-            <span className="live-title">別の端末で入力中（観戦）</span>
-          </div>
-          {inner ?? <p className="muted">入力を待っています…</p>}
-        </div>
-      </div>
-    )
-  }
-
-  // 上部バナー（記録タブ以外）。畳める。
-  return <BannerFrame>{inner}</BannerFrame>
 }
 
 /** バナーの外枠（開閉トグル付き）。中身が無いときは畳んだ見出しだけ出す。 */
-function BannerFrame({ children }: { children: React.ReactNode }) {
+function BannerFrame({ title, children }: { title: string; children: React.ReactNode }) {
   const [open, setOpen] = useState(true)
   return (
     <div className="live-preview">
       <button className="live-head" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className="live-dot" />
-        <span className="live-title">別の端末で入力中</span>
+        <span className="live-title">{title}</span>
         <span className="spacer" />
         <span className="live-toggle">{open ? '隠す ▲' : '見る ▼'}</span>
       </button>
@@ -127,7 +186,7 @@ function HandLogMini({
 }: {
   steps: HandStep[]
   playerIds: string[]
-  name: (pid: string) => string
+  name: NameFn
 }) {
   return (
     <div className="live-log">
@@ -181,7 +240,7 @@ function FormLine({
 }: {
   form: LiveForm | null
   dealerId: string
-  name: (pid: string) => string
+  name: NameFn
 }) {
   if (!form) {
     return <div className="live-form muted">この局の入力を待っています…</div>
