@@ -652,3 +652,26 @@ h3.sec {
     animation: none;
   }
 }
+
+/* 観戦画面（記録タブ本体・variant="full"）。カードの中で大きく見せる。 */
+.live-full {
+  border-color: var(--accent);
+}
+.live-full-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 10px;
+}
+.live-full .live-round {
+  font-size: 16px;
+}
+.live-log {
+  margin-top: 12px;
+}
+.live-log-title {
+  margin-bottom: 6px;
+}

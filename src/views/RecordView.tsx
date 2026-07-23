@@ -6,6 +6,7 @@ import type { DB, Game, Hand, HandType, Rules } from '../lib/domain'
 import type { Api } from '../App'
 import { usePublishLive, deviceId } from '../useLiveInput'
 import type { LiveForm, LiveInput } from '../lib/live'
+import LivePreview from './LivePreview'
 
 type NameFn = (pid: string) => string
 type SaveFn = (game: Omit<Game, 'id'>) => void
@@ -48,12 +49,15 @@ export default function RecordView({
   api,
   onDone,
   syncing,
+  live,
 }: {
   db: DB
   api: Api
   onDone: () => void
   /** LAN同期中か。true のとき、入力中の状態を他端末へ実況する。 */
   syncing: boolean
+  /** 他端末が入力中ならその実況。自分が入力していないときは観戦画面を出す。 */
+  live: LiveInput | null
 }) {
   const [draft, setDraft] = useState<Draft | null>(null)
 
@@ -63,6 +67,8 @@ export default function RecordView({
     onDone()
   }
 
+  // 自分は入力しておらず、別端末が入力中 → 記録タブ本体を観戦画面にする。
+  if (!draft && live) return <LivePreview live={live} db={db} variant="full" />
   if (!draft) return <SetupView db={db} onStart={setDraft} />
   if (draft.mode === 'quick')
     return <QuickView db={db} draft={draft} onSave={save} onCancel={() => setDraft(null)} />
