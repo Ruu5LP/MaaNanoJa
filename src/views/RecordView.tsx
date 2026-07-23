@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { WINDS, replay, roundLabel, gameResults, pointsCheck } from '../lib/game'
 import { uid } from '../lib/store'
 import { scoreTable, manganRow, hanLabel, type GameResult } from '../lib/scoring'
 import type { DB, Game, Hand, HandType, Rules } from '../lib/domain'
 import type { Api } from '../App'
+import { usePublishLive, deviceId } from '../useLiveInput'
+import type { LiveForm, LiveInput } from '../lib/live'
 
 type NameFn = (pid: string) => string
 type SaveFn = (game: Omit<Game, 'id'>) => void
@@ -41,7 +43,18 @@ function draftToGame(
   }
 }
 
-export default function RecordView({ db, api, onDone }: { db: DB; api: Api; onDone: () => void }) {
+export default function RecordView({
+  db,
+  api,
+  onDone,
+  syncing,
+}: {
+  db: DB
+  api: Api
+  onDone: () => void
+  /** LAN同期中か。true のとき、入力中の状態を他端末へ実況する。 */
+  syncing: boolean
+}) {
   const [draft, setDraft] = useState<Draft | null>(null)
 
   const save: SaveFn = (game) => {
@@ -60,6 +73,7 @@ export default function RecordView({ db, api, onDone }: { db: DB; api: Api; onDo
       setDraft={setDraft}
       onSave={save}
       onCancel={() => setDraft(null)}
+      syncing={syncing}
     />
   )
 }
@@ -224,12 +238,14 @@ function LiveView({
   setDraft,
   onSave,
   onCancel,
+  syncing,
 }: {
   db: DB
   draft: Draft
   setDraft: React.Dispatch<React.SetStateAction<Draft | null>>
   onSave: SaveFn
   onCancel: () => void
+  syncing: boolean
 }) {
   const rules = db.rules
   const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '?'
@@ -238,6 +254,23 @@ function LiveView({
   const [finishing, setFinishing] = useState(false)
   const [honbaAdjust, setHonbaAdjust] = useState(0)
   const effectiveHonba = Math.max(0, state.honba + honbaAdjust)
+
+  // 入力中の1局（HandForm の現在の選択）を実況に載せるため、上流で保持する。
+  const [formSnap, setFormSnap] = useState<LiveForm | null>(null)
+  const onFormChange = useCallback((f: LiveForm) => setFormSnap(f), [])
+
+  // 他端末に映すための実況ペイロード。中身が変わったときだけ作り直す。
+  const livePayload = useMemo<LiveInput>(
+    () => ({
+      editor: deviceId(),
+      playerIds: draft.playerIds,
+      hands: draft.hands,
+      honbaAdjust,
+      form: finishing ? null : formSnap,
+    }),
+    [draft.playerIds, draft.hands, honbaAdjust, formSnap, finishing],
+  )
+  usePublishLive(syncing ? livePayload : null, syncing)
 
   function addHand(hand: Hand) {
     const withOverride = honbaAdjust !== 0 ? { ...hand, honbaOverride: effectiveHonba } : hand
@@ -323,7 +356,13 @@ function LiveView({
           ))}
         </div>
 
-        <HandForm db={db} playerIds={draft.playerIds} dealerId={dealerId} onAdd={addHand} />
+        <HandForm
+          db={db}
+          playerIds={draft.playerIds}
+          dealerId={dealerId}
+          onAdd={addHand}
+          onChange={onFormChange}
+        />
       </div>
 
       <div className="card">
@@ -358,11 +397,14 @@ function HandForm({
   playerIds,
   dealerId,
   onAdd,
+  onChange,
 }: {
   db: DB
   playerIds: string[]
   dealerId: string
   onAdd: (hand: Hand) => void
+  /** 入力中の選択が変わるたびに呼ばれる（LAN同期の実況用）。表示専用なので副作用はない。 */
+  onChange?: (form: LiveForm) => void
 }) {
   const [type, setType] = useState<HandType>('ron')
   const [winners, setWinners] = useState<string[]>([])
@@ -371,6 +413,11 @@ function HandForm({
   const [riichi, setRiichi] = useState<string[]>([])
   const [tenpai, setTenpai] = useState<string[]>([])
   const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '?'
+
+  // 選択が変わるたびに、今の入力内容を上流へ知らせる（他端末の入力中プレビュー用）。
+  useEffect(() => {
+    onChange?.({ type, winners, loser, scores, riichi, tenpai })
+  }, [type, winners, loser, scores, riichi, tenpai, onChange])
 
   function toggle(list: string[], setList: (v: string[]) => void, pid: string) {
     setList(list.includes(pid) ? list.filter((x) => x !== pid) : [...list, pid])

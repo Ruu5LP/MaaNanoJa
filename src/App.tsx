@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from 'react'
 import { loadDB, saveDB, normalizeDB, uid } from './lib/store'
 import type { DB, Game } from './lib/domain'
 import { useLanSync, type SyncMode } from './useLanSync'
+import { useWatchLive } from './useLiveInput'
 import RecordView from './views/RecordView'
 import HistoryView from './views/HistoryView'
 import StatsView from './views/StatsView'
 import SettingsView from './views/SettingsView'
+import LivePreview from './views/LivePreview'
 
 /** 同期状態の表示ラベル。 */
 const SYNC_LABEL: Record<SyncMode, string> = {
@@ -41,6 +43,10 @@ export default function App() {
 
   // LAN同期（サーバが居れば同期、居なければ何もしない）。
   const { mode } = useLanSync(db, setDB)
+  const syncing = mode === 'sync'
+
+  // 他端末が入力中なら、その半荘をライブ表示する（どのタブでも上部にポップで出る）。
+  const live = useWatchLive(syncing)
 
   // localStorage への保存は端末ごとのバックアップとして常に行う。
   useEffect(() => {
@@ -93,7 +99,11 @@ export default function App() {
         <span className={`sync-badge sync-${mode}`}>{SYNC_LABEL[mode]}</span>
       </header>
 
-      {tab === 'record' && <RecordView db={db} api={api} onDone={() => setTab('history')} />}
+      {live && <LivePreview live={live} db={db} />}
+
+      {tab === 'record' && (
+        <RecordView db={db} api={api} onDone={() => setTab('history')} syncing={syncing} />
+      )}
       {tab === 'stats' && <StatsView db={db} />}
       {tab === 'history' && <HistoryView db={db} api={api} />}
       {tab === 'settings' && <SettingsView db={db} api={api} />}
