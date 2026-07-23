@@ -359,6 +359,50 @@ tbody tr:hover td:first-child {
   display: inline-block;
 }
 
+/* 着順分布の下段：帯が細くて読めなくても、ここで必ず「1位 n (xx%)」が読める。 */
+.rank-cells {
+  display: grid;
+  grid-template-columns: repeat(
+    2,
+    1fr
+  ); /* スマホは2×2（1行4列だと窮屈で折り返す）。PC幅で4列にする。 */
+  gap: 6px;
+  margin-top: 6px;
+}
+.rank-cell {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.rank-cell i {
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  flex: 0 0 auto;
+  align-self: center;
+}
+.rank-cell .rk {
+  color: var(--ink-3);
+  font-size: 11px;
+}
+.rank-cell .cnt {
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+.rank-cell .pctx {
+  min-width: 30px;
+  text-align: right;
+}
+.rank-cell.zero {
+  opacity: 0.5;
+}
+
 /* ---- 横棒（合計スコア） ---- */
 .hbars {
   display: flex;
@@ -682,4 +726,70 @@ h3.sec {
 }
 .scoreboard .p.empty .pt {
   color: var(--ink-3);
+}
+
+/* 対局モニターの成績サイド（PC幅のときだけ観戦の隣に出す）。既定は隠す＝スマホは従来どおり。 */
+.monitor-side {
+  display: none;
+}
+.monitor-side .card:last-child {
+  margin-bottom: 0;
+}
+
+/* ============================================================
+   PC幅（≥1024px）だけの「四分割・一画面」レイアウト。
+   スマホ幅では一切効かない（1カラムのまま）＝入力体験は不変。
+   ============================================================ */
+@media (min-width: 1024px) {
+  /* 大画面ではrootを広げて画面を活かす。 */
+  #root {
+    max-width: 1200px;
+  }
+  /* 既定の画面は読みやすい幅で中央寄せ（入力フォーム・履歴・設定が間延びしないように）。 */
+  .view {
+    max-width: 760px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  /* 成績・対局モニターだけは全幅を使う。 */
+  .view.view-wide {
+    max-width: none;
+  }
+
+  /* 成績タブ：4カードを2×2に。 */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  .stats-grid > .card {
+    margin-bottom: 0;
+  }
+
+  /* 着順分布の4セルは、幅に余裕があるPCでは1行4列に。 */
+  .rank-cells {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* 記録タブ（観戦中）：観戦盤＋局ログ ｜ 今節の成績サイド の2カラム。 */
+  .monitor-grid {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 14px;
+    align-items: start;
+  }
+  .monitor-grid > .card {
+    margin-bottom: 0;
+  }
+  .monitor-side {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  /* モニター下の「新しい半荘」フォームは読みやすい幅で中央寄せ。 */
+  .monitor-setup {
+    max-width: 760px;
+    margin: 14px auto 0;
+  }
 }
