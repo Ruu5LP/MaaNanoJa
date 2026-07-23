@@ -2,8 +2,13 @@
 //
 // 何をするか:
 //   - ビルド済みアプリ（dist/）を配信する
-//   - GET  /api/db  … いま共有中のDBを返す（無ければ db:null, rev:0）
-//   - PUT  /api/db  … 送られたDBを保存し、revを1つ進めて返す
+//   - GET  /api/db   … いま共有中のDBを返す（無ければ db:null, rev:0）
+//   - PUT  /api/db   … 送られたDBを保存し、revを1つ進めて返す
+//   - GET  /api/live … 入力中の実況（誰かが今打っている半荘）を返す。無ければ live:null
+//   - PUT  /api/live … 入力中の実況を差し替える（null で消える）
+//
+// 実況（/api/live）はメモリ上だけに持つ＝ファイルにも db.json にも残さない。
+// 「今まさに入力している中身」を他端末の画面へライブで映すための一時状態で、消えていい。
 //
 // これで「PCで起動 → PCもスマホも同じURLを開く → 同じデータを見て・書ける」を実現する。
 // データは server/data/db.json に置く（外部クラウドには一切出さない＝LAN内で完結）。
@@ -79,6 +84,10 @@ function readBody(req) {
   })
 }
 
+// 入力中の実況（メモリのみ。サーバを止めれば消える。ファイルには残さない）。
+let liveInput = null // 直近の実況ペイロード（無ければ null）
+let liveTs = 0 // 最終更新時刻（サーバ時計, ms）。端末間の時計ズレを避けるため鮮度判定はこれで行う。
+
 function sendJson(res, status, obj) {
   const body = JSON.stringify(obj)
   res.writeHead(status, {
@@ -137,6 +146,21 @@ const server = createServer(async (req, res) => {
         const prev = await readState()
         const next = await writeState({ rev: prev.rev + 1, db: parsed.db })
         return sendJson(res, 200, { rev: next.rev })
+      }
+      return sendJson(res, 405, { error: 'method not allowed' })
+    }
+
+    if (url.pathname === '/api/live') {
+      if (req.method === 'OPTIONS') return sendJson(res, 204, {})
+      // ts/now を両方サーバ時計で返す。受信側はこの差だけで鮮度を測れる。
+      if (req.method === 'GET')
+        return sendJson(res, 200, { live: liveInput, ts: liveTs, now: Date.now() })
+      if (req.method === 'PUT') {
+        const body = await readBody(req)
+        const parsed = JSON.parse(body || '{}')
+        liveInput = parsed.live ?? null
+        liveTs = Date.now()
+        return sendJson(res, 200, { ok: true })
       }
       return sendJson(res, 405, { error: 'method not allowed' })
     }
