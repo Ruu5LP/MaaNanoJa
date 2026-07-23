@@ -99,10 +99,17 @@ export default function App() {
         <span className={`sync-badge sync-${mode}`}>{SYNC_LABEL[mode]}</span>
       </header>
 
-      {live && <LivePreview live={live} db={db} />}
+      {/* 記録タブでは観戦画面を本体に出すので、バナーは他タブだけに出す（重複を避ける）。 */}
+      {live && tab !== 'record' && <LivePreview live={live} db={db} />}
 
       {tab === 'record' && (
-        <RecordView db={db} api={api} onDone={() => setTab('history')} syncing={syncing} />
+        <RecordView
+          db={db}
+          api={api}
+          onDone={() => setTab('history')}
+          syncing={syncing}
+          live={live}
+        />
       )}
       {tab === 'stats' && <StatsView db={db} />}
       {tab === 'history' && <HistoryView db={db} api={api} />}
