@@ -124,12 +124,27 @@ async function serveStatic(req, res, urlPath) {
       res.end('not found')
       return
     }
-    res.writeHead(200, { 'Content-Type': MIME['.html'] })
+    res.writeHead(200, htmlHeaders())
     res.end(data)
     return
   }
-  res.writeHead(200, { 'Content-Type': MIME[extname(target)] ?? 'application/octet-stream' })
+  // index.html（エントリHTML）だけは毎回新しく取りに行かせる。
+  // これがキャッシュされると、再ビルドしても古いJS/CSSを指したままになり
+  // 「更新したのに画面が変わらない」が起きる。JS/CSSはファイル名にハッシュが
+  // 付く（内容が変われば別名）ので、そちらはキャッシュされて問題ない。
+  const isHtml = extname(target) === '.html'
+  res.writeHead(
+    200,
+    isHtml
+      ? htmlHeaders()
+      : { 'Content-Type': MIME[extname(target)] ?? 'application/octet-stream' },
+  )
   res.end(data)
+}
+
+/** HTML（エントリ）用のヘッダ。キャッシュ無効で毎回最新を取りに行かせる。 */
+function htmlHeaders() {
+  return { 'Content-Type': MIME['.html'], 'Cache-Control': 'no-store' }
 }
 
 const server = createServer(async (req, res) => {
