@@ -1,8 +1,9 @@
 // localStorage への保存・読み込みと、初期データ。
-import type { DB, Rules } from './domain'
+import type { DB, Draft, Rules } from './domain'
 
 export const STORAGE_KEY = 'mahjong-tracker/v1'
-export const SCHEMA_VERSION = 1
+// v2: 進行中の半荘 draft を DB に持たせた（全端末共有）。旧データ(v1)は draft:null として読む。
+export const SCHEMA_VERSION = 2
 
 export function uid(): string {
   return Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4)
@@ -22,6 +23,7 @@ export function emptyDB(): DB {
     players: [],
     rules: { ...DEFAULT_RULES },
     games: [],
+    draft: null,
   }
 }
 
@@ -48,7 +50,18 @@ export function normalizeDB(db: unknown): DB {
     players: Array.isArray(src.players) ? src.players : [],
     rules: { ...DEFAULT_RULES, ...(src.rules ?? {}) },
     games: Array.isArray(src.games) ? src.games : [],
+    draft: isDraft(src.draft) ? src.draft : null,
   }
+}
+
+/** draft が「席順を持つ進行中の半荘」の形をしているかの緩い検証（壊れた値は null に倒す）。 */
+function isDraft(v: unknown): v is Draft {
+  return (
+    typeof v === 'object' &&
+    v !== null &&
+    Array.isArray((v as Draft).playerIds) &&
+    Array.isArray((v as Draft).hands)
+  )
 }
 
 export function exportJSON(db: DB): string {

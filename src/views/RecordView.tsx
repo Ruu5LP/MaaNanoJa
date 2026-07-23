@@ -1,27 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { WINDS, replay, roundLabel, gameResults, pointsCheck } from '../lib/game'
 import { uid } from '../lib/store'
 import { scoreTable, manganRow, hanLabel, type GameResult } from '../lib/scoring'
-import type { DB, Game, Hand, HandType, Rules } from '../lib/domain'
+import type { DB, Draft, Game, Hand, HandType, Rules } from '../lib/domain'
 import type { Api } from '../App'
-import { usePublishLive, deviceId } from '../useLiveInput'
-import { hasLiveContent, type LiveForm, type LiveInput } from '../lib/live'
-import LivePreview from './LivePreview'
-import { StatsSide } from './StatsPanels'
 
 type NameFn = (pid: string) => string
 type SaveFn = (game: Omit<Game, 'id'>) => void
-
-type Mode = 'quick' | 'live'
-
-interface Draft {
-  mode: Mode
-  date: string
-  note: string
-  playerIds: string[] // 席順（起家順, 長さ4）
-  hands: Hand[]
-  finalPoints: Record<string, number>
-}
+type Mode = Draft['mode']
 
 function todayStr(): string {
   const d = new Date()
@@ -45,74 +31,30 @@ function draftToGame(
   }
 }
 
-export default function RecordView({
-  db,
-  api,
-  onDone,
-  syncing,
-  live,
-}: {
-  db: DB
-  api: Api
-  onDone: () => void
-  /** LAN同期中か。true のとき、入力中の状態を他端末へ実況する。 */
-  syncing: boolean
-  /** 他端末が入力中ならその実況。自分が入力していないときは観戦画面を出す。 */
-  live: LiveInput | null
-}) {
-  const [draft, setDraft] = useState<Draft | null>(null)
-
+export default function RecordView({ db, api, onDone }: { db: DB; api: Api; onDone: () => void }) {
+  // 進行中の半荘は DB に持たせて全端末で共有する（`db.draft`）。
+  // どの端末からでも同じ対局に入力でき、席・局ログ・持ち点はLAN同期で自動的に揃う。
+  // 誰かが「新しい半荘」を始めると全端末がその入力画面になり、保存すると全端末が新規フォームに戻る。
+  const draft = db.draft
+  const start = (d: Draft) => api.setDraft(d)
+  const cancel = () => api.setDraft(null)
   const save: SaveFn = (game) => {
-    api.addGame(game)
-    setDraft(null)
+    api.commitDraft(game)
     onDone()
   }
 
-  // 自分が入力中（draft あり）なら、自分の入力画面だけを出す（自分の実況は自分で映さない）。
   if (draft)
     return draft.mode === 'quick' ? (
-      <QuickView db={db} draft={draft} onSave={save} onCancel={() => setDraft(null)} />
+      <QuickView db={db} draft={draft} onSave={save} onCancel={cancel} />
     ) : (
-      <LiveView
-        db={db}
-        draft={draft}
-        setDraft={setDraft}
-        onSave={save}
-        onCancel={() => setDraft(null)}
-        syncing={syncing}
-      />
+      <LiveView db={db} api={api} draft={draft} onSave={save} onCancel={cancel} />
     )
 
-  // 記録タブは全端末で「同じ画面」に連動する。
-  // ・別端末が“中身のある”入力中（席選び／対局中）→ その対局を全端末にミラー（観戦）する。
-  //   このとき「新しい半荘」フォームは出さない（対局中に別の記録を始める画面が残るのは変。
-  //   全員が同じ対局を見ている状態にする）。PC幅では観戦盤の隣に今節の合計スコアも出す。
-  // ・誰も入力していない → 全端末が「新しい半荘」フォーム。
-  //
-  // ※中身の無い/壊れた実況では観戦に切り替えない（`hasLiveContent`）。空画面で入力面を奪わないため。
-  if (live && hasLiveContent(live))
-    return (
-      <div className="view view-wide">
-        <div className="monitor-grid">
-          <LivePreview live={live} db={db} variant="full" bare />
-          <StatsSide db={db} />
-        </div>
-      </div>
-    )
-
-  return <SetupView db={db} onStart={setDraft} syncing={syncing} />
+  return <SetupView db={db} onStart={start} />
 }
 
 /* ---------- セットアップ ---------- */
-function SetupView({
-  db,
-  onStart,
-  syncing,
-}: {
-  db: DB
-  onStart: (draft: Draft) => void
-  syncing: boolean
-}) {
+function SetupView({ db, onStart }: { db: DB; onStart: (draft: Draft) => void }) {
   const [seats, setSeats] = useState<(string | null)[]>([null, null, null, null])
   const [date, setDate] = useState(todayStr())
   const [note, setNote] = useState('')
@@ -120,25 +62,6 @@ function SetupView({
   const chosen = seats.filter((s): s is string => Boolean(s))
   const ready = chosen.length === 4 && new Set(chosen).size === 4
 
-  // 席を1人でも選んでいる間は「準備中」の実況を流す（他端末の観戦画面に席選びが映る）。
-  // まだ誰も選んでいない間は“映すものが無い”ので流さないだけ（＝他端末を観戦専用に格下げはしない。
-  // 受信側は実況を自分の入力フォームの上に添えるだけで、フォームは常に触れる）。
-  const livePayload = useMemo<LiveInput | null>(
-    () =>
-      chosen.length === 0
-        ? null
-        : {
-            editor: deviceId(),
-            phase: 'setup',
-            date,
-            seats,
-            hands: [],
-            honbaAdjust: 0,
-            form: null,
-          },
-    [chosen.length, date, seats],
-  )
-  usePublishLive(syncing ? livePayload : null, syncing)
   const available = (slotIdx: number) =>
     db.players.filter((p) => !seats.includes(p.id) || seats[slotIdx] === p.id)
 
@@ -284,18 +207,16 @@ function QuickView({
 /* ---------- 局ログ入力（ライブ） ---------- */
 function LiveView({
   db,
+  api,
   draft,
-  setDraft,
   onSave,
   onCancel,
-  syncing,
 }: {
   db: DB
+  api: Api
   draft: Draft
-  setDraft: React.Dispatch<React.SetStateAction<Draft | null>>
   onSave: SaveFn
   onCancel: () => void
-  syncing: boolean
 }) {
   const rules = db.rules
   const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '?'
@@ -305,32 +226,14 @@ function LiveView({
   const [honbaAdjust, setHonbaAdjust] = useState(0)
   const effectiveHonba = Math.max(0, state.honba + honbaAdjust)
 
-  // 入力中の1局（HandForm の現在の選択）を実況に載せるため、上流で保持する。
-  const [formSnap, setFormSnap] = useState<LiveForm | null>(null)
-  const onFormChange = useCallback((f: LiveForm) => setFormSnap(f), [])
-
-  // 他端末に映すための実況ペイロード。中身が変わったときだけ作り直す。
-  const livePayload = useMemo<LiveInput>(
-    () => ({
-      editor: deviceId(),
-      phase: 'playing',
-      date: draft.date,
-      seats: draft.playerIds,
-      hands: draft.hands,
-      honbaAdjust,
-      form: finishing ? null : formSnap,
-    }),
-    [draft.date, draft.playerIds, draft.hands, honbaAdjust, formSnap, finishing],
-  )
-  usePublishLive(syncing ? livePayload : null, syncing)
-
+  // 局の追加・取り消しは、共有中の draft を丸ごと差し替えて反映する（api 経由でDBへ→全端末に同期）。
   function addHand(hand: Hand) {
     const withOverride = honbaAdjust !== 0 ? { ...hand, honbaOverride: effectiveHonba } : hand
-    setDraft((d) => (d ? { ...d, hands: [...d.hands, withOverride] } : d))
+    api.setDraft({ ...draft, hands: [...draft.hands, withOverride] })
     setHonbaAdjust(0)
   }
   function undo() {
-    setDraft((d) => (d ? { ...d, hands: d.hands.slice(0, -1) } : d))
+    api.setDraft({ ...draft, hands: draft.hands.slice(0, -1) })
   }
 
   const dealerId = draft.playerIds[state.dealerIndex] ?? ''
@@ -408,13 +311,7 @@ function LiveView({
           ))}
         </div>
 
-        <HandForm
-          db={db}
-          playerIds={draft.playerIds}
-          dealerId={dealerId}
-          onAdd={addHand}
-          onChange={onFormChange}
-        />
+        <HandForm db={db} playerIds={draft.playerIds} dealerId={dealerId} onAdd={addHand} />
       </div>
 
       <div className="card">
@@ -449,14 +346,11 @@ function HandForm({
   playerIds,
   dealerId,
   onAdd,
-  onChange,
 }: {
   db: DB
   playerIds: string[]
   dealerId: string
   onAdd: (hand: Hand) => void
-  /** 入力中の選択が変わるたびに呼ばれる（LAN同期の実況用）。表示専用なので副作用はない。 */
-  onChange?: (form: LiveForm) => void
 }) {
   const [type, setType] = useState<HandType>('ron')
   const [winners, setWinners] = useState<string[]>([])
@@ -465,11 +359,6 @@ function HandForm({
   const [riichi, setRiichi] = useState<string[]>([])
   const [tenpai, setTenpai] = useState<string[]>([])
   const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '?'
-
-  // 選択が変わるたびに、今の入力内容を上流へ知らせる（他端末の入力中プレビュー用）。
-  useEffect(() => {
-    onChange?.({ type, winners, loser, scores, riichi, tenpai })
-  }, [type, winners, loser, scores, riichi, tenpai, onChange])
 
   function toggle(list: string[], setList: (v: string[]) => void, pid: string) {
     setList(list.includes(pid) ? list.filter((x) => x !== pid) : [...list, pid])

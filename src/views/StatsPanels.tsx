@@ -1,10 +1,6 @@
-// 成績の可視化パネル（合計スコア／着順分布）。
-// 成績タブ本体と、記録タブの「対局モニター」（PC幅で観戦の隣に出す成績サイド）で共用する。
+// 成績の可視化パネル（合計スコア／着順分布）。成績タブで使う。
 // 表示専用（副作用なし）。データは computeStats 済みの PlayerStats 配列を受け取る。
-import { useMemo } from 'react'
-import { computeStats } from '../lib/stats'
 import type { PlayerStats } from '../lib/stats'
-import type { DB } from '../lib/domain'
 
 const RANK_COLORS = ['var(--rank1)', 'var(--rank2)', 'var(--rank3)', 'var(--rank4)']
 const RANK_LABELS = ['1位', '2位', '3位', '4位']
@@ -100,19 +96,5 @@ export function RankDistPanel({ stats }: { stats: PlayerStats[] }) {
         })}
       </div>
     </div>
-  )
-}
-
-/**
- * 記録タブの対局モニター（PC幅）で、観戦の隣に出す成績サイド。今節の合計スコア（順位）だけ。
- * 着順分布は観戦中には要らない（対局を見るのに邪魔）ので出さない＝成績タブ専用にしている。
- */
-export function StatsSide({ db }: { db: DB }) {
-  const stats = useMemo(() => computeStats(db), [db])
-  if (stats.length === 0) return null
-  return (
-    <aside className="monitor-side">
-      <TotalScorePanel stats={stats} />
-    </aside>
   )
 }

@@ -88,10 +88,31 @@ export interface Game {
   createdAt?: number
 }
 
-/** DB全体（localStorageに保存する単位） */
+/**
+ * 進行中の半荘（まだ保存していない）。
+ * **DB に持たせて全端末で共有する**ので、PC・スマホどの端末からでも同じ対局に入力できる。
+ * 「半荘を終了→保存」すると Game になって games に移り、draft は null に戻る。
+ */
+export interface Draft {
+  /** 'live' = 局ログを1局ずつ入力 / 'quick' = 最終持ち点だけ入力 */
+  mode: 'live' | 'quick'
+  /** YYYY-MM-DD */
+  date: string
+  note: string
+  /** 席順（起家＝index0, 東南西北）。長さ4。 */
+  playerIds: string[]
+  /** これまでに確定した局。 */
+  hands: Hand[]
+  /** quick モードの最終持ち点（playerId -> 点数）。live モードでは未使用。 */
+  finalPoints: Record<string, number>
+}
+
+/** DB全体（localStorageに保存する単位＝LAN同期の共有単位でもある） */
 export interface DB {
   version: number
   players: Player[]
   rules: Rules
   games: Game[]
+  /** 進行中の半荘（全端末で共有）。無ければ null。 */
+  draft: Draft | null
 }
