@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { loadDB, saveDB, normalizeDB, uid } from './lib/store'
 import type { DB, Game } from './lib/domain'
+import { useLanSync, type SyncMode } from './useLanSync'
 import RecordView from './views/RecordView'
 import HistoryView from './views/HistoryView'
 import StatsView from './views/StatsView'
 import SettingsView from './views/SettingsView'
+
+/** 同期状態の表示ラベル。 */
+const SYNC_LABEL: Record<SyncMode, string> = {
+  local: '📴 この端末だけ',
+  connecting: '⏳ 接続確認中…',
+  sync: '📶 LAN同期中',
+}
 
 /** 画面から呼ぶ、DBを更新するアクション群。状態更新はここに集約する。 */
 export interface Api {
@@ -31,6 +39,10 @@ export default function App() {
   const [db, setDB] = useState<DB>(() => loadDB())
   const [tab, setTab] = useState<TabId>('record')
 
+  // LAN同期（サーバが居れば同期、居なければ何もしない）。
+  const { mode } = useLanSync(db, setDB)
+
+  // localStorage への保存は端末ごとのバックアップとして常に行う。
   useEffect(() => {
     saveDB(db)
   }, [db])
@@ -78,6 +90,7 @@ export default function App() {
       <header className="app-header">
         <h1>麻雀トラッカー</h1>
         <span className="sub">AiRuu Mahjong</span>
+        <span className={`sync-badge sync-${mode}`}>{SYNC_LABEL[mode]}</span>
       </header>
 
       {tab === 'record' && <RecordView db={db} api={api} onDone={() => setTab('history')} />}

@@ -64,6 +64,24 @@ body {
   color: var(--ink-3);
   font-size: 12px;
 }
+/* 同期状態バッジ（ヘッダ右端）。色だけに頼らず文言も併記する。 */
+.sync-badge {
+  margin-left: auto;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--ink-2);
+  white-space: nowrap;
+}
+.sync-badge.sync-sync {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.sync-badge.sync-connecting {
+  color: var(--warn);
+}
 
 /* ---- タブ（下部固定） ---- */
 .tabbar {
