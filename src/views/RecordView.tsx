@@ -69,7 +69,7 @@ export default function RecordView({
 
   // 自分は入力しておらず、別端末が入力中 → 記録タブ本体を観戦画面にする。
   if (!draft && live) return <LivePreview live={live} db={db} variant="full" />
-  if (!draft) return <SetupView db={db} onStart={setDraft} />
+  if (!draft) return <SetupView db={db} onStart={setDraft} syncing={syncing} />
   if (draft.mode === 'quick')
     return <QuickView db={db} draft={draft} onSave={save} onCancel={() => setDraft(null)} />
   return (
@@ -85,13 +85,40 @@ export default function RecordView({
 }
 
 /* ---------- セットアップ ---------- */
-function SetupView({ db, onStart }: { db: DB; onStart: (draft: Draft) => void }) {
+function SetupView({
+  db,
+  onStart,
+  syncing,
+}: {
+  db: DB
+  onStart: (draft: Draft) => void
+  syncing: boolean
+}) {
   const [seats, setSeats] = useState<(string | null)[]>([null, null, null, null])
   const [date, setDate] = useState(todayStr())
   const [note, setNote] = useState('')
 
   const chosen = seats.filter((s): s is string => Boolean(s))
   const ready = chosen.length === 4 && new Set(chosen).size === 4
+
+  // 席を1人でも選んでいる間は「準備中」の実況を流す（他端末の観戦画面に席選びが映る）。
+  // 誰も選んでいなければ流さない＝待機中の他端末と実況枠を取り合わない。
+  const livePayload = useMemo<LiveInput | null>(
+    () =>
+      chosen.length === 0
+        ? null
+        : {
+            editor: deviceId(),
+            phase: 'setup',
+            date,
+            seats,
+            hands: [],
+            honbaAdjust: 0,
+            form: null,
+          },
+    [chosen.length, date, seats],
+  )
+  usePublishLive(syncing ? livePayload : null, syncing)
   const available = (slotIdx: number) =>
     db.players.filter((p) => !seats.includes(p.id) || seats[slotIdx] === p.id)
 
@@ -269,12 +296,14 @@ function LiveView({
   const livePayload = useMemo<LiveInput>(
     () => ({
       editor: deviceId(),
-      playerIds: draft.playerIds,
+      phase: 'playing',
+      date: draft.date,
+      seats: draft.playerIds,
       hands: draft.hands,
       honbaAdjust,
       form: finishing ? null : formSnap,
     }),
-    [draft.playerIds, draft.hands, honbaAdjust, formSnap, finishing],
+    [draft.date, draft.playerIds, draft.hands, honbaAdjust, formSnap, finishing],
   )
   usePublishLive(syncing ? livePayload : null, syncing)
 

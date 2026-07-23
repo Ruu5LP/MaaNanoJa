@@ -23,9 +23,13 @@ export interface LiveForm {
 export interface LiveInput {
   /** 実況元の端末ID。自分の実況を自分の画面に映さないために使う。 */
   editor: string
-  /** 席順（起家順, 長さ4） */
-  playerIds: string[]
-  /** これまでに確定した局。スコアボード再生用（まだ DB には入っていない）。 */
+  /** 段階。'setup'=席を選んでいる準備中 / 'playing'=局ログ入力中。 */
+  phase: 'setup' | 'playing'
+  /** 日付（YYYY-MM-DD）。 */
+  date: string
+  /** 席順（起家順, 長さ4）。準備中はまだ null（未選択）が混じりうる。 */
+  seats: (string | null)[]
+  /** これまでに確定した局。スコアボード再生用（まだ DB には入っていない）。準備中は空。 */
   hands: Hand[]
   /** 積み棒の手動修正ぶん。表示の本場を入力者と合わせる。 */
   honbaAdjust: number

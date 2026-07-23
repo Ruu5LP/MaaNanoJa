@@ -12,7 +12,15 @@ function snap(
     live:
       live !== undefined
         ? live
-        : { editor, playerIds: ['a', 'b', 'c', 'd'], hands: [], honbaAdjust: 0, form: null },
+        : {
+            editor,
+            phase: 'playing',
+            date: '2026-07-25',
+            seats: ['a', 'b', 'c', 'd'],
+            hands: [],
+            honbaAdjust: 0,
+            form: null,
+          },
     ...rest,
   }
 }

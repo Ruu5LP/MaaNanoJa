@@ -675,3 +675,11 @@ h3.sec {
 .live-log-title {
   margin-bottom: 6px;
 }
+/* 準備中の未選択の席は控えめに（点線＋薄い文字）。 */
+.scoreboard .p.empty {
+  border-style: dashed;
+  color: var(--ink-3);
+}
+.scoreboard .p.empty .pt {
+  color: var(--ink-3);
+}
