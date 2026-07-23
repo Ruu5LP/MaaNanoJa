@@ -4,3 +4,6 @@ dist-ssr
 *.local
 .DS_Store
 .vite
+
+# LAN同期サーバの実行時データ（家麻雀のスコア実体。コミットしない）
+server/data
