@@ -103,14 +103,16 @@ export function RankDistPanel({ stats }: { stats: PlayerStats[] }) {
   )
 }
 
-/** 記録タブの対局モニター（PC幅）で、観戦の隣に出す成績サイド。今節の合計スコアと着順分布。 */
+/**
+ * 記録タブの対局モニター（PC幅）で、観戦の隣に出す成績サイド。今節の合計スコア（順位）だけ。
+ * 着順分布は観戦中には要らない（対局を見るのに邪魔）ので出さない＝成績タブ専用にしている。
+ */
 export function StatsSide({ db }: { db: DB }) {
   const stats = useMemo(() => computeStats(db), [db])
   if (stats.length === 0) return null
   return (
     <aside className="monitor-side">
       <TotalScorePanel stats={stats} />
-      <RankDistPanel stats={stats} />
     </aside>
   )
 }

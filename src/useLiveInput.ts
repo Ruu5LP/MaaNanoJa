@@ -5,12 +5,32 @@
 //
 // enabled=false（サーバ非同期モード）なら双方とも何もしない＝従来どおり。
 // 実況は best-effort。落ちても記録（DB同期）には影響しない。
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { fetchLive, pushLive, shouldShowLive, type LiveInput, type LiveSnapshot } from './lib/live'
 
 const WATCH_MS = 1000 // 他端末の実況を見に行く間隔
 const HEARTBEAT_MS = 2000 // 入力中に実況を再送して鮮度を保つ間隔（LIVE_STALE_MS より十分短く）
 const DEVICE_KEY = 'maa.deviceId'
+
+// この端末が今、実況を発信中か（席選び中 or 局ログ入力中）を表す共有フラグ。
+//
+// 発信中＝「自分が今まさに実況スロットの主」なので、他端末の実況は画面に出さない。
+// 出してしまうと、サーバの実況スロット（1枠・last-write-wins）を自分の発信と他端末の発信が
+// 交互に奪い合い、受信側で観戦画面が「出たり消えたり」して点滅する。発信中の端末はそもそも
+// 自分の入力に集中している＝他人の観戦は不要なので、発信中は受信表示を止めるのが素直。
+let publishing = false
+const publishingSubs = new Set<() => void>()
+function setPublishing(v: boolean): void {
+  if (publishing === v) return
+  publishing = v
+  publishingSubs.forEach((fn) => fn())
+}
+function subscribePublishing(cb: () => void): () => void {
+  publishingSubs.add(cb)
+  return () => {
+    publishingSubs.delete(cb)
+  }
+}
 
 /** この端末の安定したID。実況の発信元判定に使う（自分の実況は自分で映さない）。 */
 export function deviceId(): string {
@@ -34,6 +54,14 @@ export function deviceId(): string {
 export function usePublishLive(payload: LiveInput | null, enabled: boolean): void {
   const latest = useRef<LiveInput | null>(payload)
   latest.current = payload
+
+  // 自分が発信中かを共有フラグに反映（真偽が変わったときだけ）。受信側が点滅しないよう、
+  // 発信中は他端末の実況表示を止めるのに使う。
+  const active = enabled && payload != null
+  useEffect(() => {
+    setPublishing(active)
+    return () => setPublishing(false)
+  }, [active])
 
   // 中身が変わったら即送信。
   useEffect(() => {
@@ -63,6 +91,12 @@ export function usePublishLive(payload: LiveInput | null, enabled: boolean): voi
 export function useWatchLive(enabled: boolean): LiveInput | null {
   const [snap, setSnap] = useState<LiveSnapshot | null>(null)
   const me = useRef(deviceId())
+  // 自分が発信中（席選び中／入力中）なら、他端末の実況は出さない（点滅防止＋入力に集中）。
+  const amPublishing = useSyncExternalStore(
+    subscribePublishing,
+    () => publishing,
+    () => publishing,
+  )
 
   useEffect(() => {
     if (!enabled) {
@@ -84,5 +118,6 @@ export function useWatchLive(enabled: boolean): LiveInput | null {
     }
   }, [enabled])
 
+  if (amPublishing) return null
   return shouldShowLive(snap, me.current) ? snap!.live : null
 }

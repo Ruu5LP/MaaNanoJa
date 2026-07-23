@@ -318,6 +318,12 @@ tbody tr:hover td:first-child {
   color: var(--ink-3);
 }
 
+/* 成績の期間切り替えタブ（全期間／今日）。横に広げすぎない。 */
+.period-tabs {
+  max-width: 320px;
+  margin-bottom: 14px;
+}
+
 /* ---- 着順分布バー ---- */
 .rankbar {
   display: flex;
@@ -756,12 +762,13 @@ h3.sec {
     max-width: none;
   }
 
-  /* 成績タブ：4カードを2×2に。 */
+  /* 成績タブ：4カードを“均一な”2×2に。grid-auto-rows:1fr で各行を同じ高さにし、
+     カードは stretch（既定）で枠いっぱいに伸ばす＝短いカードの下に空白が空かず揃う。 */
   .stats-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
+    grid-auto-rows: 1fr;
     gap: 14px;
-    align-items: start;
   }
   .stats-grid > .card {
     margin-bottom: 0;

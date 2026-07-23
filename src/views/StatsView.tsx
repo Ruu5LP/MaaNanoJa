@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { computeStats } from '../lib/stats'
 import type { DB } from '../lib/domain'
 import { TotalScorePanel, RankDistPanel } from './StatsPanels'
@@ -10,14 +10,47 @@ function signed(x: number | null, digits = 1): string {
   if (x == null) return '—'
   return `${x > 0 ? '+' : ''}${x.toFixed(digits)}`
 }
+function todayStr(): string {
+  const d = new Date()
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`
+}
+
+/** 集計期間: 全期間 / 今日だけ。今日は各対局の日付（date, YYYY-MM-DD）で絞る。 */
+type Period = 'all' | 'today'
 
 export default function StatsView({ db }: { db: DB }) {
-  const stats = useMemo(() => computeStats(db), [db])
+  const [period, setPeriod] = useState<Period>('all')
+  const today = todayStr()
+
+  // 今日だけのときは、今日の日付の対局に絞ってから集計する（集計ロジックはそのまま流用）。
+  const stats = useMemo(() => {
+    const games = period === 'today' ? db.games.filter((g) => g.date === today) : db.games
+    return computeStats({ ...db, games })
+  }, [db, period, today])
+
+  // 期間切り替えタブ。空のときも常に出す（今日→全期間に戻せるように）。
+  const tabs = (
+    <div className="seg-control period-tabs">
+      <button className={period === 'all' ? 'active' : ''} onClick={() => setPeriod('all')}>
+        全期間
+      </button>
+      <button className={period === 'today' ? 'active' : ''} onClick={() => setPeriod('today')}>
+        今日
+      </button>
+    </div>
+  )
 
   if (stats.length === 0) {
     return (
       <div className="view">
-        <div className="empty">対局を記録すると、ここに成績が集計されます。</div>
+        {tabs}
+        <div className="empty">
+          {period === 'today'
+            ? '今日の対局はまだありません。'
+            : '対局を記録すると、ここに成績が集計されます。'}
+        </div>
       </div>
     )
   }
@@ -28,6 +61,7 @@ export default function StatsView({ db }: { db: DB }) {
   // スマホでは従来どおり1カラムで縦に積む。
   return (
     <div className="view view-wide">
+      {tabs}
       <div className="stats-grid">
         {/* 合計スコアランキング */}
         <TotalScorePanel stats={stats} />
