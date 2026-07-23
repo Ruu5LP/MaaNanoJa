@@ -83,27 +83,24 @@ export default function RecordView({
       />
     )
 
-  // 入力していないとき。自分の「新しい半荘」フォームは常に出す（＝入力面は絶対に消さない）。
-  // 別端末が“中身のある”入力中なら、その観戦画面＋今節の成績サイドを上に添える（対局モニター）。
+  // 記録タブは全端末で「同じ画面」に連動する。
+  // ・別端末が“中身のある”入力中（席選び／対局中）→ その対局を全端末にミラー（観戦）する。
+  //   このとき「新しい半荘」フォームは出さない（対局中に別の記録を始める画面が残るのは変。
+  //   全員が同じ対局を見ている状態にする）。PC幅では観戦盤の隣に今節の合計スコアも出す。
+  // ・誰も入力していない → 全端末が「新しい半荘」フォーム。
   //
-  // 重要: SetupView は key を固定して「観戦あり／なし」で同じ要素として扱う。
-  // 枝ごとに別々の SetupView を描くと、observ の出入りで再マウントされ、選びかけた席が消える
-  // （さらに発信が途切れて観戦が点滅して戻る）。同一要素にすることで席選びの状態を保つ。
-  // PC幅（≥1024px）だけ view-wide + monitor-grid で2カラム、スマホは縦積み（CSS側）。
-  const watching = !!(live && hasLiveContent(live))
-  return (
-    <div className={`view ${watching ? 'view-wide' : ''}`}>
-      {live && hasLiveContent(live) && (
-        <div className="monitor-grid" key="monitor">
+  // ※中身の無い/壊れた実況では観戦に切り替えない（`hasLiveContent`）。空画面で入力面を奪わないため。
+  if (live && hasLiveContent(live))
+    return (
+      <div className="view view-wide">
+        <div className="monitor-grid">
           <LivePreview live={live} db={db} variant="full" bare />
           <StatsSide db={db} />
         </div>
-      )}
-      <div className={watching ? 'monitor-setup' : ''} key="setup">
-        <SetupView db={db} onStart={setDraft} syncing={syncing} bare />
       </div>
-    </div>
-  )
+    )
+
+  return <SetupView db={db} onStart={setDraft} syncing={syncing} />
 }
 
 /* ---------- セットアップ ---------- */
@@ -111,13 +108,10 @@ function SetupView({
   db,
   onStart,
   syncing,
-  bare = false,
 }: {
   db: DB
   onStart: (draft: Draft) => void
   syncing: boolean
-  /** true のとき、外側の `.view` ラッパを省いてカードだけ返す（対局モニターの中に置く用）。 */
-  bare?: boolean
 }) {
   const [seats, setSeats] = useState<(string | null)[]>([null, null, null, null])
   const [date, setDate] = useState(todayStr())
@@ -221,7 +215,7 @@ function SetupView({
       )}
     </div>
   )
-  return bare ? content : <div className="view">{content}</div>
+  return <div className="view">{content}</div>
 }
 
 /* ---------- かんたん入力（最終点のみ） ---------- */

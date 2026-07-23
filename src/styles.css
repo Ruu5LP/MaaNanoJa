@@ -794,9 +794,4 @@ h3.sec {
     flex-direction: column;
     gap: 14px;
   }
-  /* モニター下の「新しい半荘」フォームは読みやすい幅で中央寄せ。 */
-  .monitor-setup {
-    max-width: 760px;
-    margin: 14px auto 0;
-  }
 }
