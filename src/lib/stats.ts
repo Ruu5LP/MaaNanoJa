@@ -1,7 +1,15 @@
 // 全対局からプレイヤーごとの成績を集計する。
 import { gameResults, finalPoints, replay } from './game'
 import { agariTotal, round2 } from './scoring'
-import type { DB, Player } from './domain'
+import type { DB, Game, Player } from './domain'
+
+/** 成績の集計期間: 全期間 / 今日だけ。成績タブ・モニター表示の両方で使う。 */
+export type StatsPeriod = 'all' | 'today'
+
+/** 期間で対局を絞り込む（純粋関数）。'today' は date が today と一致するものだけ残す。 */
+export function filterGamesByPeriod(games: Game[], period: StatsPeriod, today: string): Game[] {
+  return period === 'today' ? games.filter((g) => g.date === today) : games
+}
 
 /** 集計の途中で貯める生カウント */
 interface StatAcc {

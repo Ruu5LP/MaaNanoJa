@@ -7,8 +7,8 @@ import HistoryView from './views/HistoryView'
 import StatsView from './views/StatsView'
 import SettingsView from './views/SettingsView'
 
-/** 同期状態の表示ラベル。 */
-const SYNC_LABEL: Record<SyncMode, string> = {
+/** 同期状態の表示ラベル。BoardView（モニター表示）でも使う。 */
+export const SYNC_LABEL: Record<SyncMode, string> = {
   local: '📴 この端末だけ',
   connecting: '⏳ 接続確認中…',
   sync: '📶 LAN同期中',

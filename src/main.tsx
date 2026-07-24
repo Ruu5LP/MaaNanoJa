@@ -1,13 +1,14 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import BoardApp from './BoardApp'
 import './styles.css'
 
 const rootEl = document.getElementById('root')
 if (!rootEl) throw new Error('#root が見つかりません')
 
-createRoot(rootEl).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-)
+// ?board=1 で開くと、タブUIの代わりに全画面スコアボード（モニター表示用）を描画する。
+// サーバ側のルーティング変更は不要（クエリparamだけなので通常の "/" と同じ扱い）。
+const isBoard = new URLSearchParams(window.location.search).get('board') === '1'
+
+createRoot(rootEl).render(<React.StrictMode>{isBoard ? <BoardApp /> : <App />}</React.StrictMode>)

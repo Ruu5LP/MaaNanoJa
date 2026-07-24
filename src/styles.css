@@ -699,3 +699,91 @@ h3.sec {
     overflow-y: auto;
   }
 }
+
+/* ---- モニター表示（全画面スコアボード, ?board=1） ----
+   position:fixed で #root の max-width/padding から完全に独立させ、画面いっぱいに使う。
+   タブレット〜大画面のテレビまで想定し、文字サイズは clamp() でビューポートに追従させる。 */
+.board-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--ink);
+}
+.board-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  flex: 0 0 auto;
+}
+.board-title {
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+}
+.board-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink-3);
+  font-size: clamp(16px, 2.4vw, 28px);
+  padding: 24px;
+  text-align: center;
+}
+.board-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 3px;
+  min-height: 0;
+}
+.board-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(4px, 1vh, 14px);
+  background: var(--surface);
+  border-top: 6px solid;
+  padding: 12px;
+  min-width: 0;
+  overflow: hidden;
+}
+.board-rank {
+  font-weight: 700;
+  font-size: clamp(16px, 2.6vw, 32px);
+  letter-spacing: 0.04em;
+}
+.board-name {
+  font-size: clamp(22px, 4.4vw, 56px);
+  font-weight: 600;
+  color: var(--ink);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.board-score {
+  font-size: clamp(36px, 9vw, 120px);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.board-score.pos {
+  color: var(--accent);
+}
+.board-score.neg {
+  color: var(--danger);
+}
+@media (max-width: 720px) {
+  /* スマホでモニター用URLを直接開いた場合も一応崩れないよう、2×2は保ったまま1列に畳まない
+     （4人麻雀の "誰が今どこにいるか" を一望する用途なので、狭くても2×2を維持する）。 */
+  .board-bar {
+    flex-wrap: wrap;
+  }
+}
