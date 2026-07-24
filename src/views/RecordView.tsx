@@ -4,6 +4,7 @@ import { uid } from '../lib/store'
 import { scoreTable, manganRow, hanLabel, type GameResult } from '../lib/scoring'
 import type { DB, Draft, Game, Hand, HandFormState, HandType, Rules } from '../lib/domain'
 import type { Api } from '../App'
+import { todayStr } from '../lib/date'
 
 type NameFn = (pid: string) => string
 type SaveFn = (game: Omit<Game, 'id'>) => void
@@ -12,13 +13,6 @@ type Mode = Draft['mode']
 /** 入力中の1局の初期値（何も選んでいない状態）。 */
 function emptyForm(): HandFormState {
   return { type: 'ron', winners: [], loser: '', scores: {}, riichi: [], tenpai: [] }
-}
-
-function todayStr(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-    d.getDate(),
-  ).padStart(2, '0')}`
 }
 
 function draftToGame(

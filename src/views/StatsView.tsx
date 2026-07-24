@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { computeStats } from '../lib/stats'
+import { computeStats, filterGamesByPeriod, type StatsPeriod } from '../lib/stats'
+import { todayStr } from '../lib/date'
 import type { DB } from '../lib/domain'
 import { TotalScorePanel, RankDistPanel } from './StatsPanels'
 
@@ -10,35 +11,32 @@ function signed(x: number | null, digits = 1): string {
   if (x == null) return '—'
   return `${x > 0 ? '+' : ''}${x.toFixed(digits)}`
 }
-function todayStr(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
-    d.getDate(),
-  ).padStart(2, '0')}`
-}
-
-/** 集計期間: 全期間 / 今日だけ。今日は各対局の日付（date, YYYY-MM-DD）で絞る。 */
-type Period = 'all' | 'today'
 
 export default function StatsView({ db }: { db: DB }) {
-  const [period, setPeriod] = useState<Period>('all')
+  const [period, setPeriod] = useState<StatsPeriod>('all')
   const today = todayStr()
 
   // 今日だけのときは、今日の日付の対局に絞ってから集計する（集計ロジックはそのまま流用）。
   const stats = useMemo(() => {
-    const games = period === 'today' ? db.games.filter((g) => g.date === today) : db.games
+    const games = filterGamesByPeriod(db.games, period, today)
     return computeStats({ ...db, games })
   }, [db, period, today])
 
-  // 期間切り替えタブ。空のときも常に出す（今日→全期間に戻せるように）。
+  // 期間切り替えタブ＋モニター表示への導線。空のときも常に出す（今日→全期間に戻せるように）。
   const tabs = (
-    <div className="seg-control period-tabs">
-      <button className={period === 'all' ? 'active' : ''} onClick={() => setPeriod('all')}>
-        全期間
-      </button>
-      <button className={period === 'today' ? 'active' : ''} onClick={() => setPeriod('today')}>
-        今日
-      </button>
+    <div className="row wrap" style={{ marginBottom: 14 }}>
+      <div className="seg-control period-tabs" style={{ marginBottom: 0 }}>
+        <button className={period === 'all' ? 'active' : ''} onClick={() => setPeriod('all')}>
+          全期間
+        </button>
+        <button className={period === 'today' ? 'active' : ''} onClick={() => setPeriod('today')}>
+          今日
+        </button>
+      </div>
+      <span className="spacer" />
+      <a className="btn" href="?board=1" target="_blank" rel="noopener noreferrer">
+        🖥 モニターで表示 ↗
+      </a>
     </div>
   )
 
