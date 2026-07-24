@@ -226,6 +226,22 @@ button.btn.sm {
   cursor: not-allowed;
 }
 
+/* 早見表のセル間の余白は詰めて、ボタン自体を大きく見せる（汎用の th,td padding を上書き）。
+   セルの中身がボタンなので、行の区切り線も不要。 */
+.score-table th,
+.score-table td {
+  padding: 3px;
+  border-bottom: none;
+}
+/* 符の見出し（20符・30符…）は、汎用の右寄せではなく列の中央に揃える。 */
+.score-table thead th {
+  text-align: center;
+  padding-bottom: 5px;
+}
+.score-table tbody th {
+  padding-right: 6px;
+}
+
 .score-cell {
   display: block;
   width: 100%;
@@ -233,7 +249,7 @@ button.btn.sm {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 10px 14px;
+  padding: 12px 14px;
   font-size: 15px;
   text-align: center;
   cursor: pointer;
@@ -560,6 +576,17 @@ tbody tr:hover td:first-child {
   text-align: center;
 }
 
+/* 満貫〜役満の行。文字が長いので、狭い幅では折り返さずに横スクロールで見せる
+   （均等に横いっぱいへ広げるのは、1つ1つが読める幅を確保できるPC幅のときだけ）。 */
+.mangan-row {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.mangan-row .pill {
+  flex: 1 0 auto;
+  white-space: nowrap;
+}
+
 .checkline {
   font-size: 12px;
   padding: 6px 10px;
@@ -650,5 +677,25 @@ h3.sec {
   /* 着順分布の4セルは、幅に余裕があるPCでは1行4列に。 */
   .rank-cells {
     grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* 記録タブ（対局中）：入力（左）｜局ログ（右）の2カラム。
+     右は固定幅にする——比率(fr)にすると、点数早見表が出て左が広がったときに右が潰れ、
+     局ログの名前が「れ/い/に」と縦に折れて読めなくなるため。
+     局ログは局が増えると長くなるので、画面に追従（sticky）させつつ中でスクロールする。 */
+  .play-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 14px;
+    align-items: start;
+  }
+  .play-log {
+    position: sticky;
+    top: 12px;
+  }
+  .play-log .card {
+    margin-bottom: 0;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
   }
 }

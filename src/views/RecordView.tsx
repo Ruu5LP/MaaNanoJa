@@ -285,82 +285,87 @@ function LiveView({
     )
   }
 
+  // PC幅（≥1024px）では「入力（左）｜局ログ（右）」の2カラム、スマホは従来どおり縦積み（CSS側）。
   return (
-    <div className="view">
-      <div className="card">
-        <div className="row">
-          <h2 style={{ margin: 0 }}>
-            {WINDS[state.roundWind] ?? '?'}
-            {state.roundNum}局{effectiveHonba ? ` ${effectiveHonba}本場` : ''}
-          </h2>
-          <span className="spacer" />
-          {state.pot > 0 && <span className="pill">供託 {state.pot}</span>}
-        </div>
-        <div className="row" style={{ marginTop: 8 }}>
-          <span className="muted">積み棒を修正</span>
-          <span className="spacer" />
-          <button
-            className="btn sm ghost"
-            disabled={effectiveHonba <= 0}
-            onClick={() => setHonbaAdjust(honbaAdjust - 1)}
-          >
-            −1
-          </button>
-          <button className="btn sm ghost" onClick={() => setHonbaAdjust(honbaAdjust + 1)}>
-            +1
-          </button>
-          {honbaAdjust !== 0 && (
-            <button className="btn sm ghost" onClick={() => setHonbaAdjust(0)}>
-              元に戻す
+    <div className="view view-wide play-grid">
+      <div className="play-main">
+        <div className="card">
+          <div className="row">
+            <h2 style={{ margin: 0 }}>
+              {WINDS[state.roundWind] ?? '?'}
+              {state.roundNum}局{effectiveHonba ? ` ${effectiveHonba}本場` : ''}
+            </h2>
+            <span className="spacer" />
+            {state.pot > 0 && <span className="pill">供託 {state.pot}</span>}
+          </div>
+          <div className="row" style={{ marginTop: 8 }}>
+            <span className="muted">積み棒を修正</span>
+            <span className="spacer" />
+            <button
+              className="btn sm ghost"
+              disabled={effectiveHonba <= 0}
+              onClick={() => setHonbaAdjust(honbaAdjust - 1)}
+            >
+              −1
             </button>
+            <button className="btn sm ghost" onClick={() => setHonbaAdjust(honbaAdjust + 1)}>
+              +1
+            </button>
+            {honbaAdjust !== 0 && (
+              <button className="btn sm ghost" onClick={() => setHonbaAdjust(0)}>
+                元に戻す
+              </button>
+            )}
+          </div>
+          <div className="scoreboard" style={{ marginTop: 10 }}>
+            {draft.playerIds.map((pid, i) => (
+              <div className={`p ${pid === dealerId ? 'dealer' : ''}`} key={pid}>
+                <div className="nm">
+                  {WINDS[i]} {name(pid)}
+                </div>
+                <div className={`pt ${(state.points[pid] ?? 0) < 0 ? 'neg' : ''}`}>
+                  {(state.points[pid] ?? 0).toLocaleString()}
+                </div>
+                {pid === dealerId && <div className="badge">親</div>}
+              </div>
+            ))}
+          </div>
+
+          <HandForm
+            db={db}
+            playerIds={draft.playerIds}
+            dealerId={dealerId}
+            form={form}
+            onChange={onFormChange}
+            onAdd={addHand}
+          />
+        </div>
+
+        <div className="row">
+          <button className="btn primary" onClick={() => setFinishing(true)}>
+            半荘を終了
+          </button>
+          <button className="btn ghost" onClick={onCancel}>
+            破棄
+          </button>
+        </div>
+      </div>
+
+      <div className="play-log">
+        <div className="card">
+          <div className="row">
+            <h2 style={{ margin: 0 }}>局ログ（{draft.hands.length}）</h2>
+            <span className="spacer" />
+            <button className="btn sm ghost" disabled={!draft.hands.length} onClick={undo}>
+              1局戻す
+            </button>
+          </div>
+          {draft.hands.length === 0 ? (
+            <p className="muted">まだ局がありません。入力フォームから追加してください。</p>
+          ) : (
+            <HandLog game={gameForReplay} rules={rules} name={name} />
           )}
         </div>
-        <div className="scoreboard" style={{ marginTop: 10 }}>
-          {draft.playerIds.map((pid, i) => (
-            <div className={`p ${pid === dealerId ? 'dealer' : ''}`} key={pid}>
-              <div className="nm">
-                {WINDS[i]} {name(pid)}
-              </div>
-              <div className={`pt ${(state.points[pid] ?? 0) < 0 ? 'neg' : ''}`}>
-                {(state.points[pid] ?? 0).toLocaleString()}
-              </div>
-              {pid === dealerId && <div className="badge">親</div>}
-            </div>
-          ))}
-        </div>
-
-        <HandForm
-          db={db}
-          playerIds={draft.playerIds}
-          dealerId={dealerId}
-          form={form}
-          onChange={onFormChange}
-          onAdd={addHand}
-        />
-      </div>
-
-      <div className="card">
-        <div className="row">
-          <h2 style={{ margin: 0 }}>局ログ（{draft.hands.length}）</h2>
-          <span className="spacer" />
-          <button className="btn sm ghost" disabled={!draft.hands.length} onClick={undo}>
-            1局戻す
-          </button>
-        </div>
-        {draft.hands.length === 0 ? (
-          <p className="muted">まだ局がありません。上のフォームから追加してください。</p>
-        ) : (
-          <HandLog game={gameForReplay} rules={rules} name={name} />
-        )}
-      </div>
-
-      <div className="row">
-        <button className="btn primary" onClick={() => setFinishing(true)}>
-          半荘を終了
-        </button>
-        <button className="btn ghost" onClick={onCancel}>
-          破棄
-        </button>
       </div>
     </div>
   )
@@ -618,7 +623,9 @@ function ScorePicker({
           </tbody>
         </table>
       </div>
-      <div className="row wrap" style={{ marginTop: 8 }}>
+      {/* 満貫〜役満は名前のボタン（pick-row）と同じく、均等幅で横いっぱいに並べる。
+          スマホなど狭い幅では文字が折れて読めなくなるので、その場合だけ横スクロールにする。 */}
+      <div className="pick-row mangan-row" style={{ marginTop: 8 }}>
         {mangans.map((m) => (
           <button
             key={m.han}
