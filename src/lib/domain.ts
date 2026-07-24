@@ -126,6 +126,10 @@ export interface Draft {
   finalPoints: Record<string, number>
   /** 入力中の1局（未確定）。全端末で共有して同じ入力画面を映す。未入力なら null。 */
   form: HandFormState | null
+  /** 積み棒の手動修正（±）。全端末で共有。局を追加すると0に戻る。省略時は0。 */
+  honbaAdjust?: number
+  /** quick モードの入力中の点数（文字列＝負号や入力途中も保持）。全端末で共有。 */
+  quickPoints?: Record<string, string>
 }
 
 /** DB全体（localStorageに保存する単位＝LAN同期の共有単位でもある） */

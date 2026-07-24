@@ -50,7 +50,7 @@ export default function RecordView({ db, api, onDone }: { db: DB; api: Api; onDo
 
   if (draft)
     return draft.mode === 'quick' ? (
-      <QuickView db={db} draft={draft} onSave={save} onCancel={cancel} />
+      <QuickView db={db} api={api} draft={draft} onSave={save} onCancel={cancel} />
     ) : (
       <LiveView db={db} api={api} draft={draft} onSave={save} onCancel={cancel} />
     )
@@ -80,6 +80,8 @@ function SetupView({ db, onStart }: { db: DB; onStart: (draft: Draft) => void })
       hands: [],
       finalPoints: Object.fromEntries(playerIds.map((pid) => [pid, db.rules.startPoints])),
       form: null,
+      // quick モードの入力中の点数も全端末で共有する（初期値は配給原点）。
+      quickPoints: Object.fromEntries(playerIds.map((pid) => [pid, String(db.rules.startPoints)])),
     })
   }
 
@@ -150,17 +152,22 @@ function SetupView({ db, onStart }: { db: DB; onStart: (draft: Draft) => void })
 /* ---------- かんたん入力（最終点のみ） ---------- */
 function QuickView({
   db,
+  api,
   draft,
   onSave,
   onCancel,
 }: {
   db: DB
+  api: Api
   draft: Draft
   onSave: SaveFn
   onCancel: () => void
 }) {
-  const [pts, setPts] = useState<Record<string, string | number>>(() => ({ ...draft.finalPoints }))
   const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '?'
+  // 入力中の点数は共有中の draft.quickPoints（api 経由でDBへ→全端末に同期）。
+  const pts = draft.quickPoints ?? {}
+  const setPt = (pid: string, v: string) =>
+    api.setDraft({ ...draft, quickPoints: { ...pts, [pid]: v } })
 
   const game = draftToGame(draft, [], numify(pts))
   const check = pointsCheck({ ...game, id: 'draft' }, db.rules)
@@ -183,7 +190,7 @@ function QuickView({
                 type="number"
                 inputMode="numeric"
                 value={pts[pid] ?? ''}
-                onChange={(e) => setPts((s) => ({ ...s, [pid]: e.target.value }))}
+                onChange={(e) => setPt(pid, e.target.value)}
               />
             </label>
           ))}
@@ -229,16 +236,17 @@ function LiveView({
   const gameForReplay: Game = { ...draft, id: 'draft' }
   const { state } = useMemo(() => replay({ ...draft, id: 'draft' }, rules), [draft, rules])
   const [finishing, setFinishing] = useState(false)
-  const [honbaAdjust, setHonbaAdjust] = useState(0)
+  // 積み棒の手動修正・入力中の1局も共有中の draft に持たせて全端末で揃える。
+  const honbaAdjust = draft.honbaAdjust ?? 0
+  const setHonbaAdjust = (n: number) => api.setDraft({ ...draft, honbaAdjust: n })
   const effectiveHonba = Math.max(0, state.honba + honbaAdjust)
 
   // 局の追加・取り消し・入力中の1局は、共有中の draft を丸ごと差し替えて反映する
-  // （api 経由でDBへ→全端末に同期）。入力中の1局(form)も共有するので、和了者選択や
-  // 点数早見表が全端末で揃う。
+  // （api 経由でDBへ→全端末に同期）。入力中の1局(form)・積み棒(honbaAdjust)も共有するので、
+  // 和了者選択・点数早見表・積み棒修正が全端末で揃う。
   function addHand(hand: Hand) {
     const withOverride = honbaAdjust !== 0 ? { ...hand, honbaOverride: effectiveHonba } : hand
-    api.setDraft({ ...draft, hands: [...draft.hands, withOverride], form: null })
-    setHonbaAdjust(0)
+    api.setDraft({ ...draft, hands: [...draft.hands, withOverride], form: null, honbaAdjust: 0 })
   }
   function undo() {
     api.setDraft({ ...draft, hands: draft.hands.slice(0, -1) })
@@ -294,11 +302,11 @@ function LiveView({
           <button
             className="btn sm ghost"
             disabled={effectiveHonba <= 0}
-            onClick={() => setHonbaAdjust((n) => n - 1)}
+            onClick={() => setHonbaAdjust(honbaAdjust - 1)}
           >
             −1
           </button>
-          <button className="btn sm ghost" onClick={() => setHonbaAdjust((n) => n + 1)}>
+          <button className="btn sm ghost" onClick={() => setHonbaAdjust(honbaAdjust + 1)}>
             +1
           </button>
           {honbaAdjust !== 0 && (
