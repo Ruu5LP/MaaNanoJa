@@ -651,4 +651,24 @@ h3.sec {
   .rank-cells {
     grid-template-columns: repeat(4, 1fr);
   }
+
+  /* 記録タブ（対局中）：入力（左）｜局ログ（右）の2カラム。
+     右は固定幅にする——比率(fr)にすると、点数早見表が出て左が広がったときに右が潰れ、
+     局ログの名前が「れ/い/に」と縦に折れて読めなくなるため。
+     局ログは局が増えると長くなるので、画面に追従（sticky）させつつ中でスクロールする。 */
+  .play-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 14px;
+    align-items: start;
+  }
+  .play-log {
+    position: sticky;
+    top: 12px;
+  }
+  .play-log .card {
+    margin-bottom: 0;
+    max-height: calc(100vh - 120px);
+    overflow-y: auto;
+  }
 }
