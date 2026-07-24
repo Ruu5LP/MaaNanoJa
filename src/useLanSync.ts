@@ -15,6 +15,15 @@ import { fetchSnapshot, pushDB, shouldAdopt, isServerEmpty } from './lib/remote'
 /** 'local' = サーバなし（この端末だけ） / 'connecting' = 接続確認中 / 'sync' = LAN同期中 */
 export type SyncMode = 'local' | 'connecting' | 'sync'
 
+/** 同期状態の表示ラベル。App/BoardView の両方で使う。
+ *  App.tsx に置くと react-refresh/only-export-components（コンポーネント以外の
+ *  export禁止）に引っかかるので、コンポーネントを持たないこのファイルに置く。 */
+export const SYNC_LABEL: Record<SyncMode, string> = {
+  local: '📴 この端末だけ',
+  connecting: '⏳ 接続確認中…',
+  sync: '📶 LAN同期中',
+}
+
 const POLL_MS = 1000
 
 export function useLanSync(db: DB, setDB: (next: DB) => void): { mode: SyncMode } {

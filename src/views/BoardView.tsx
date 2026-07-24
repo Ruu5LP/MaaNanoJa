@@ -6,8 +6,7 @@
 import { useMemo, useState } from 'react'
 import { computeStats, filterGamesByPeriod, type StatsPeriod } from '../lib/stats'
 import { todayStr } from '../lib/date'
-import { SYNC_LABEL } from '../App'
-import type { SyncMode } from '../useLanSync'
+import { SYNC_LABEL, type SyncMode } from '../useLanSync'
 import type { DB } from '../lib/domain'
 
 const RANK_COLORS = ['var(--rank1)', 'var(--rank2)', 'var(--rank3)', 'var(--rank4)']
