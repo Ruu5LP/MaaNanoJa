@@ -50,7 +50,7 @@ export function normalizeDB(db: unknown): DB {
     players: Array.isArray(src.players) ? src.players : [],
     rules: { ...DEFAULT_RULES, ...(src.rules ?? {}) },
     games: Array.isArray(src.games) ? src.games : [],
-    draft: isDraft(src.draft) ? src.draft : null,
+    draft: isDraft(src.draft) ? { ...src.draft, form: src.draft.form ?? null } : null,
   }
 }
 

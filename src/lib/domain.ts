@@ -89,6 +89,25 @@ export interface Game {
 }
 
 /**
+ * 入力中の1局（まだ「この局を追加」していない未確定の選択）。
+ * **これも draft に載せて全端末で共有する**ので、和了者を選んだら他端末でも点数早見表が出る等、
+ * 「今まさに打っている1局」の画面が全端末で揃う。「この局を追加」で hands に確定して null に戻る。
+ */
+export interface HandFormState {
+  type: HandType
+  /** 和了者（ロンは複数=ダブロン、ツモは1人）。 */
+  winners: string[]
+  /** 放銃者（ロンのみ）。 */
+  loser: string
+  /** 和了者ごとの翻・符。 */
+  scores: Record<string, { han: number; fu: number }>
+  /** 立直した人。 */
+  riichi: string[]
+  /** テンパイ者（流局のみ）。 */
+  tenpai: string[]
+}
+
+/**
  * 進行中の半荘（まだ保存していない）。
  * **DB に持たせて全端末で共有する**ので、PC・スマホどの端末からでも同じ対局に入力できる。
  * 「半荘を終了→保存」すると Game になって games に移り、draft は null に戻る。
@@ -105,6 +124,8 @@ export interface Draft {
   hands: Hand[]
   /** quick モードの最終持ち点（playerId -> 点数）。live モードでは未使用。 */
   finalPoints: Record<string, number>
+  /** 入力中の1局（未確定）。全端末で共有して同じ入力画面を映す。未入力なら null。 */
+  form: HandFormState | null
 }
 
 /** DB全体（localStorageに保存する単位＝LAN同期の共有単位でもある） */

@@ -17,8 +17,21 @@ describe('normalizeDB（進行中の半荘 draft の後方互換）', () => {
       playerIds: ['a', 'b', 'c', 'd'],
       hands: [],
       finalPoints: {},
+      form: null,
     }
     expect(normalizeDB({ draft }).draft).toEqual(draft)
+  })
+
+  it('form を持たない旧 draft は form:null が補われる', () => {
+    const oldDraft = {
+      mode: 'live',
+      date: '2026-07-25',
+      note: '',
+      playerIds: ['a', 'b', 'c', 'd'],
+      hands: [],
+      finalPoints: {},
+    }
+    expect(normalizeDB({ draft: oldDraft }).draft?.form).toBeNull()
   })
 
   it('壊れた draft（席順が無い等）は null に倒す', () => {

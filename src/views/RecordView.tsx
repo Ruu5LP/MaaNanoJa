@@ -2,12 +2,17 @@ import { useMemo, useState } from 'react'
 import { WINDS, replay, roundLabel, gameResults, pointsCheck } from '../lib/game'
 import { uid } from '../lib/store'
 import { scoreTable, manganRow, hanLabel, type GameResult } from '../lib/scoring'
-import type { DB, Draft, Game, Hand, HandType, Rules } from '../lib/domain'
+import type { DB, Draft, Game, Hand, HandFormState, HandType, Rules } from '../lib/domain'
 import type { Api } from '../App'
 
 type NameFn = (pid: string) => string
 type SaveFn = (game: Omit<Game, 'id'>) => void
 type Mode = Draft['mode']
+
+/** 入力中の1局の初期値（何も選んでいない状態）。 */
+function emptyForm(): HandFormState {
+  return { type: 'ron', winners: [], loser: '', scores: {}, riichi: [], tenpai: [] }
+}
 
 function todayStr(): string {
   const d = new Date()
@@ -74,6 +79,7 @@ function SetupView({ db, onStart }: { db: DB; onStart: (draft: Draft) => void })
       playerIds,
       hands: [],
       finalPoints: Object.fromEntries(playerIds.map((pid) => [pid, db.rules.startPoints])),
+      form: null,
     })
   }
 
@@ -226,15 +232,19 @@ function LiveView({
   const [honbaAdjust, setHonbaAdjust] = useState(0)
   const effectiveHonba = Math.max(0, state.honba + honbaAdjust)
 
-  // 局の追加・取り消しは、共有中の draft を丸ごと差し替えて反映する（api 経由でDBへ→全端末に同期）。
+  // 局の追加・取り消し・入力中の1局は、共有中の draft を丸ごと差し替えて反映する
+  // （api 経由でDBへ→全端末に同期）。入力中の1局(form)も共有するので、和了者選択や
+  // 点数早見表が全端末で揃う。
   function addHand(hand: Hand) {
     const withOverride = honbaAdjust !== 0 ? { ...hand, honbaOverride: effectiveHonba } : hand
-    api.setDraft({ ...draft, hands: [...draft.hands, withOverride] })
+    api.setDraft({ ...draft, hands: [...draft.hands, withOverride], form: null })
     setHonbaAdjust(0)
   }
   function undo() {
     api.setDraft({ ...draft, hands: draft.hands.slice(0, -1) })
   }
+  const form = draft.form ?? emptyForm()
+  const onFormChange = (f: HandFormState) => api.setDraft({ ...draft, form: f })
 
   const dealerId = draft.playerIds[state.dealerIndex] ?? ''
 
@@ -311,7 +321,14 @@ function LiveView({
           ))}
         </div>
 
-        <HandForm db={db} playerIds={draft.playerIds} dealerId={dealerId} onAdd={addHand} />
+        <HandForm
+          db={db}
+          playerIds={draft.playerIds}
+          dealerId={dealerId}
+          form={form}
+          onChange={onFormChange}
+          onAdd={addHand}
+        />
       </div>
 
       <div className="card">
@@ -345,49 +362,56 @@ function HandForm({
   db,
   playerIds,
   dealerId,
+  form,
+  onChange,
   onAdd,
 }: {
   db: DB
   playerIds: string[]
   dealerId: string
+  /** 入力中の1局（全端末で共有）。 */
+  form: HandFormState
+  /** 入力中の1局が変わったら呼ぶ（共有DBへ反映）。 */
+  onChange: (form: HandFormState) => void
   onAdd: (hand: Hand) => void
 }) {
-  const [type, setType] = useState<HandType>('ron')
-  const [winners, setWinners] = useState<string[]>([])
-  const [loser, setLoser] = useState('')
-  const [scores, setScores] = useState<Record<string, { han: number; fu: number }>>({})
-  const [riichi, setRiichi] = useState<string[]>([])
-  const [tenpai, setTenpai] = useState<string[]>([])
+  const { type, winners, loser, scores, riichi, tenpai } = form
   const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '?'
 
-  function toggle(list: string[], setList: (v: string[]) => void, pid: string) {
-    setList(list.includes(pid) ? list.filter((x) => x !== pid) : [...list, pid])
+  function toggleField(key: 'riichi' | 'tenpai', pid: string) {
+    const list = form[key]
+    onChange({
+      ...form,
+      [key]: list.includes(pid) ? list.filter((x) => x !== pid) : [...list, pid],
+    })
   }
   function changeType(t: HandType) {
-    setType(t)
-    setWinners([])
-    setLoser('')
-    setScores({})
+    // 和了者・放銃者・点数はリセット（立直/テンパイは局全体の情報なので残す）。
+    onChange({ ...form, type: t, winners: [], loser: '', scores: {} })
   }
   function toggleWinner(pid: string) {
     if (type === 'tsumo') {
-      setWinners((w) => (w[0] === pid ? [] : [pid]))
+      onChange({ ...form, winners: winners[0] === pid ? [] : [pid] })
       return
     }
-    setWinners((w) => (w.includes(pid) ? w.filter((x) => x !== pid) : [...w, pid]))
-    setScores((s) => (s[pid] ? s : { ...s, [pid]: { han: 3, fu: 30 } }))
-    setLoser((l) => (l === pid ? '' : l))
+    const nextWinners = winners.includes(pid) ? winners.filter((x) => x !== pid) : [...winners, pid]
+    const nextScores = scores[pid] ? scores : { ...scores, [pid]: { han: 3, fu: 30 } }
+    onChange({
+      ...form,
+      winners: nextWinners,
+      scores: nextScores,
+      loser: loser === pid ? '' : loser,
+    })
   }
   function toggleLoser(pid: string) {
-    setLoser((l) => (l === pid ? '' : pid))
-    setWinners((w) => w.filter((x) => x !== pid))
+    onChange({
+      ...form,
+      loser: loser === pid ? '' : pid,
+      winners: winners.filter((x) => x !== pid),
+    })
   }
-  function reset() {
-    setWinners([])
-    setLoser('')
-    setScores({})
-    setRiichi([])
-    setTenpai([])
+  function setScore(pid: string, han: number, fu: number) {
+    onChange({ ...form, scores: { ...scores, [pid]: { han, fu } } })
   }
   function submit() {
     const id = uid()
@@ -409,7 +433,7 @@ function HandForm({
     } else {
       onAdd({ id, type: 'abortive', riichi })
     }
-    reset()
+    // 追加後の form クリアは onAdd 側（draft.form=null）で行う。
   }
 
   const needScore = type === 'ron' || type === 'tsumo'
@@ -481,7 +505,7 @@ function HandForm({
               winnerIsDealer={pid === dealerId}
               isTsumo={type === 'tsumo'}
               value={scores[pid] ?? { han: 3, fu: 30 }}
-              onChange={(han, fu) => setScores((s) => ({ ...s, [pid]: { han, fu } }))}
+              onChange={(han, fu) => setScore(pid, han, fu)}
             />
           ))}
         </div>
@@ -497,7 +521,7 @@ function HandForm({
               <button
                 key={pid}
                 className={`pill ${tenpai.includes(pid) ? 'on' : ''}`}
-                onClick={() => toggle(tenpai, setTenpai, pid)}
+                onClick={() => toggleField('tenpai', pid)}
               >
                 {name(pid)}
               </button>
@@ -516,7 +540,7 @@ function HandForm({
               <button
                 key={pid}
                 className={`pill ${riichi.includes(pid) ? 'on' : ''}`}
-                onClick={() => toggle(riichi, setRiichi, pid)}
+                onClick={() => toggleField('riichi', pid)}
               >
                 {name(pid)}
               </button>
