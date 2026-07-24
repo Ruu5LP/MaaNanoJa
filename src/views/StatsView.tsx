@@ -23,19 +23,20 @@ export default function StatsView({ db }: { db: DB }) {
   }, [db, period, today])
 
   // 期間切り替えタブ＋モニター表示への導線。空のときも常に出す（今日→全期間に戻せるように）。
+  // タブの並びは「今日／全期間」で統一する（BoardView側と同じ順）。
   const tabs = (
     <div className="row wrap" style={{ marginBottom: 14 }}>
       <div className="seg-control period-tabs" style={{ marginBottom: 0 }}>
-        <button className={period === 'all' ? 'active' : ''} onClick={() => setPeriod('all')}>
-          全期間
-        </button>
         <button className={period === 'today' ? 'active' : ''} onClick={() => setPeriod('today')}>
           今日
+        </button>
+        <button className={period === 'all' ? 'active' : ''} onClick={() => setPeriod('all')}>
+          全期間
         </button>
       </div>
       <span className="spacer" />
       <a className="btn" href="?board=1" target="_blank" rel="noopener noreferrer">
-        🖥 モニターで表示 ↗
+        合計スコアだけを表示 ↗
       </a>
     </div>
   )

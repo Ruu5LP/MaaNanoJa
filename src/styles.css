@@ -173,25 +173,28 @@ select:focus {
   outline-offset: -1px;
 }
 
-button.btn {
+/* .btn は <button> だけでなく <a>（新しいタブを開くリンク等）にも同じ見た目を与える。 */
+.btn {
+  display: inline-block;
   background: var(--surface-3);
   color: var(--ink);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 9px 14px;
   font-size: 14px;
+  text-decoration: none;
   cursor: pointer;
 }
-button.btn.primary {
+.btn.primary {
   background: var(--accent);
   color: var(--accent-ink);
   border-color: var(--accent);
   font-weight: 700;
 }
-button.btn.ghost {
+.btn.ghost {
   background: none;
 }
-button.btn.danger {
+.btn.danger {
   color: var(--danger);
   border-color: var(--danger);
   background: none;
@@ -200,7 +203,7 @@ button.btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
-button.btn.sm {
+.btn.sm {
   padding: 6px 10px;
   font-size: 13px;
 }
@@ -335,9 +338,16 @@ tbody tr:hover td:first-child {
 }
 
 /* 成績の期間切り替えタブ（全期間／今日）。横に広げすぎない。 */
+/* 期間タブ（今日／全期間）はボタンを均等割りせず文字幅ぶんだけ取る。
+   均等割り(flex:1)のままだと狭い場所で押し縮められ「全期間」が「全期/間」と
+   中途半端に改行されてしまうため。 */
 .period-tabs {
-  max-width: 320px;
   margin-bottom: 14px;
+}
+.period-tabs button {
+  flex: 0 0 auto;
+  padding-left: 14px;
+  padding-right: 14px;
 }
 
 /* ---- 着順分布バー ---- */
@@ -558,6 +568,7 @@ tbody tr:hover td:first-child {
   color: var(--ink-2);
   padding: 9px 6px;
   font-size: 13px;
+  white-space: nowrap;
   cursor: pointer;
 }
 .seg-control button.active {
@@ -740,6 +751,7 @@ h3.sec {
   grid-template-columns: repeat(2, 1fr);
   grid-template-rows: repeat(2, 1fr);
   gap: 3px;
+  margin-bottom: 20px;
   min-height: 0;
 }
 .board-tile {
