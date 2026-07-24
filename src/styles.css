@@ -226,6 +226,22 @@ button.btn.sm {
   cursor: not-allowed;
 }
 
+/* 早見表のセル間の余白は詰めて、ボタン自体を大きく見せる（汎用の th,td padding を上書き）。
+   セルの中身がボタンなので、行の区切り線も不要。 */
+.score-table th,
+.score-table td {
+  padding: 3px;
+  border-bottom: none;
+}
+/* 符の見出し（20符・30符…）は、汎用の右寄せではなく列の中央に揃える。 */
+.score-table thead th {
+  text-align: center;
+  padding-bottom: 5px;
+}
+.score-table tbody th {
+  padding-right: 6px;
+}
+
 .score-cell {
   display: block;
   width: 100%;
@@ -233,7 +249,7 @@ button.btn.sm {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 10px 14px;
+  padding: 12px 14px;
   font-size: 15px;
   text-align: center;
   cursor: pointer;
@@ -558,6 +574,17 @@ tbody tr:hover td:first-child {
   flex: 1;
   justify-content: center;
   text-align: center;
+}
+
+/* 満貫〜役満の行。文字が長いので、狭い幅では折り返さずに横スクロールで見せる
+   （均等に横いっぱいへ広げるのは、1つ1つが読める幅を確保できるPC幅のときだけ）。 */
+.mangan-row {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.mangan-row .pill {
+  flex: 1 0 auto;
+  white-space: nowrap;
 }
 
 .checkline {

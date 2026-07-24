@@ -623,7 +623,9 @@ function ScorePicker({
           </tbody>
         </table>
       </div>
-      <div className="row wrap" style={{ marginTop: 8 }}>
+      {/* 満貫〜役満は名前のボタン（pick-row）と同じく、均等幅で横いっぱいに並べる。
+          スマホなど狭い幅では文字が折れて読めなくなるので、その場合だけ横スクロールにする。 */}
+      <div className="pick-row mangan-row" style={{ marginTop: 8 }}>
         {mangans.map((m) => (
           <button
             key={m.han}
