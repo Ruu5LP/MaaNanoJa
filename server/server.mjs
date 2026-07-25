@@ -167,12 +167,14 @@ const server = createServer(async (req, res) => {
   }
 })
 
-/** LAN内の他端末から開けるIPv4アドレス一覧。 */
+/** LAN内の他端末から開けるIPv4アドレス一覧。
+ *  WiFiのアダプタも、Androidの「USBテザリング」でPCに生えるアダプタ（usb0/enx*等）も
+ *  同じ仕組み（0.0.0.0で待受）で拾えるので、区別せず列挙する。 */
 function lanAddresses() {
   const out = []
-  for (const addrs of Object.values(networkInterfaces())) {
+  for (const [name, addrs] of Object.entries(networkInterfaces())) {
     for (const a of addrs ?? []) {
-      if (a.family === 'IPv4' && !a.internal) out.push(a.address)
+      if (a.family === 'IPv4' && !a.internal) out.push({ name, address: a.address })
     }
   }
   return out
@@ -181,12 +183,17 @@ function lanAddresses() {
 server.listen(PORT, HOST, () => {
   const ips = lanAddresses()
   console.log('\n🀄  麻雀トラッカー LAN同期サーバ 起動\n')
-  console.log('  同じWiFiにつないだ端末で、下のURLを開いてください:')
+  console.log('  同じWiFi、またはUSBケーブルで直結した端末で、下のURLを開いてください:')
   if (ips.length === 0) {
     console.log(`    このPC        http://localhost:${PORT}`)
   } else {
-    for (const ip of ips) console.log(`    スマホ/他端末  http://${ip}:${PORT}`)
+    for (const { name, address } of ips)
+      console.log(`    スマホ/他端末  http://${address}:${PORT}   (${name})`)
     console.log(`    このPC        http://localhost:${PORT}`)
   }
+  console.log(
+    '\n  ※ WiFiが不安定なときは、スマホの「設定 > テザリング > USBテザリング」をONにしてPCとUSBケーブルで直結しても同じように使えます。',
+  )
+  console.log('    （つないだ直後に増えるアドレスが上に出るので、それを開く）')
   console.log('\n  止めるときは Ctrl+C。データは server/data/db.json に保存されます。\n')
 })
