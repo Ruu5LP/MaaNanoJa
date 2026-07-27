@@ -1,8 +1,25 @@
 import { useMemo, useState } from 'react'
-import { WINDS, replay, roundLabel, gameResults, pointsCheck } from '../lib/game'
+import {
+  WINDS,
+  replay,
+  roundLabel,
+  gameResults,
+  pointsCheck,
+  rotateToDealer,
+  handToFormState,
+} from '../lib/game'
 import { uid } from '../lib/store'
 import { scoreTable, manganRow, hanLabel, type GameResult } from '../lib/scoring'
-import type { DB, Draft, Game, Hand, HandFormState, HandType, Rules } from '../lib/domain'
+import type {
+  AdjustHand,
+  DB,
+  Draft,
+  Game,
+  Hand,
+  HandFormState,
+  HandType,
+  Rules,
+} from '../lib/domain'
 import type { Api } from '../App'
 import { todayStr } from '../lib/date'
 
@@ -52,20 +69,37 @@ export default function RecordView({ db, api, onDone }: { db: DB; api: Api; onDo
   return <SetupView db={db} onStart={start} />
 }
 
+/** 前回の対局の並びを引き継ぐ（全員が現在も登録済みのときだけ）。無ければ空スロット。 */
+function lastUsedSeats(db: DB): (string | null)[] {
+  const last = db.games[db.games.length - 1]
+  const known = new Set(db.players.map((p) => p.id))
+  if (last && last.playerIds.length === 4 && last.playerIds.every((id) => known.has(id))) {
+    return last.playerIds
+  }
+  return [null, null, null, null]
+}
+
 /* ---------- セットアップ ---------- */
 function SetupView({ db, onStart }: { db: DB; onStart: (draft: Draft) => void }) {
-  const [seats, setSeats] = useState<(string | null)[]>([null, null, null, null])
+  const initialSeats = useMemo(() => lastUsedSeats(db), [db])
+  const [seats, setSeats] = useState<(string | null)[]>(initialSeats)
+  const [editingSeats, setEditingSeats] = useState(initialSeats.some((s) => !s))
   const [date, setDate] = useState(todayStr())
   const [note, setNote] = useState('')
+  const [dealerId, setDealerId] = useState<string | null>(initialSeats[0] ?? null)
 
   const chosen = seats.filter((s): s is string => Boolean(s))
   const ready = chosen.length === 4 && new Set(chosen).size === 4
+  const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '?'
+  const effectiveDealer = dealerId && chosen.includes(dealerId) ? dealerId : (chosen[0] ?? null)
 
   const available = (slotIdx: number) =>
     db.players.filter((p) => !seats.includes(p.id) || seats[slotIdx] === p.id)
 
   function begin(mode: Mode) {
-    const playerIds = seats as string[]
+    const base = seats as string[]
+    const playerIds =
+      mode === 'live' && effectiveDealer ? rotateToDealer(base, effectiveDealer) : base
     onStart({
       mode,
       date,
@@ -101,28 +135,64 @@ function SetupView({ db, onStart }: { db: DB; onStart: (draft: Draft) => void })
             </label>
           </div>
 
-          <h3 className="sec">席順（起家＝東から）</h3>
-          <div className="player-picker">
-            {seats.map((sid, i) => (
-              <div className="slot" key={i}>
-                <span className="wind">{WINDS[i]}</span>
-                <select
-                  value={sid ?? ''}
-                  onChange={(e) => {
-                    const v = e.target.value || null
-                    setSeats((s) => s.map((x, idx) => (idx === i ? v : x)))
-                  }}
-                >
-                  <option value="">— 選択 —</option>
-                  {available(i).map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
+          <div className="row">
+            <h3 className="sec" style={{ margin: 0 }}>
+              メンバー
+            </h3>
+            <span className="spacer" />
+            <button className="btn sm ghost" onClick={() => setEditingSeats((v) => !v)}>
+              {editingSeats ? '閉じる' : '変更'}
+            </button>
           </div>
+
+          {editingSeats ? (
+            <div className="player-picker">
+              {seats.map((sid, i) => (
+                <div className="slot" key={i}>
+                  <span className="wind">{WINDS[i]}</span>
+                  <select
+                    value={sid ?? ''}
+                    onChange={(e) => {
+                      const v = e.target.value || null
+                      setSeats((s) => s.map((x, idx) => (idx === i ? v : x)))
+                    }}
+                  >
+                    <option value="">— 選択 —</option>
+                    {available(i).map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="pick-row">
+              {chosen.map((pid) => (
+                <span className="pill" key={pid}>
+                  {name(pid)}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {ready && (
+            <>
+              <h3 className="sec">起家（最初の親）※局ログ記録のみ使用</h3>
+              <div className="pick-row">
+                {chosen.map((pid) => (
+                  <button
+                    key={pid}
+                    className={`pill ${effectiveDealer === pid ? 'on' : ''}`}
+                    onClick={() => setDealerId(pid)}
+                  >
+                    {name(pid)}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
           <div className="row" style={{ marginTop: 14 }}>
             <button className="btn primary" disabled={!ready} onClick={() => begin('live')}>
@@ -134,7 +204,7 @@ function SetupView({ db, onStart }: { db: DB; onStart: (draft: Draft) => void })
           </div>
           <p className="muted" style={{ marginTop: 8 }}>
             「局ログ」＝和了・放銃・流局を1局ずつ記録（放銃率などのデータが取れる）。
-            「最終点だけ」＝従来どおり終局の持ち点だけ入力。
+            「最終点だけ」＝従来どおり終局の持ち点だけ入力（起家の指定は不要）。
           </p>
         </>
       )}
@@ -235,6 +305,46 @@ function LiveView({
   const setHonbaAdjust = (n: number) => api.setDraft({ ...draft, honbaAdjust: n })
   const effectiveHonba = Math.max(0, state.honba + honbaAdjust)
 
+  // 点数の手動修正（実際の持ち点とズレたときの補正）。パネルの開閉・入力中の値も共有中の draft に持たせる。
+  const pointsEdit = draft.pointsEdit
+  function openPointsEdit() {
+    const init: Record<string, string> = {}
+    for (const pid of draft.playerIds) init[pid] = String(state.points[pid] ?? 0)
+    api.setDraft({ ...draft, pointsEdit: init })
+  }
+  function setPointsEditValue(pid: string, v: string) {
+    api.setDraft({ ...draft, pointsEdit: { ...pointsEdit, [pid]: v } })
+  }
+  function closePointsEdit() {
+    api.setDraft({ ...draft, pointsEdit: undefined })
+  }
+  function applyPointsEdit() {
+    if (!pointsEdit) return
+    const delta: Record<string, number> = {}
+    let changed = false
+    for (const pid of draft.playerIds) {
+      const now = state.points[pid] ?? 0
+      const next = Number(pointsEdit[pid]) || 0
+      if (next !== now) {
+        delta[pid] = next - now
+        changed = true
+      }
+    }
+    if (!changed) {
+      closePointsEdit()
+      return
+    }
+    api.setDraft({
+      ...draft,
+      hands: [...draft.hands, { id: uid(), type: 'adjust', riichi: [], delta }],
+      pointsEdit: undefined,
+    })
+  }
+  const pointsEditSum = pointsEdit
+    ? draft.playerIds.reduce((a, pid) => a + (Number(pointsEdit[pid]) || 0), 0)
+    : 0
+  const pointsEditExpected = rules.startPoints * draft.playerIds.length - state.pot
+
   // 局の追加・取り消し・入力中の1局は、共有中の draft を丸ごと差し替えて反映する
   // （api 経由でDBへ→全端末に同期）。入力中の1局(form)・積み棒(honbaAdjust)も共有するので、
   // 和了者選択・点数早見表・積み棒修正が全端末で揃う。
@@ -247,6 +357,37 @@ function LiveView({
   }
   const form = draft.form ?? emptyForm()
   const onFormChange = (f: HandFormState) => api.setDraft({ ...draft, form: f })
+
+  // 局ログから選んで編集し直す（和了者・点数などの入力ミスを、取り消して打ち直さず直接直せるように）。
+  const editingIndex = draft.editingIndex
+  function selectHand(i: number) {
+    const hand = draft.hands[i]
+    if (!hand) return
+    const f = handToFormState(hand)
+    api.setDraft({ ...draft, editingIndex: i, form: f ?? draft.form })
+  }
+  function cancelEdit() {
+    api.setDraft({ ...draft, editingIndex: undefined, form: null })
+  }
+  function deleteSelected() {
+    if (editingIndex == null) return
+    const hands = draft.hands.filter((_, i) => i !== editingIndex)
+    api.setDraft({ ...draft, hands, editingIndex: undefined, form: null })
+  }
+  function submitHand(hand: Hand) {
+    if (editingIndex == null) {
+      addHand(hand)
+      return
+    }
+    const original = draft.hands[editingIndex]
+    const withOverride =
+      original?.honbaOverride !== undefined
+        ? { ...hand, id: original.id, honbaOverride: original.honbaOverride }
+        : { ...hand, id: original?.id ?? hand.id }
+    const hands = draft.hands.map((h, i) => (i === editingIndex ? withOverride : h))
+    api.setDraft({ ...draft, hands, editingIndex: undefined, form: null })
+  }
+  const selectedHand = editingIndex != null ? draft.hands[editingIndex] : undefined
 
   const dealerId = draft.playerIds[state.dealerIndex] ?? ''
 
@@ -311,28 +452,81 @@ function LiveView({
               </button>
             )}
           </div>
+          <div className="row" style={{ marginTop: 8 }}>
+            <span className="muted">点数を修正</span>
+            <span className="spacer" />
+            {pointsEdit ? (
+              <>
+                <button className="btn sm ghost" onClick={closePointsEdit}>
+                  キャンセル
+                </button>
+                <button className="btn sm primary" onClick={applyPointsEdit}>
+                  反映
+                </button>
+              </>
+            ) : (
+              <button className="btn sm ghost" onClick={openPointsEdit}>
+                修正
+              </button>
+            )}
+          </div>
+          {pointsEdit && (
+            <div
+              className={`checkline ${pointsEditSum === pointsEditExpected ? 'ok' : 'warn'}`}
+              style={{ marginTop: 6 }}
+            >
+              合計 {pointsEditSum.toLocaleString()} 点
+              {pointsEditSum === pointsEditExpected
+                ? '（供託を除く配給原点合計と一致）'
+                : `：供託を除く配給原点合計 ${pointsEditExpected.toLocaleString()} 点との差 ${
+                    pointsEditSum - pointsEditExpected > 0 ? '+' : ''
+                  }${pointsEditSum - pointsEditExpected}`}
+            </div>
+          )}
           <div className="scoreboard" style={{ marginTop: 10 }}>
             {draft.playerIds.map((pid, i) => (
               <div className={`p ${pid === dealerId ? 'dealer' : ''}`} key={pid}>
                 <div className="nm">
                   {WINDS[i]} {name(pid)}
                 </div>
-                <div className={`pt ${(state.points[pid] ?? 0) < 0 ? 'neg' : ''}`}>
-                  {(state.points[pid] ?? 0).toLocaleString()}
-                </div>
+                {pointsEdit ? (
+                  <input
+                    className="pt-input"
+                    type="number"
+                    inputMode="numeric"
+                    value={pointsEdit[pid] ?? ''}
+                    onChange={(e) => setPointsEditValue(pid, e.target.value)}
+                  />
+                ) : (
+                  <div className={`pt ${(state.points[pid] ?? 0) < 0 ? 'neg' : ''}`}>
+                    {(state.points[pid] ?? 0).toLocaleString()}
+                  </div>
+                )}
                 {pid === dealerId && <div className="badge">親</div>}
               </div>
             ))}
           </div>
 
-          <HandForm
-            db={db}
-            playerIds={draft.playerIds}
-            dealerId={dealerId}
-            form={form}
-            onChange={onFormChange}
-            onAdd={addHand}
-          />
+          {selectedHand?.type === 'adjust' ? (
+            <AdjustHandEditor
+              hand={selectedHand}
+              name={name}
+              onDelete={deleteSelected}
+              onCancel={cancelEdit}
+            />
+          ) : (
+            <HandForm
+              db={db}
+              playerIds={draft.playerIds}
+              dealerId={dealerId}
+              form={form}
+              editing={editingIndex != null}
+              onChange={onFormChange}
+              onSubmit={submitHand}
+              onCancelEdit={cancelEdit}
+              onDelete={editingIndex != null ? deleteSelected : undefined}
+            />
+          )}
         </div>
 
         <div className="row">
@@ -357,7 +551,18 @@ function LiveView({
           {draft.hands.length === 0 ? (
             <p className="muted">まだ局がありません。入力フォームから追加してください。</p>
           ) : (
-            <HandLog game={gameForReplay} rules={rules} name={name} />
+            <>
+              <p className="muted" style={{ marginTop: -4, marginBottom: 8 }}>
+                局をタップすると内容を編集できます。
+              </p>
+              <HandLog
+                game={gameForReplay}
+                rules={rules}
+                name={name}
+                selectedIndex={editingIndex ?? null}
+                onSelect={selectHand}
+              />
+            </>
           )}
         </div>
       </div>
@@ -370,17 +575,26 @@ function HandForm({
   playerIds,
   dealerId,
   form,
+  editing,
   onChange,
-  onAdd,
+  onSubmit,
+  onCancelEdit,
+  onDelete,
 }: {
   db: DB
   playerIds: string[]
   dealerId: string
   /** 入力中の1局（全端末で共有）。 */
   form: HandFormState
+  /** 局ログから選んだ局を編集中かどうか（true なら「追加」ではなく「更新」）。 */
+  editing: boolean
   /** 入力中の1局が変わったら呼ぶ（共有DBへ反映）。 */
   onChange: (form: HandFormState) => void
-  onAdd: (hand: Hand) => void
+  onSubmit: (hand: Hand) => void
+  /** 編集をやめて新規入力に戻る。 */
+  onCancelEdit: () => void
+  /** 編集中の局を削除する（編集中のみ）。 */
+  onDelete?: () => void
 }) {
   const { type, winners, loser, scores, riichi, tenpai } = form
   const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '?'
@@ -429,18 +643,18 @@ function HandForm({
         han: scores[w]?.han ?? 3,
         fu: scores[w]?.fu ?? 30,
       }))
-      onAdd({ id, type, wins, loser, riichi })
+      onSubmit({ id, type, wins, loser, riichi })
     } else if (type === 'tsumo') {
       const w = winners[0]
       if (!w) return
       const { han, fu } = scores[w] ?? { han: 3, fu: 30 }
-      onAdd({ id, type, winner: w, han, fu, riichi })
+      onSubmit({ id, type, winner: w, han, fu, riichi })
     } else if (type === 'draw') {
-      onAdd({ id, type, tenpai, riichi })
+      onSubmit({ id, type, tenpai, riichi })
     } else {
-      onAdd({ id, type: 'abortive', riichi })
+      onSubmit({ id, type: 'abortive', riichi })
     }
-    // 追加後の form クリアは onAdd 側（draft.form=null）で行う。
+    // 追加後の form クリアは呼び出し側（draft.form=null）で行う。
   }
 
   const needScore = type === 'ron' || type === 'tsumo'
@@ -556,14 +770,75 @@ function HandForm({
         </div>
       )}
 
-      <button
-        className="btn primary"
-        style={{ marginTop: 14, width: '100%' }}
-        disabled={!canSubmit}
-        onClick={submit}
-      >
-        この局を追加
-      </button>
+      {editing ? (
+        <div className="row" style={{ marginTop: 14 }}>
+          <button
+            className="btn primary"
+            style={{ flex: 1 }}
+            disabled={!canSubmit}
+            onClick={submit}
+          >
+            この局を更新
+          </button>
+          {onDelete && (
+            <button className="btn danger" onClick={onDelete}>
+              削除
+            </button>
+          )}
+          <button className="btn ghost" onClick={onCancelEdit}>
+            キャンセル
+          </button>
+        </div>
+      ) : (
+        <button
+          className="btn primary"
+          style={{ marginTop: 14, width: '100%' }}
+          disabled={!canSubmit}
+          onClick={submit}
+        >
+          この局を追加
+        </button>
+      )}
+    </div>
+  )
+}
+
+function AdjustHandEditor({
+  hand,
+  name,
+  onDelete,
+  onCancel,
+}: {
+  hand: AdjustHand
+  name: NameFn
+  onDelete: () => void
+  onCancel: () => void
+}) {
+  const entries = Object.entries(hand.delta).filter(([, v]) => v !== 0)
+  return (
+    <div style={{ marginTop: 14 }}>
+      <p className="muted">
+        この局は「点数修正」です。編集はできません。取り消したい場合は削除してください。
+      </p>
+      <div className="delta-chips">
+        {entries.map(([pid, d]) => (
+          <span key={pid} className={`delta-chip ${d > 0 ? 'pos' : d < 0 ? 'neg' : ''}`}>
+            <span>{name(pid)}</span>
+            <span>
+              {d > 0 ? '+' : ''}
+              {d.toLocaleString()}
+            </span>
+          </span>
+        ))}
+      </div>
+      <div className="row" style={{ marginTop: 14 }}>
+        <button className="btn danger" onClick={onDelete}>
+          この修正を削除
+        </button>
+        <button className="btn ghost" onClick={onCancel}>
+          キャンセル
+        </button>
+      </div>
     </div>
   )
 }
@@ -634,12 +909,31 @@ function ScorePicker({
   )
 }
 
-function HandLog({ game, rules, name }: { game: Game; rules: Rules; name: NameFn }) {
+function HandLog({
+  game,
+  rules,
+  name,
+  selectedIndex,
+  onSelect,
+}: {
+  game: Game
+  rules: Rules
+  name: NameFn
+  /** 局ログから選んで編集中の局のインデックス（選んでいなければ null）。 */
+  selectedIndex: number | null
+  /** 局を選んだら呼ぶ（編集フォームを開く）。 */
+  onSelect: (i: number) => void
+}) {
   const { steps } = replay(game, rules)
   return (
     <div className="hand-list">
       {steps.map((s, i) => (
-        <div className="hand-row" key={s.hand.id || i}>
+        <button
+          type="button"
+          className={`hand-row ${selectedIndex === i ? 'selected' : ''}`}
+          key={s.hand.id || i}
+          onClick={() => onSelect(i)}
+        >
           <div className="hand-row-head">
             <span className="muted" style={{ minWidth: 62 }}>
               {s.label}
@@ -647,7 +941,7 @@ function HandLog({ game, rules, name }: { game: Game; rules: Rules; name: NameFn
             {handTag(s.hand)}
           </div>
           <DeltaChips playerIds={game.playerIds} name={name} delta={s.delta} />
-        </div>
+        </button>
       ))}
     </div>
   )
@@ -657,6 +951,7 @@ function handTag(h: Hand) {
   if (h.type === 'ron') return <span className="tag win">ロン</span>
   if (h.type === 'tsumo') return <span className="tag win">ツモ</span>
   if (h.type === 'draw') return <span className="tag draw">流局</span>
+  if (h.type === 'adjust') return <span className="tag adjust">点数修正</span>
   return <span className="tag draw">途中流局</span>
 }
 

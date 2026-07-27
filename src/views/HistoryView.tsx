@@ -118,6 +118,7 @@ function handTag(h: Hand) {
   if (h.type === 'ron') return <span className="tag win">ロン</span>
   if (h.type === 'tsumo') return <span className="tag win">ツモ</span>
   if (h.type === 'draw') return <span className="tag draw">流局</span>
+  if (h.type === 'adjust') return <span className="tag adjust">点数修正</span>
   return <span className="tag draw">途中流局</span>
 }
 

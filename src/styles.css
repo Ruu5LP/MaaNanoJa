@@ -483,6 +483,18 @@ tbody tr:hover td:first-child {
   border-radius: var(--radius-sm);
   padding: 8px 10px;
   font-size: 13px;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  color: inherit;
+}
+.hand-row:hover {
+  border-color: var(--ink-3);
+}
+.hand-row.selected {
+  border-color: var(--accent);
+  background: var(--surface-3);
 }
 .hand-row-head {
   display: flex;
@@ -503,6 +515,10 @@ tbody tr:hover td:first-child {
 .hand-row .tag.draw {
   background: #3a3312;
   color: var(--warn);
+}
+.hand-row .tag.adjust {
+  background: #16283a;
+  color: var(--rank1);
 }
 .delta-chips {
   display: grid;
@@ -545,6 +561,13 @@ tbody tr:hover td:first-child {
   font-size: 18px;
   font-variant-numeric: tabular-nums;
   margin-top: 2px;
+}
+.scoreboard .p .pt-input {
+  width: 100%;
+  margin-top: 4px;
+  text-align: center;
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
 }
 .scoreboard .p.dealer {
   border-color: var(--accent);

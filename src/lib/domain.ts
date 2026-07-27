@@ -68,7 +68,17 @@ export interface AbortiveHand extends HandBase {
   type: 'abortive'
 }
 
-export type Hand = RonHand | TsumoHand | DrawHand | AbortiveHand
+/**
+ * 点数の手動修正（入力ミス等で実際の持ち点とアプリの計算がズレたときに補正する）。
+ * 親・本場・場風などの進行状況は変えず、点数だけを動かす。
+ */
+export interface AdjustHand extends HandBase {
+  type: 'adjust'
+  /** playerId -> 増減点（合計0とは限らない） */
+  delta: Record<string, number>
+}
+
+export type Hand = RonHand | TsumoHand | DrawHand | AbortiveHand | AdjustHand
 
 /** 和了（ロン/ツモ）のみを指す絞り込み型 */
 export type WinningHand = RonHand | TsumoHand
@@ -130,6 +140,16 @@ export interface Draft {
   honbaAdjust?: number
   /** quick モードの入力中の点数（文字列＝負号や入力途中も保持）。全端末で共有。 */
   quickPoints?: Record<string, string>
+  /**
+   * 点数修正パネルの入力中の値（playerId -> 文字列）。全端末で共有。
+   * パネルを開いていないときは undefined。「反映」で `adjust` 型の局として hands に追加する。
+   */
+  pointsEdit?: Record<string, string>
+  /**
+   * 局ログから選んで編集中の局のインデックス（hands の添字）。全端末で共有。
+   * 選んでいないときは undefined。選ぶと `form` にその局の内容を入れて編集フォームを開く。
+   */
+  editingIndex?: number
 }
 
 /** DB全体（localStorageに保存する単位＝LAN同期の共有単位でもある） */

@@ -127,3 +127,14 @@ test('流局: テンパイ2人ノーテン2人', () => {
   expect(delta['C']).toBe(-1500)
   expect(delta['D']).toBe(-1500)
 })
+
+test('点数修正: 指定した増減をそのまま反映する（合計0とは限らない）', () => {
+  const seats = ['A', 'B', 'C', 'D']
+  const hand: Hand = { id: 'h4', type: 'adjust', riichi: [], delta: { A: 500, C: -200 } }
+  const { delta, potAfter } = handDeltas(seats, 0, hand, 0, 1000)
+  expect(delta['A']).toBe(500)
+  expect(delta['C']).toBe(-200)
+  expect(delta['B']).toBe(0)
+  expect(delta['D']).toBe(0)
+  expect(potAfter).toBe(1000) // 供託には影響しない
+})
