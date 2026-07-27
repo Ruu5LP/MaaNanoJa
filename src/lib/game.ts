@@ -1,8 +1,56 @@
 // 半荘の進行（親の連荘・本場・供託リーチ棒の自動管理）と、局ログからの持ち点再生。
 import { handDeltas, computeResults, type GameResult } from './scoring'
-import type { Game, Hand, Rules } from './domain'
+import type { Game, Hand, HandFormState, Rules } from './domain'
 
 export const WINDS = ['東', '南', '西', '北'] as const
+
+/** 座席順を、指定した人が先頭（起家）に来るよう回転する。他3人の相対的な並びは保持する。 */
+export function rotateToDealer(seats: string[], dealerId: string): string[] {
+  const idx = seats.indexOf(dealerId)
+  if (idx <= 0) return seats
+  return [...seats.slice(idx), ...seats.slice(0, idx)]
+}
+
+/**
+ * 局ログの1局を編集フォームの初期値に変換する（局ログから選んで編集し直すため）。
+ * 点数修正（adjust）は入力フォームの対象外なので null を返す。
+ */
+export function handToFormState(hand: Hand): HandFormState | null {
+  if (hand.type === 'ron') {
+    return {
+      type: 'ron',
+      winners: hand.wins.map((w) => w.winner),
+      loser: hand.loser,
+      scores: Object.fromEntries(hand.wins.map((w) => [w.winner, { han: w.han, fu: w.fu }])),
+      riichi: hand.riichi,
+      tenpai: [],
+    }
+  }
+  if (hand.type === 'tsumo') {
+    return {
+      type: 'tsumo',
+      winners: [hand.winner],
+      loser: '',
+      scores: { [hand.winner]: { han: hand.han, fu: hand.fu } },
+      riichi: hand.riichi,
+      tenpai: [],
+    }
+  }
+  if (hand.type === 'draw') {
+    return {
+      type: 'draw',
+      winners: [],
+      loser: '',
+      scores: {},
+      riichi: hand.riichi,
+      tenpai: hand.tenpai,
+    }
+  }
+  if (hand.type === 'abortive') {
+    return { type: 'abortive', winners: [], loser: '', scores: {}, riichi: hand.riichi, tenpai: [] }
+  }
+  return null
+}
 
 /** 半荘の途中状態（局ログを再生して得られる） */
 export interface GameState {
@@ -48,6 +96,9 @@ export function roundLabel(state: GameState): string {
 
 /** 局が終わった後の次状態（親の連荘・本場・局送り）を返す */
 function advance(state: GameState, hand: Hand, seats: string[]): GameState {
+  // 点数修正は進行（親・本場・場風）に影響しない。
+  if (hand.type === 'adjust') return state
+
   const dealerId = seats[state.dealerIndex]
   let renchan: boolean
   if (hand.type === 'ron') renchan = hand.wins.some((w) => w.winner === dealerId)

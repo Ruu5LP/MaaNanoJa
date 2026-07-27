@@ -137,6 +137,8 @@ export function handDeltas(
       }
     }
     // abortive(途中流局)は点数移動なし・供託据え置き
+  } else if (hand.type === 'adjust') {
+    for (const pid of Object.keys(hand.delta)) delta[pid] = (delta[pid] ?? 0) + hand.delta[pid]!
   }
 
   return { delta, potAfter: pot }
