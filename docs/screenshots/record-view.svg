@@ -1,0 +1,153 @@
+<svg viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg" font-family="'Hiragino Sans', 'Yu Gothic', sans-serif">
+  <defs>
+    <style>
+      .card { fill: #17201b; stroke: #2c3a31; stroke-width: 1; }
+      .cell { fill: #1f2b24; stroke: #2c3a31; stroke-width: 1; }
+      .cell-sel { fill: #1f2b24; stroke: #3ecf8e; stroke-width: 2; }
+      .btn { fill: #27352c; stroke: #2c3a31; stroke-width: 1; }
+      .btn-on { fill: #3ecf8e; }
+      .ink { fill: #e8f0ea; }
+      .ink2 { fill: #a9b8af; }
+      .ink3 { fill: #7e8f85; }
+      .accent { fill: #3ecf8e; }
+      .danger { fill: #e0555f; }
+      .num { font-variant-numeric: tabular-nums; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#0f1512"/>
+
+  <!-- header -->
+  <text x="40" y="55" class="ink" font-size="30" font-weight="700">麻雀トラッカー</text>
+  <text x="260" y="55" class="ink3" font-size="20">AiRuu Mahjong</text>
+  <rect x="1390" y="28" width="170" height="34" rx="8" class="btn"/>
+  <text x="1475" y="50" text-anchor="middle" fill="#e9b949" font-size="16">⏳ 接続確認中…</text>
+
+  <!-- left main card -->
+  <rect x="40" y="90" width="1015" height="640" rx="12" class="card"/>
+  <text x="72" y="140" class="ink" font-size="26" font-weight="700">東3局</text>
+
+  <text x="72" y="185" class="ink2" font-size="18">積み棒を修正</text>
+  <rect x="960" y="163" width="46" height="36" rx="8" class="btn"/>
+  <text x="983" y="187" text-anchor="middle" class="ink2" font-size="18">−1</text>
+  <rect x="1012" y="163" width="46" height="36" rx="8" class="btn"/>
+  <text x="1035" y="187" text-anchor="middle" class="ink2" font-size="18">+1</text>
+
+  <text x="72" y="228" class="ink2" font-size="18">点数を修正</text>
+  <rect x="990" y="206" width="68" height="34" rx="8" class="btn"/>
+  <text x="1024" y="229" text-anchor="middle" class="ink2" font-size="16">修正</text>
+
+  <!-- score cards -->
+  <g font-size="16">
+    <rect x="72" y="252" width="230" height="90" rx="10" class="cell"/>
+    <text x="90" y="280" class="accent" font-size="15">東 ルウ</text>
+    <text x="90" y="315" class="ink num" font-size="26" font-weight="700">20,600</text>
+
+    <rect x="316" y="252" width="230" height="90" rx="10" class="cell"/>
+    <text x="334" y="280" class="accent" font-size="15">南 たろう</text>
+    <text x="334" y="315" class="ink num" font-size="26" font-weight="700">27,900</text>
+
+    <rect x="560" y="252" width="230" height="90" rx="10" class="cell-sel"/>
+    <text x="578" y="280" class="accent" font-size="15">西 はなこ</text>
+    <text x="578" y="315" class="ink num" font-size="26" font-weight="700">27,000</text>
+    <text x="578" y="332" class="accent" font-size="13">親</text>
+
+    <rect x="804" y="252" width="230" height="90" rx="10" class="cell"/>
+    <text x="822" y="280" class="accent" font-size="15">北 じろう</text>
+    <text x="822" y="315" class="ink num" font-size="26" font-weight="700">24,500</text>
+  </g>
+
+  <!-- tabs -->
+  <g font-size="17">
+    <rect x="72" y="360" width="230" height="46" rx="8" class="btn"/>
+    <text x="187" y="389" text-anchor="middle" class="ink2">ロン</text>
+    <rect x="316" y="360" width="230" height="46" rx="8" class="btn"/>
+    <text x="431" y="389" text-anchor="middle" class="ink2">ツモ</text>
+    <rect x="560" y="360" width="230" height="46" rx="8" class="btn-on"/>
+    <text x="675" y="389" text-anchor="middle" fill="#072016" font-weight="700">流局</text>
+    <rect x="804" y="360" width="230" height="46" rx="8" class="btn"/>
+    <text x="919" y="389" text-anchor="middle" class="ink2">途中流局</text>
+  </g>
+
+  <!-- tenpai -->
+  <text x="72" y="435" class="ink2" font-size="16">テンパイ者</text>
+  <g font-size="16">
+    <rect x="72" y="446" width="230" height="46" rx="8" class="btn-on"/>
+    <text x="187" y="475" text-anchor="middle" fill="#072016" font-weight="700">ルウ</text>
+    <rect x="316" y="446" width="230" height="46" rx="8" class="btn"/>
+    <text x="431" y="475" text-anchor="middle" class="ink2">たろう</text>
+    <rect x="560" y="446" width="230" height="46" rx="8" class="btn-on"/>
+    <text x="675" y="475" text-anchor="middle" fill="#072016" font-weight="700">はなこ</text>
+    <rect x="804" y="446" width="230" height="46" rx="8" class="btn"/>
+    <text x="919" y="475" text-anchor="middle" class="ink2">じろう</text>
+  </g>
+
+  <!-- riichi -->
+  <text x="72" y="525" class="ink2" font-size="16">立直した人</text>
+  <g font-size="16">
+    <rect x="72" y="536" width="230" height="46" rx="8" class="btn"/>
+    <text x="187" y="565" text-anchor="middle" class="ink2">ルウ</text>
+    <rect x="316" y="536" width="230" height="46" rx="8" class="btn"/>
+    <text x="431" y="565" text-anchor="middle" class="ink2">たろう</text>
+    <rect x="560" y="536" width="230" height="46" rx="8" class="btn"/>
+    <text x="675" y="565" text-anchor="middle" class="ink2">はなこ</text>
+    <rect x="804" y="536" width="230" height="46" rx="8" class="btn"/>
+    <text x="919" y="565" text-anchor="middle" class="ink2">じろう</text>
+  </g>
+
+  <!-- add hand -->
+  <rect x="72" y="600" width="962" height="56" rx="10" fill="#3ecf8e"/>
+  <text x="553" y="636" text-anchor="middle" fill="#072016" font-size="19" font-weight="700">この局を追加</text>
+
+  <!-- finish / discard -->
+  <rect x="72" y="678" width="130" height="46" rx="8" fill="#3ecf8e"/>
+  <text x="137" y="706" text-anchor="middle" fill="#072016" font-size="16" font-weight="700">半荘を終了</text>
+  <rect x="212" y="678" width="90" height="46" rx="8" class="btn"/>
+  <text x="257" y="706" text-anchor="middle" class="ink2" font-size="16">破棄</text>
+
+  <!-- right side: hand log -->
+  <rect x="1080" y="90" width="480" height="300" rx="12" class="card"/>
+  <text x="1112" y="138" class="ink" font-size="22" font-weight="700">局ログ（2）</text>
+  <rect x="1440" y="118" width="100" height="34" rx="8" class="btn"/>
+  <text x="1490" y="140" text-anchor="middle" class="ink2" font-size="14">1局戻す</text>
+  <text x="1112" y="168" class="ink3" font-size="14">局をタップすると内容を編集できます。</text>
+
+  <rect x="1104" y="184" width="432" height="86" rx="10" class="cell"/>
+  <text x="1122" y="210" class="ink" font-size="16" font-weight="700">東1局</text>
+  <rect x="1178" y="196" width="46" height="22" rx="6" fill="#27352c"/>
+  <text x="1201" y="212" text-anchor="middle" class="accent" font-size="12">ロン</text>
+  <g font-size="14" text-anchor="middle">
+    <text x="1150" y="238" class="ink2">ルウ</text>
+    <text x="1150" y="258" class="danger num" font-weight="700">-3,900</text>
+    <text x="1258" y="238" class="ink2">たろう</text>
+    <text x="1258" y="258" class="accent num" font-weight="700">+3,900</text>
+    <text x="1370" y="238" class="ink2">はなこ</text>
+    <text x="1370" y="258" class="ink2 num">0</text>
+    <text x="1480" y="238" class="ink2">じろう</text>
+    <text x="1480" y="258" class="ink2 num">0</text>
+  </g>
+
+  <rect x="1104" y="280" width="432" height="86" rx="10" class="cell"/>
+  <text x="1122" y="306" class="ink" font-size="16" font-weight="700">東2局</text>
+  <rect x="1178" y="292" width="46" height="22" rx="6" fill="#27352c"/>
+  <text x="1201" y="308" text-anchor="middle" class="accent" font-size="12">ツモ</text>
+  <g font-size="14" text-anchor="middle">
+    <text x="1150" y="334" class="ink2">ルウ</text>
+    <text x="1150" y="354" class="danger num" font-weight="700">-500</text>
+    <text x="1258" y="334" class="ink2">たろう</text>
+    <text x="1258" y="354" class="danger num" font-weight="700">-1,000</text>
+    <text x="1370" y="334" class="ink2">はなこ</text>
+    <text x="1370" y="354" class="accent num" font-weight="700">+2,000</text>
+    <text x="1480" y="334" class="ink2">じろう</text>
+    <text x="1480" y="354" class="danger num" font-weight="700">-500</text>
+  </g>
+
+  <!-- bottom nav -->
+  <rect x="0" y="830" width="1600" height="70" fill="#17201b" stroke="#2c3a31"/>
+  <g font-size="15" text-anchor="middle">
+    <text x="200" y="858" class="accent">記録</text>
+    <text x="600" y="858" class="ink3">成績</text>
+    <text x="1000" y="858" class="ink3">履歴</text>
+    <text x="1400" y="858" class="ink3">設定</text>
+  </g>
+</svg>
