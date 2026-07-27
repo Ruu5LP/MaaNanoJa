@@ -1,0 +1,55 @@
+<svg viewBox="0 0 1600 900" xmlns="http://www.w3.org/2000/svg" font-family="'Hiragino Sans', 'Yu Gothic', sans-serif">
+  <defs>
+    <style>
+      .ink { fill: #e8f0ea; }
+      .ink3 { fill: #7e8f85; }
+      .accent { fill: #3ecf8e; }
+      .danger { fill: #e0555f; }
+      .rank1 { fill: #4a90d9; }
+      .rank2 { fill: #8ec6e6; }
+      .rank3 { fill: #f0a58a; }
+      .rank4 { fill: #e0555f; }
+      .num { font-variant-numeric: tabular-nums; }
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#0f1512"/>
+
+  <!-- header -->
+  <text x="20" y="34" class="ink" font-size="20" font-weight="700">麻雀トラッカー</text>
+  <rect x="160" y="14" width="52" height="30" rx="7" fill="#3ecf8e"/>
+  <text x="186" y="34" text-anchor="middle" fill="#072016" font-size="14" font-weight="700">今日</text>
+  <rect x="218" y="14" width="70" height="30" rx="7" fill="#1f2b24"/>
+  <text x="253" y="34" text-anchor="middle" class="ink3" font-size="14">全期間</text>
+  <rect x="1418" y="12" width="160" height="30" rx="7" fill="#1f2b24"/>
+  <text x="1498" y="33" text-anchor="middle" fill="#e9b949" font-size="13">⏳ 接続確認中…</text>
+
+  <line x1="0" y1="62" x2="1600" y2="62" stroke="#2c3a31"/>
+
+  <!-- quadrants -->
+  <line x1="800" y1="62" x2="800" y2="900" stroke="#2c3a31"/>
+  <line x1="0" y1="481" x2="1600" y2="481" stroke="#2c3a31"/>
+
+  <rect x="0" y="62" width="800" height="8" class="rank1"/>
+  <rect x="800" y="62" width="800" height="8" class="rank2"/>
+  <rect x="0" y="473" width="800" height="8" class="rank3"/>
+  <rect x="800" y="473" width="800" height="8" class="rank4"/>
+
+  <g text-anchor="middle">
+    <text x="400" y="150" class="rank1" font-size="34" font-weight="700">1位</text>
+    <text x="400" y="250" class="ink" font-size="70">たろう</text>
+    <text x="400" y="400" class="accent num" font-size="110" font-weight="700">+103.1</text>
+
+    <text x="1200" y="150" class="rank2" font-size="34" font-weight="700">2位</text>
+    <text x="1200" y="250" class="ink" font-size="70">はなこ</text>
+    <text x="1200" y="400" class="accent num" font-size="110" font-weight="700">+15.9</text>
+
+    <text x="400" y="560" class="rank3" font-size="34" font-weight="700">3位</text>
+    <text x="400" y="660" class="ink" font-size="70">じろう</text>
+    <text x="400" y="810" class="danger num" font-size="110" font-weight="700">-58.0</text>
+
+    <text x="1200" y="560" class="rank4" font-size="34" font-weight="700">4位</text>
+    <text x="1200" y="660" class="ink" font-size="70">ルウ</text>
+    <text x="1200" y="810" class="danger num" font-size="110" font-weight="700">-61.0</text>
+  </g>
+</svg>
