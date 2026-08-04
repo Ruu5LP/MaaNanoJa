@@ -6,6 +6,9 @@ import RecordView from './views/RecordView'
 import HistoryView from './views/HistoryView'
 import StatsView from './views/StatsView'
 import SettingsView from './views/SettingsView'
+import RoomView from './views/RoomView'
+import { normalizeRoomCode, ROOM_QUERY_KEY } from './lib/cloud-room'
+import { useRoomSync } from './useRoomSync'
 
 /** 画面から呼ぶ、DBを更新するアクション群。状態更新はここに集約する。 */
 export interface Api {
@@ -35,10 +38,36 @@ const TABS: { id: TabId; label: string; ico: string }[] = [
 export default function App() {
   const [db, setDB] = useState<DB>(() => loadDB())
   const [tab, setTab] = useState<TabId>('record')
+  const [roomCode, setRoomCode] = useState<string | null>(() =>
+    normalizeRoomCode(new URLSearchParams(window.location.search).get(ROOM_QUERY_KEY)),
+  )
 
-  // LAN同期（サーバが居れば同期、居なければ何もしない）。
+  // LAN同期（room queryが無いときだけ。サーバが居れば同期、居なければ何もしない）。
   // 進行中の半荘(db.draft)も含めてDBまるごと同期されるので、対局中の画面は全端末で自動的に揃う。
-  const { mode } = useLanSync(db, setDB)
+  const { mode: lanMode } = useLanSync(db, setDB, roomCode === null)
+  const {
+    mode: cloudMode,
+    error: cloudError,
+    saveState,
+    saveGame,
+    updateGame,
+    deleteGame,
+  } = useRoomSync(roomCode, setDB)
+  const mode = roomCode ? cloudMode : lanMode
+
+  function joinRoom(code: string) {
+    const url = new URL(window.location.href)
+    url.searchParams.set(ROOM_QUERY_KEY, code)
+    window.history.replaceState({}, '', url)
+    setRoomCode(code)
+  }
+
+  function leaveRoom() {
+    const url = new URL(window.location.href)
+    url.searchParams.delete(ROOM_QUERY_KEY)
+    window.history.replaceState({}, '', url)
+    setRoomCode(null)
+  }
 
   // localStorage への保存は端末ごとのバックアップとして常に行う。
   useEffect(() => {
@@ -50,47 +79,64 @@ export default function App() {
       addPlayer(name) {
         const nm = name.trim()
         if (!nm) return
-        setDB((d) => ({ ...d, players: [...d.players, { id: 'p-' + uid(), name: nm }] }))
+        const next = { ...db, players: [...db.players, { id: 'p-' + uid(), name: nm }] }
+        setDB(next)
+        saveState(next)
       },
       renamePlayer(id, name) {
-        setDB((d) => ({
-          ...d,
-          players: d.players.map((p) => (p.id === id ? { ...p, name } : p)),
-        }))
+        const next = {
+          ...db,
+          players: db.players.map((p) => (p.id === id ? { ...p, name } : p)),
+        }
+        setDB(next)
+        saveState(next)
       },
       removePlayer(id) {
-        setDB((d) => ({ ...d, players: d.players.filter((p) => p.id !== id) }))
+        const next = { ...db, players: db.players.filter((p) => p.id !== id) }
+        setDB(next)
+        saveState(next)
       },
       updateRules(patch) {
-        setDB((d) => ({ ...d, rules: { ...d.rules, ...patch } }))
+        const next = { ...db, rules: { ...db.rules, ...patch } }
+        setDB(next)
+        saveState(next)
       },
       addGame(game) {
-        setDB((d) => ({ ...d, games: [...d.games, { ...game, id: 'g-' + uid() }] }))
+        const saved = { ...game, id: 'g-' + uid() }
+        const next = { ...db, games: [...db.games, saved] }
+        setDB(next)
+        saveGame(saved)
       },
       updateGame(id, patch) {
-        setDB((d) => ({
-          ...d,
-          games: d.games.map((g) => (g.id === id ? { ...g, ...patch } : g)),
-        }))
+        const nextGames = db.games.map((g) => (g.id === id ? { ...g, ...patch } : g))
+        const next = { ...db, games: nextGames }
+        setDB(next)
+        const updated = nextGames.find((g) => g.id === id)
+        if (updated) updateGame(updated)
       },
       removeGame(id) {
-        setDB((d) => ({ ...d, games: d.games.filter((g) => g.id !== id) }))
+        const next = { ...db, games: db.games.filter((g) => g.id !== id) }
+        setDB(next)
+        deleteGame(id)
       },
       replaceDB(next) {
-        setDB(normalizeDB(next))
+        const normalized = normalizeDB(next)
+        setDB(normalized)
+        saveState(normalized)
       },
       setDraft(draft) {
-        setDB((d) => ({ ...d, draft }))
+        const next = { ...db, draft }
+        setDB(next)
+        saveState(next)
       },
       commitDraft(game) {
-        setDB((d) => ({
-          ...d,
-          games: [...d.games, { ...game, id: 'g-' + uid() }],
-          draft: null,
-        }))
+        const saved = { ...game, id: 'g-' + uid() }
+        const next = { ...db, games: [...db.games, saved], draft: null }
+        setDB(next)
+        saveGame(saved)
       },
     }),
-    [],
+    [db, deleteGame, saveGame, saveState, updateGame],
   )
 
   return (
@@ -101,10 +147,13 @@ export default function App() {
         <span className={`sync-badge sync-${mode}`}>{SYNC_LABEL[mode]}</span>
       </header>
 
+      <RoomView db={db} roomCode={roomCode} onJoined={joinRoom} onLeave={leaveRoom} />
+      {cloudError && roomCode && <p className="sync-error">{cloudError}</p>}
+
       {tab === 'record' && <RecordView db={db} api={api} onDone={() => setTab('history')} />}
       {tab === 'stats' && <StatsView db={db} />}
       {tab === 'history' && <HistoryView db={db} api={api} />}
-      {tab === 'settings' && <SettingsView db={db} api={api} />}
+      {tab === 'settings' && <SettingsView db={db} api={api} cloudRoom={roomCode !== null} />}
 
       <nav className="tabbar">
         {TABS.map((t) => (

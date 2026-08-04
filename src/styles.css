@@ -149,6 +149,53 @@ body {
   color: var(--ink-3);
   font-size: 12px;
 }
+.error-text {
+  color: var(--danger);
+  font-size: 13px;
+  margin: 10px 0 0;
+}
+.sync-error {
+  color: var(--danger);
+  font-size: 12px;
+  margin: 0;
+  padding: 4px 16px 8px;
+  background: var(--surface);
+}
+.room-card {
+  margin: 4px 16px 0;
+}
+.room-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.room-join-row {
+  flex: 1 1 260px;
+}
+.room-join-row input {
+  min-width: 0;
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+}
+.room-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 12px;
+}
+.room-label {
+  color: var(--ink-3);
+}
+.room-code {
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  font-weight: 700;
+}
 
 label.field {
   display: flex;
@@ -766,6 +813,21 @@ h3.sec {
   color: var(--ink-3);
   font-size: clamp(16px, 2.4vw, 28px);
   padding: 24px;
+  text-align: center;
+}
+.board-sync-error {
+  color: var(--warn);
+  font-size: 13px;
+  text-align: center;
+  padding: 8px 16px;
+}
+
+.board-live-label {
+  color: var(--accent);
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin: 18px auto 0;
+  max-width: 1100px;
   text-align: center;
 }
 .board-grid {

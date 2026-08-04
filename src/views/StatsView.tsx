@@ -15,6 +15,8 @@ function signed(x: number | null, digits = 1): string {
 export default function StatsView({ db }: { db: DB }) {
   const [period, setPeriod] = useState<StatsPeriod>('all')
   const today = todayStr()
+  const boardUrl = new URL(window.location.href)
+  boardUrl.searchParams.set('board', '1')
 
   // 今日だけのときは、今日の日付の対局に絞ってから集計する（集計ロジックはそのまま流用）。
   const stats = useMemo(() => {
@@ -35,7 +37,12 @@ export default function StatsView({ db }: { db: DB }) {
         </button>
       </div>
       <span className="spacer" />
-      <a className="btn" href="?board=1" target="_blank" rel="noopener noreferrer">
+      <a
+        className="btn"
+        href={`${boardUrl.pathname}${boardUrl.search}`}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
         合計スコアだけを表示 ↗
       </a>
     </div>

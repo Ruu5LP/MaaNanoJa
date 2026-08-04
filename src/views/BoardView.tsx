@@ -5,6 +5,7 @@
 // 記録した対局がある限りここにも自動的に反映される（LAN同期中なら他端末の入力も即映る）。
 import { useMemo, useState } from 'react'
 import { computeStats, filterGamesByPeriod, type StatsPeriod } from '../lib/stats'
+import { currentDraftPointsFromDB } from '../lib/draft-stats'
 import { todayStr } from '../lib/date'
 import { SYNC_LABEL, type SyncMode } from '../useLanSync'
 import type { DB } from '../lib/domain'
@@ -15,7 +16,15 @@ function signed(x: number, digits = 1): string {
   return `${x > 0 ? '+' : ''}${x.toFixed(digits)}`
 }
 
-export default function BoardView({ db, syncMode }: { db: DB; syncMode: SyncMode }) {
+export default function BoardView({
+  db,
+  syncMode,
+  syncError,
+}: {
+  db: DB
+  syncMode: SyncMode
+  syncError?: string | null
+}) {
   // モニターに映すのは基本「今日、今まさに戦っている順位」なので今日をデフォルトにする。
   // 過去分も含めた総合順位を映したい場合は全期間に切り替えられる。
   const [period, setPeriod] = useState<StatsPeriod>('today')
@@ -24,6 +33,7 @@ export default function BoardView({ db, syncMode }: { db: DB; syncMode: SyncMode
     const games = filterGamesByPeriod(db.games, period, today)
     return computeStats({ ...db, games })
   }, [db, period, today])
+  const draftPoints = useMemo(() => currentDraftPointsFromDB(db), [db])
 
   return (
     <div className="board-page">
@@ -46,8 +56,32 @@ export default function BoardView({ db, syncMode }: { db: DB; syncMode: SyncMode
           ⛶ 全画面
         </button>
       </div>
+      {syncError && <div className="board-sync-error">{syncError}</div>}
 
-      {stats.length === 0 ? (
+      {draftPoints ? (
+        <>
+          <div className="board-live-label">
+            進行中の半荘（{db.draft?.date || '日付なし'}）・現在点
+          </div>
+          <div className="board-grid">
+            {draftPoints.map((player, i) => (
+              <div
+                className="board-tile"
+                key={player.playerId}
+                style={{ borderColor: RANK_COLORS[i] ?? RANK_COLORS[3] }}
+              >
+                <div className="board-rank" style={{ color: RANK_COLORS[i] ?? RANK_COLORS[3] }}>
+                  {i + 1}位
+                </div>
+                <div className="board-name">{player.name}</div>
+                <div className={`board-score ${player.points >= 0 ? 'pos' : 'neg'}`}>
+                  {player.points.toLocaleString()}点
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : stats.length === 0 ? (
         <div className="board-empty">
           {period === 'today'
             ? '今日の対局はまだありません。'

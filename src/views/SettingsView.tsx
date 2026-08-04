@@ -3,7 +3,15 @@ import { exportJSON, emptyDB } from '../lib/store'
 import type { DB } from '../lib/domain'
 import type { Api } from '../App'
 
-export default function SettingsView({ db, api }: { db: DB; api: Api }) {
+export default function SettingsView({
+  db,
+  api,
+  cloudRoom = false,
+}: {
+  db: DB
+  api: Api
+  cloudRoom?: boolean
+}) {
   const [newName, setNewName] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
 
@@ -140,7 +148,12 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
           <button className="btn" onClick={download}>
             JSONで書き出し
           </button>
-          <button className="btn" onClick={() => fileRef.current?.click()}>
+          <button
+            className="btn"
+            disabled={cloudRoom}
+            title={cloudRoom ? '共有ルームでは履歴の一括置換に未対応です' : ''}
+            onClick={() => fileRef.current?.click()}
+          >
             JSONを読み込み
           </button>
           <input
@@ -152,12 +165,15 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
           />
         </div>
         <p className="muted" style={{ marginTop: 8 }}>
-          データはこの端末のブラウザ内（localStorage）にのみ保存されます。バックアップや別端末への移動は
-          書き出し／読み込みで。
+          {cloudRoom
+            ? '共有ルームでは対局履歴がクラウドに蓄積されます。JSONの一括読み込みは、クラウド履歴との整合性を保つため無効です。'
+            : 'データはこの端末のブラウザ内（localStorage）にのみ保存されます。バックアップや別端末への移動は書き出し／読み込みで。'}
         </p>
         <div className="row" style={{ marginTop: 12 }}>
           <button
             className="btn danger"
+            disabled={cloudRoom}
+            title={cloudRoom ? '共有ルームでは履歴の一括削除に未対応です' : ''}
             onClick={() => {
               if (
                 confirm(

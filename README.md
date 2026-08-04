@@ -1,8 +1,8 @@
 # 麻雀トラッカー（MaaNanoJa）
 
-月イチの家麻雀（4人打ち）のスコアと、放銃・和了・立直などの局データまで記録して分析する、**バックエンド不要・ブラウザ完結**のWebアプリ。
+月イチの家麻雀（4人打ち）のスコアと、放銃・和了・立直などの局データまで記録して分析するWebアプリ。通常はブラウザ完結で使え、Cloudflare公開モードではルームコードで4人の端末を共有できる。
 
-いつも使っている [namimori 氏の麻雀集計スプレッドシート](https://hirokuasaku-live.blogspot.com/2022/08/mahjong-spreadsheet-new.html) のスコア計算をそのまま再現したうえで、**局ごとの記録**を足して統計を出せるようにした。データはブラウザの localStorage に保存され、外部サーバーには一切送信しない。
+いつも使っている [namimori 氏の麻雀集計スプレッドシート](https://hirokuasaku-live.blogspot.com/2022/08/mahjong-spreadsheet-new.html) のスコア計算をそのまま再現したうえで、**局ごとの記録**を足して統計を出せるようにした。単独利用ではデータはブラウザの localStorage に保存され、外部サーバーには送信しない。
 
 当日は任意で「PCモニターに全員ぶんを映しつつ、入力はスマホ・PCどちらからでも」というLAN内完結の同期モードも使える。
 
@@ -32,6 +32,7 @@
 - **履歴**：半荘ごとの結果と局ログを閲覧・削除。
 - **設定**：メンバー・ルール（持ち点 / 返し点 / ウマ）の変更、JSONでの書き出し／読み込み。
 - **LAN同期（任意）**：同じWiFi内のPC・スマホから同じデータを見て・入力できる。詳しくは [SETUP.md](./SETUP.md) を参照。
+- **Cloudflare公開（任意）**：ルームコードだけで別WiFiのPC・スマホから同じデータを見て・入力できる。完了した半荘はD1へ蓄積され、進行中の現在点もモニターへ反映される。
 
 ## アーキテクチャ
 
@@ -74,7 +75,7 @@ flowchart TB
 - React 18 + Vite + **TypeScript（strict）**
 - テスト: Vitest / Lint: ESLint(flat) / 整形: Prettier（CIでゲート化）
 - 依存は最小限。UIライブラリ・状態管理ライブラリ・CSSフレームワークは使わない。LAN同期サーバも依存ゼロ（Node標準のみ）。
-- 外部サービス・クラウドなし。データは常にブラウザ内 or 同じWiFi内で完結する。
+- 単独利用は外部サービスなし。Cloudflare公開モードではWorker + D1へルーム単位で共有データを保存する。
 
 ## はじめる
 
@@ -84,6 +85,18 @@ npm run dev
 ```
 
 セットアップの詳細・使い方・LAN同期モードの手順は **[SETUP.md](./SETUP.md)** にまとめてある。
+
+## Cloudflareで公開する
+
+Cloudflare Workers + D1を使う公開モードの仕様と、無料枠での構成は
+[docs/cloudflare-public-spec.md](./docs/cloudflare-public-spec.md) を参照する。
+
+```bash
+npm run cf:db:local  # ローカルD1を初期化
+npm run cf:dev       # Worker + Vite成果物をローカル起動
+```
+
+本番公開にはCloudflareへのログイン、D1データベース作成、リモートmigration、`npm run cf:deploy` が必要。公開後はアプリで「新しいルームを作る」を押し、表示されたコードまたはURLを参加者へ共有する。
 
 ## ドキュメント
 

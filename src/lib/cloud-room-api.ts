@@ -1,0 +1,151 @@
+import {
+  toRoomState,
+  type RoomGamePayload,
+  type RoomSnapshot,
+  type RoomStatePayload,
+} from './cloud-room'
+import type { DB } from './domain'
+
+export class CloudRoomError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly snapshot?: RoomSnapshot,
+  ) {
+    super(message)
+  }
+}
+
+async function readResponse(response: Response): Promise<unknown> {
+  try {
+    return await response.json()
+  } catch {
+    return null
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isRoomSnapshot(value: unknown): value is RoomSnapshot {
+  if (!isRecord(value)) return false
+  const state = value.state
+  return (
+    typeof value.roomCode === 'string' &&
+    typeof value.revision === 'number' &&
+    Number.isInteger(value.revision) &&
+    isRecord(state) &&
+    Array.isArray(state.players) &&
+    isRecord(state.rules) &&
+    (state.draft === null || isRecord(state.draft)) &&
+    Array.isArray(value.games)
+  )
+}
+
+function errorMessage(payload: unknown, fallback: string): string {
+  return isRecord(payload) && typeof payload.error === 'string' ? payload.error : fallback
+}
+
+async function request(path: string, init?: RequestInit): Promise<unknown> {
+  let response: Response
+  try {
+    response = await fetch(path, { ...init, cache: 'no-store' })
+  } catch {
+    throw new CloudRoomError('クラウドに接続できません', 0)
+  }
+  const payload = await readResponse(response)
+  if (!response.ok) {
+    const snapshot =
+      isRecord(payload) && isRoomSnapshot(payload.snapshot) ? payload.snapshot : undefined
+    throw new CloudRoomError(
+      errorMessage(payload, `クラウドAPIエラー (${response.status})`),
+      response.status,
+      snapshot,
+    )
+  }
+  return payload
+}
+
+export async function createRoom(db: DB): Promise<{ roomCode: string; revision: number }> {
+  const payload = await request('/api/rooms', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ state: toRoomState(db) }),
+  })
+  if (
+    !isRecord(payload) ||
+    typeof payload.roomCode !== 'string' ||
+    typeof payload.revision !== 'number'
+  ) {
+    throw new CloudRoomError('ルーム作成の応答が不正です', 502)
+  }
+  return { roomCode: payload.roomCode, revision: payload.revision }
+}
+
+export async function fetchRoom(roomCode: string): Promise<RoomSnapshot> {
+  const payload = await request(`/api/rooms/${encodeURIComponent(roomCode)}`)
+  if (!isRoomSnapshot(payload)) throw new CloudRoomError('ルーム取得の応答が不正です', 502)
+  return payload
+}
+
+export async function updateRoomState(
+  roomCode: string,
+  payload: RoomStatePayload,
+): Promise<number> {
+  const response = await request(`/api/rooms/${encodeURIComponent(roomCode)}/state`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!isRecord(response) || typeof response.revision !== 'number') {
+    throw new CloudRoomError('ルーム更新の応答が不正です', 502)
+  }
+  return response.revision
+}
+
+export async function addRoomGame(roomCode: string, payload: RoomGamePayload): Promise<number> {
+  const response = await request(`/api/rooms/${encodeURIComponent(roomCode)}/games`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (!isRecord(response) || typeof response.revision !== 'number') {
+    throw new CloudRoomError('ゲーム保存の応答が不正です', 502)
+  }
+  return response.revision
+}
+
+export async function deleteRoomGame(
+  roomCode: string,
+  gameId: string,
+  revision: number,
+): Promise<number> {
+  const response = await request(
+    `/api/rooms/${encodeURIComponent(roomCode)}/games/${encodeURIComponent(gameId)}`,
+    {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ revision }),
+    },
+  )
+  if (!isRecord(response) || typeof response.revision !== 'number') {
+    throw new CloudRoomError('ゲーム削除の応答が不正です', 502)
+  }
+  return response.revision
+}
+
+export async function updateRoomGame(roomCode: string, payload: RoomGamePayload): Promise<number> {
+  const response = await request(
+    `/api/rooms/${encodeURIComponent(roomCode)}/games/${encodeURIComponent(payload.game.id)}`,
+    {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    },
+  )
+  if (!isRecord(response) || typeof response.revision !== 'number') {
+    throw new CloudRoomError('ゲーム更新の応答が不正です', 502)
+  }
+  return response.revision
+}

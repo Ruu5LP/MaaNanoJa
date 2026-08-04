@@ -12,8 +12,8 @@ import { useEffect, useRef, useState } from 'react'
 import type { DB } from './lib/domain'
 import { fetchSnapshot, pushDB, shouldAdopt, isServerEmpty } from './lib/remote'
 
-/** 'local' = サーバなし（この端末だけ） / 'connecting' = 接続確認中 / 'sync' = LAN同期中 */
-export type SyncMode = 'local' | 'connecting' | 'sync'
+/** 'local' = 単独 / 'connecting' = 接続確認中 / 'sync' = LAN / 'cloud' = クラウド */
+export type SyncMode = 'local' | 'connecting' | 'sync' | 'cloud'
 
 /** 同期状態の表示ラベル。App/BoardView の両方で使う。
  *  App.tsx に置くと react-refresh/only-export-components（コンポーネント以外の
@@ -22,12 +22,13 @@ export const SYNC_LABEL: Record<SyncMode, string> = {
   local: '📴 この端末だけ',
   connecting: '⏳ 接続確認中…',
   sync: '📶 LAN同期中',
+  cloud: '☁️ クラウド同期中',
 }
 
 const POLL_MS = 1000
 
-export function useLanSync(db: DB, setDB: (next: DB) => void): { mode: SyncMode } {
-  const [mode, setMode] = useState<SyncMode>('connecting')
+export function useLanSync(db: DB, setDB: (next: DB) => void, enabled = true): { mode: SyncMode } {
+  const [mode, setMode] = useState<SyncMode>(enabled ? 'connecting' : 'local')
 
   // 最後にサーバと一致させた版数と、その中身(JSON)。ref で保持し、エコー送信を防ぐ。
   const syncedRev = useRef(0)
@@ -36,6 +37,11 @@ export function useLanSync(db: DB, setDB: (next: DB) => void): { mode: SyncMode 
 
   // 起動時: サーバの有無を確認し、あれば初期同期する。
   useEffect(() => {
+    if (!enabled) {
+      started.current = false
+      setMode('local')
+      return
+    }
     if (started.current) return // StrictMode等の二重実行を防ぐ
     started.current = true
 
@@ -67,10 +73,11 @@ export function useLanSync(db: DB, setDB: (next: DB) => void): { mode: SyncMode 
     }
     // 起動時に一度だけ実行する（db/setDB の最新は ref/クロージャで足りる）。
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [enabled])
 
   // 受信: 一定間隔でサーバを見に行き、別端末の変更を取り込む。
   useEffect(() => {
+    if (!enabled) return
     if (mode !== 'sync') return
     let alive = true
     const timer = setInterval(async () => {
@@ -86,10 +93,11 @@ export function useLanSync(db: DB, setDB: (next: DB) => void): { mode: SyncMode 
       alive = false
       clearInterval(timer)
     }
-  }, [mode, setDB])
+  }, [enabled, mode, setDB])
 
   // 送信: この端末で db が変わったら（＝採用ぶんでなければ）サーバへ保存する。
   useEffect(() => {
+    if (!enabled) return
     if (mode !== 'sync') return
     const json = JSON.stringify(db)
     if (json === syncedJson.current) return // サーバ由来の変更 or 変化なし → 送らない
@@ -103,7 +111,7 @@ export function useLanSync(db: DB, setDB: (next: DB) => void): { mode: SyncMode 
     return () => {
       alive = false
     }
-  }, [db, mode])
+  }, [db, enabled, mode])
 
   return { mode }
 }

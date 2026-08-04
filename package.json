@@ -7,6 +7,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "cf:types": "wrangler types",
+    "cf:dev": "npm run build && wrangler dev",
+    "cf:db:local": "wrangler d1 migrations apply maananaja --local",
+    "cf:db:remote": "wrangler d1 migrations apply maananaja --remote",
+    "cf:deploy": "npm run build && wrangler deploy",
     "preview": "vite preview",
     "serve": "node server/server.mjs",
     "host": "npm run build && node server/server.mjs",
@@ -35,6 +40,7 @@
     "typescript": "^5.6.3",
     "typescript-eslint": "^8.16.0",
     "vite": "^5.4.11",
-    "vitest": "^2.1.6"
+    "vitest": "^2.1.6",
+    "wrangler": "^4.118.0"
   }
 }

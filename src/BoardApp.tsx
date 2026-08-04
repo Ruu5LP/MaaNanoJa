@@ -6,15 +6,22 @@ import { useEffect, useState } from 'react'
 import { loadDB, saveDB } from './lib/store'
 import type { DB } from './lib/domain'
 import { useLanSync } from './useLanSync'
+import { useRoomSync } from './useRoomSync'
+import { normalizeRoomCode, ROOM_QUERY_KEY } from './lib/cloud-room'
 import BoardView from './views/BoardView'
 
 export default function BoardApp() {
   const [db, setDB] = useState<DB>(() => loadDB())
-  const { mode } = useLanSync(db, setDB)
+  const roomCode = normalizeRoomCode(
+    new URLSearchParams(window.location.search).get(ROOM_QUERY_KEY),
+  )
+  const { mode: lanMode } = useLanSync(db, setDB, roomCode === null)
+  const { mode: cloudMode, error } = useRoomSync(roomCode, setDB)
+  const mode = roomCode ? cloudMode : lanMode
 
   useEffect(() => {
     saveDB(db)
   }, [db])
 
-  return <BoardView db={db} syncMode={mode} />
+  return <BoardView db={db} syncMode={mode} syncError={error} />
 }
