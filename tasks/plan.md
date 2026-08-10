@@ -64,7 +64,7 @@ Wrangler deployment + docs/manual QA
 - [x] `npm run check` 成功
 - [x] `npm run build` 成功
 - [x] `npx wrangler dev` でAPIの手動確認成功
-- [ ] `npx wrangler deploy` 後にworkers.devで同じ確認成功
+- [x] `npx wrangler deploy` 後にworkers.devで同じ確認成功
 
 ## Risks and Mitigations
 

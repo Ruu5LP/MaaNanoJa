@@ -15,6 +15,7 @@
     {
       "binding": "DB",
       "database_name": "maananaja",
+      "database_id": "7d464578-c801-4c19-8c34-1c1b3efbc4f0",
       "migrations_dir": "./migrations",
     },
   ],
