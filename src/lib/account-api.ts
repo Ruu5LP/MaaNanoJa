@@ -12,7 +12,7 @@ async function readResponse(response: Response): Promise<unknown> {
 async function request(path: string): Promise<unknown> {
   let response: Response
   try {
-    response = await fetch(path, { cache: 'no-store' })
+    response = await fetch(path, { cache: 'no-store', credentials: 'same-origin' })
   } catch {
     throw new CloudRoomError('アカウント情報を取得できません', 0)
   }

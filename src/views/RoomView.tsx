@@ -2,12 +2,7 @@ import { useMemo, useState } from 'react'
 import { createRoom, fetchRoom, CloudRoomError } from '../lib/cloud-room-api'
 import { normalizeRoomCode } from '../lib/cloud-room'
 import type { DB } from '../lib/domain'
-import {
-  ACCESS_LOGIN_PATH,
-  ACCESS_LOGOUT_PATH,
-  type AccountRoom,
-  type AccountState,
-} from '../lib/account'
+import { GOOGLE_LOGIN_PATH, LOGOUT_PATH, type AccountRoom, type AccountState } from '../lib/account'
 
 interface RoomViewProps {
   db: DB
@@ -44,6 +39,10 @@ export default function RoomView({
     url.searchParams.delete('board')
     return url.toString()
   }, [roomCode])
+  const loginUrl = useMemo(() => {
+    const current = `${window.location.pathname}${window.location.search}`
+    return `${GOOGLE_LOGIN_PATH}?returnTo=${encodeURIComponent(current)}`
+  }, [])
 
   const creationDB = legacyDB ?? db
 
@@ -100,6 +99,15 @@ export default function RoomView({
         <button className="btn sm ghost" onClick={onLeave}>
           ルーム選択に戻る
         </button>
+        {account?.user ? (
+          <a className="btn sm ghost" href={LOGOUT_PATH}>
+            ログアウト
+          </a>
+        ) : account?.loginEnabled ? (
+          <a className="btn sm primary" href={loginUrl}>
+            Googleでログイン
+          </a>
+        ) : null}
       </div>
     )
   }
@@ -113,21 +121,21 @@ export default function RoomView({
               <h2>アカウント</h2>
               {account.user ? (
                 <p className="muted">{account.user.email} でログイン中</p>
-              ) : account.accessEnabled ? (
+              ) : account.loginEnabled ? (
                 <p className="muted">
                   Googleアカウントでログインすると、作成したルームを保存できます。
                 </p>
               ) : (
-                <p className="muted">GoogleログインはCloudflare側の設定後に利用できます。</p>
+                <p className="muted">Googleログインの設定がまだ完了していません。</p>
               )}
             </div>
             <span className="spacer" />
             {account.user ? (
-              <a className="btn ghost" href={ACCESS_LOGOUT_PATH}>
+              <a className="btn ghost" href={LOGOUT_PATH}>
                 ログアウト
               </a>
-            ) : account.accessEnabled ? (
-              <a className="btn primary" href={ACCESS_LOGIN_PATH}>
+            ) : account.loginEnabled ? (
+              <a className="btn primary" href={loginUrl}>
                 Googleでログイン
               </a>
             ) : null}

@@ -51,7 +51,7 @@ function errorMessage(payload: unknown, fallback: string): string {
 async function request(path: string, init?: RequestInit): Promise<unknown> {
   let response: Response
   try {
-    response = await fetch(path, { ...init, cache: 'no-store' })
+    response = await fetch(path, { ...init, cache: 'no-store', credentials: 'same-origin' })
   } catch {
     throw new CloudRoomError('クラウドに接続できません', 0)
   }

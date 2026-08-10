@@ -1,5 +1,5 @@
-export const ACCESS_LOGIN_PATH = '/cdn-cgi/access/login'
-export const ACCESS_LOGOUT_PATH = '/cdn-cgi/access/logout'
+export const GOOGLE_LOGIN_PATH = '/auth/google'
+export const LOGOUT_PATH = '/auth/logout'
 
 export interface AccountUser {
   id: string
@@ -16,7 +16,7 @@ export interface AccountRoom {
 }
 
 export interface AccountState {
-  accessEnabled: boolean
+  loginEnabled: boolean
   authenticated: boolean
   user: AccountUser | null
 }
@@ -35,7 +35,7 @@ export function isAccountState(value: unknown): value is AccountState {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
   const record = value as Record<string, unknown>
   return (
-    typeof record.accessEnabled === 'boolean' &&
+    typeof record.loginEnabled === 'boolean' &&
     typeof record.authenticated === 'boolean' &&
     (record.user === null || isAccountUser(record.user))
   )

@@ -91,9 +91,9 @@
 ## Googleアカウントとルーム所有
 
 - [x] Task 15: D1へユーザー・所有者・参加者モデルを追加
-  - Acceptance: Access identityから初回ユーザーを作成し、作成ルームがownerとして一覧に出る
+  - Acceptance: Google UserInfoのsubから初回ユーザーを作成し、作成ルームがownerとして一覧に出る
   - Verify: ローカルmigration、`npm run check`, `npm run build`
-  - Files: `migrations/0002_accounts.sql`, `worker/index.ts`, `src/lib/account.ts`, `src/lib/account-api.ts`
+  - Files: `migrations/0002_accounts.sql`, `migrations/0003_google_auth.sql`, `worker/index.ts`, `src/lib/account.ts`, `src/lib/account-api.ts`
   - Dependencies: Task 13
 
 - [x] Task 16: Googleログイン導線と自分のルーム一覧を追加
@@ -102,8 +102,8 @@
   - Files: `src/App.tsx`, `src/views/RoomView.tsx`, `src/styles.css`
   - Dependencies: Task 15
 
-- [ ] Task 17: Cloudflare AccessのGoogle設定と本番手動確認
+- [ ] Task 17: Google OAuth設定と本番手動確認
   - Acceptance: Googleログイン、初回アカウント作成、ルーム所有、再ログイン後の一覧復元がworkers.devで成功する
-  - Verify: Cloudflare Access設定、Google OAuth callback、`/api/me`, `/api/my/rooms`、ルーム作成・再入室
+  - Verify: Google OAuth Secret登録、OAuth callback、`/api/me`, `/api/my/rooms`、ルーム作成・再入室
   - Files: `docs/account-auth-spec.md`, `SETUP.md`, `README.md`
   - Dependencies: Task 16

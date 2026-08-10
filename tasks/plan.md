@@ -116,12 +116,12 @@ Wrangler deployment + docs/manual QA
 
 ## Phase 6: Googleアカウントとルーム所有
 
-Cloudflare AccessのGoogleログインを認証基盤にし、MaaNanoJaはユーザーとルームの所有・参加関係だけをD1で管理する。Access未設定のデプロイでは既存room code運用を壊さず、Access有効化後に認証済みルートへ切り替わる。
+Google OAuthをWorker内で処理し、MaaNanoJaはユーザーとルームの所有・参加関係だけをD1で管理する。Google Secret未設定のデプロイでは既存room code運用を壊さず、Secret登録後に認証済みルートへ切り替わる。
 
 ### Task 15: アカウント・ルーム所有モデル
 
 - [x] `users`、`rooms.owner_user_id`、`room_members`のD1 migrationを追加する
-- [x] `ctx.access.getIdentity()`から初回ログイン時にユーザーを自動作成する
+- [x] Google UserInfoの`sub`から初回ログイン時にユーザーを自動作成する
 - [x] `GET /api/me` と `GET /api/my/rooms` を追加する
 - [x] 認証済みで作成したルームをownerとして保存する
 
@@ -131,10 +131,10 @@ Cloudflare AccessのGoogleログインを認証基盤にし、MaaNanoJaはユー
 - [x] ログイン済みユーザーの所有・参加ルームを一覧表示する
 - [x] ルームコード参加時に認証済みユーザーをmemberとして記録する
 
-### Task 17: Access設定と本番確認
+### Task 17: Google OAuth設定と本番確認
 
-- [ ] Google OAuthクライアントを作成し、Cloudflare AccessのGoogle IdPを設定する
-- [ ] WorkerをAccess applicationで保護する
+- [ ] Google OAuthクライアントを作成し、Client ID/SecretをWorker Secretへ登録する
+- [ ] OAuth callback、セッションCookie、ログアウトを確認する
 - [ ] 初回ログイン、ルーム作成、ログアウト、再ログイン後のルーム一覧を確認する
 
 ### Checkpoint: Account Complete

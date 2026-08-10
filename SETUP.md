@@ -45,7 +45,17 @@ npm run check        # typecheck + lint + format:check + test
 
 ## Googleログインとアカウント
 
-Googleログインを有効にする場合は、Cloudflare AccessにGoogleをIdentity Providerとして追加し、公開WorkerをAccess applicationで保護します。Google Cloud ConsoleのOAuthリダイレクトURIには、Accessの画面に表示される`https://<team-name>.cloudflareaccess.com/cdn-cgi/access/callback`を登録してください。
+GoogleログインはCloudflare Worker内のOAuth callbackで処理します。Cloudflare Zero Trustの契約やカード登録は必要ありません。Google Cloud ConsoleでWebアプリケーションのOAuthクライアントを作成し、次を登録してください。
+
+- 承認済みのJavaScript生成元: `https://maananaja.final0505.workers.dev`
+- 承認済みのリダイレクトURI: `https://maananaja.final0505.workers.dev/auth/google/callback`
+
+Client IDとSecretは、次のコマンドでCloudflare Worker Secretへ登録します。値はGitへ保存しないでください。
+
+```bash
+printf '%s' '<client-id>' | npx wrangler secret put GOOGLE_CLIENT_ID
+printf '%s' '<client-secret>' | npx wrangler secret put GOOGLE_CLIENT_SECRET
+```
 
 ログインすると初回アクセス時にMaaNanoJaアカウントが自動作成され、作成したルームの所有者になります。共有されたルームコードで参加したルームは、そのアカウントの「自分のルーム」に表示されます。詳細は[アカウント・Googleログイン仕様](docs/account-auth-spec.md)を参照してください。
 

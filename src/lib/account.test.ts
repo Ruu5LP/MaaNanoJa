@@ -5,14 +5,14 @@ describe('account helpers', () => {
   it('validates the authenticated account response', () => {
     expect(
       isAccountState({
-        accessEnabled: true,
+        loginEnabled: true,
         authenticated: true,
         user: { id: 'u-1', email: 'user@example.com', displayName: 'User' },
       }),
     ).toBe(true)
-    expect(isAccountState({ accessEnabled: false, authenticated: false, user: null })).toBe(true)
-    expect(isAccountState({ accessEnabled: true, authenticated: true, user: null })).toBe(true)
-    expect(isAccountState({ accessEnabled: true, authenticated: 'yes', user: null })).toBe(false)
+    expect(isAccountState({ loginEnabled: false, authenticated: false, user: null })).toBe(true)
+    expect(isAccountState({ loginEnabled: true, authenticated: true, user: null })).toBe(true)
+    expect(isAccountState({ loginEnabled: true, authenticated: 'yes', user: null })).toBe(false)
   })
 
   it('validates room list entries', () => {
