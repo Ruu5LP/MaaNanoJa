@@ -49,7 +49,7 @@ function draftToGame(
 
 export default function RecordView({ db, api, onDone }: { db: DB; api: Api; onDone: () => void }) {
   // 進行中の半荘は DB に持たせて全端末で共有する（`db.draft`）。
-  // どの端末からでも同じ対局に入力でき、席・局ログ・持ち点はLAN同期で自動的に揃う。
+  // どの端末からでも同じ対局に入力でき、席・局ログ・持ち点はCloudflare同期で自動的に揃う。
   // 誰かが「新しい半荘」を始めると全端末がその入力画面になり、保存すると全端末が新規フォームに戻る。
   const draft = db.draft
   const start = (d: Draft) => api.setDraft(d)

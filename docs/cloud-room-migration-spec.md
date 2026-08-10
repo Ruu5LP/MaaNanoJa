@@ -1,5 +1,7 @@
 # Spec: Cloud Room Local History Migration
 
+> この仕様はCloudflare-first化の移行期間に使う。最終状態ではlocalStorageを通常保存先として使わず、旧履歴の一度限りの移行経路だけを残す。
+
 ## Objective
 
 既存ブラウザの localStorage に保存されている完了済み対局を、Cloudflare の新規ルーム作成時に明示的な操作で移行できるようにする。家麻雀の過去履歴を共有ルームでも継続して閲覧・集計できることが目的。
@@ -10,7 +12,7 @@
 - 「履歴を移行して作る」では、プレイヤー・ルール・draftと完了済みgamesを新規ルームへ登録する。
 - 「空のルームを作る」では、gamesを送らず、既存の新規ルーム作成と同じ動作にする。
 - 既存ルームへ参加するときは、ローカル履歴を自動送信しない。
-- 移行後もブラウザのlocalStorageデータは削除しない。
+- 移行が成功したら、旧localStorageのデータは通常のアプリ状態から切り離し、移行済みの旧キーを削除する。
 
 ## API contract
 
@@ -59,11 +61,11 @@ createRoom(db, { migrateGames: true })
 
 ## Boundaries
 
-- Always: ゲームID・日付・JSONサイズをWorker側でも検証し、localStorageを削除しない。
+- Always: ゲームID・日付・JSONサイズをWorker側でも検証する。
 - Always: ルーム作成とゲーム登録を同一処理で扱い、途中状態のルームを作らない。
 - Ask first: 既存gamesの削除・上書き、既存ルームへの自動移行、認証や権限モデルの追加。
 - Never: 既存ルーム参加時にユーザー確認なしでローカルデータをアップロードしない。
-- Never: 移行成功後にlocalStorageの履歴を自動削除しない。
+- Never: ユーザーの明示操作なしに旧localStorageを読み込んだり削除したりしない。
 
 ## Success Criteria
 
@@ -71,8 +73,8 @@ createRoom(db, { migrateGames: true })
 - 「空のルームを作る」を選ぶと、新規ルームのgamesは0件になる。
 - 既存ルームへの参加では、ローカルgamesがAPIへ送信されない。
 - ページ再読み込み後も移行済みgamesが残る。
-- 移行後にlocalStorageのJSONバックアップが削除されない。
-- 既存のlocal/LAN/cloud同期と全テストが壊れない。
+- 移行成功後はCloudflareルームの履歴・成績が通常の表示元になり、旧localStorageを使わない。
+- 既存のCloudflare同期と全テストが壊れない。
 
 ## Open Questions
 

@@ -2,7 +2,7 @@
 
 ## Overview
 
-既存のReact/ViteアプリをCloudflare Workersへ載せ、ルームコード単位でD1に共有状態と対局履歴を保存する。既存のLAN同期は残し、room queryがある場合だけクラウド同期を有効にする。モニター表示は進行中draftを再生して現在点を表示する。
+既存のReact/ViteアプリをCloudflare Workersへ載せ、ルームコード単位でD1に共有状態と対局履歴を保存する。Cloudflareを唯一の正式保存先とし、モニター表示は進行中draftを再生して現在点を表示する。過去のLAN・ローカル運用に関する初期タスクは履歴として残す。
 
 ## Architecture Decisions
 
@@ -10,7 +10,7 @@
 - **roomsとgamesを分離:** 進行中状態の更新と完了済み履歴の蓄積を分離し、履歴が増えても1行JSONのサイズに依存しない。
 - **ルームコードをcapability keyとして使う:** MVPではログインを導入せず、コードを知る人だけがアクセスできる。コード漏洩時の権限分離は対象外。
 - **ポーリングを維持:** 現在の1秒ポーリングをクラウドAPIへ向ける。WebSocketは必要性が確認されてから追加する。
-- **既存LANモードを保持:** room queryのないローカル利用は従来のlocalStorage/LAN同期へフォールバックする。
+- **Cloudflare-first:** room queryのない経路はルーム作成・参加導線に限定し、接続失敗時もローカルへフォールバックしない。
 - **既存DB型をクライアント契約として維持:** Worker内部でD1の行を組み立て、UIとスコア計算の変更を最小化する。
 
 ## Dependency Graph
@@ -80,7 +80,7 @@ Wrangler deployment + docs/manual QA
 
 - [x] ローカルgamesがあるときだけ、履歴移行作成と空ルーム作成を選択できる
 - [x] 既存ルーム参加時はローカルgamesを送信しない
-- [x] 移行後もlocalStorageを削除しない
+- [x] 移行成功後は旧localStorageを通常利用せず、旧キーを片付ける
 
 ### Task 10: ドキュメントと手動確認を更新
 
@@ -96,14 +96,14 @@ Wrangler deployment + docs/manual QA
 
 ## Risks and Mitigations
 
-| Risk                                  | Impact | Mitigation                                                                       |
-| ------------------------------------- | ------ | -------------------------------------------------------------------------------- |
-| 同時書き込みで片方の更新が消える      | High   | revision条件更新をAPIとテストで強制し、409をUIに表示する                         |
-| room code漏洩で他人が閲覧・編集できる | High   | 推測困難なコードを生成し、MVPの制約として明記する。将来PIN/認証を追加可能にする  |
-| draftの再生とboard表示がずれる        | High   | `draftPoints`を純粋関数化し、既存`replay`を使ってテストする                      |
-| D1への1秒ポーリングが増える           | Medium | まず小規模利用を対象とし、利用量を確認。必要なら間隔・条件付き取得を調整する     |
-| 既存LAN利用を壊す                     | Medium | room queryがない経路を残し、既存テストと手動確認を通す                           |
-| localStorageデータ移行が曖昧になる    | Medium | 既存履歴の一括アップロードは別途確認を取る。新規ルーム作成後の記録はD1へ保存する |
+| Risk                                  | Impact | Mitigation                                                                      |
+| ------------------------------------- | ------ | ------------------------------------------------------------------------------- |
+| 同時書き込みで片方の更新が消える      | High   | revision条件更新をAPIとテストで強制し、409をUIに表示する                        |
+| room code漏洩で他人が閲覧・編集できる | High   | 推測困難なコードを生成し、MVPの制約として明記する。将来PIN/認証を追加可能にする |
+| draftの再生とboard表示がずれる        | High   | `draftPoints`を純粋関数化し、既存`replay`を使ってテストする                     |
+| D1への1秒ポーリングが増える           | Medium | まず小規模利用を対象とし、利用量を確認。必要なら間隔・条件付き取得を調整する    |
+| Cloudflare接続失敗時の利用不能        | Medium | エラーと再接続を表示し、保存先を曖昧にしない                                    |
+| localStorageデータ移行が曖昧になる    | Medium | 明示的な新規ルーム作成時だけ移行し、成功後は旧キーを片付ける                    |
 
 ## Verification Checkpoints
 
@@ -112,4 +112,40 @@ Wrangler deployment + docs/manual QA
 ## Open Questions
 
 - MVPはworkers.dev公開で開始する。
-- 既存localStorageを新規ルームへ取り込む初回seed UIは、共有データの一括送信になるため別途確認して追加する。
+- 既存localStorageの移行は移行期間のlegacy経路として残し、通常の保存機能には戻さない。
+
+## Phase 5: Cloudflare-first化
+
+Cloudflare D1を唯一の正式保存先にし、localStorageとLAN同期を通常運用から外す。既存localStorageの移行は移行期間だけのlegacy経路として残す。
+
+### Task 11: Cloudflare専用ランタイムへ切り替え
+
+- [x] localStorageの通常ロード・保存を停止し、D1同期だけでApp/BoardAppを起動する
+- [x] room queryなしではルーム作成・参加導線だけを表示する
+- [x] Cloudflare接続失敗時にlocal/LANへフォールバックしない
+
+### Task 12: 旧localStorage移行を一時境界へ分離
+
+- [x] 旧localStorageを読む処理を通常状態管理から分離する
+- [x] 移行を明示操作に限定し、成功後の通常画面はD1状態だけを使う
+- [x] JSON exportをCloudflareルームのバックアップとして維持する
+
+### Task 13: LAN・ローカル運用コードを削除
+
+- [x] `useLanSync`、LAN API境界、LANサーバ、関連スクリプトを削除する
+- [x] README、SETUP、CLAUDE、公開仕様からローカル/LAN運用を削除する
+- [x] 不要になったLANテストとlocalStorage通常保存テストを整理する
+
+### Task 14: Cloudflare-only本番確認
+
+- [ ] ルーム作成、参加、リロード、再接続、board表示をworkers.devで確認する
+- [ ] 旧localStorage履歴の移行を確認する
+- [ ] Cloudflare停止時にローカルへ誤フォールバックしないことを確認する
+
+### Checkpoint: Cloudflare-first Complete
+
+- [x] `npm run check` 成功
+- [x] `npm run build` 成功
+- [ ] LANサーバなしで公開URLが動作する
+- [ ] localStorageなしでルームの記録・履歴・成績が復元される
+- [ ] workers.devで手動確認完了

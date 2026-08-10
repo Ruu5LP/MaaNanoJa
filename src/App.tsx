@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
-import { loadDB, saveDB, normalizeDB, uid } from './lib/store'
+import { useMemo, useState } from 'react'
+import { emptyDB, uid } from './lib/store'
+import { clearLegacyLocalDB, readLegacyLocalDB } from './lib/legacy-local-data'
 import type { DB, Draft, Game } from './lib/domain'
-import { useLanSync, SYNC_LABEL } from './useLanSync'
+import { SYNC_LABEL, useRoomSync } from './useRoomSync'
 import RecordView from './views/RecordView'
 import HistoryView from './views/HistoryView'
 import StatsView from './views/StatsView'
 import SettingsView from './views/SettingsView'
 import RoomView from './views/RoomView'
 import { normalizeRoomCode, ROOM_QUERY_KEY } from './lib/cloud-room'
-import { useRoomSync } from './useRoomSync'
 
 /** 画面から呼ぶ、DBを更新するアクション群。状態更新はここに集約する。 */
 export interface Api {
@@ -19,7 +19,6 @@ export interface Api {
   addGame(game: Omit<Game, 'id'>): void
   updateGame(id: string, patch: Partial<Game>): void
   removeGame(id: string): void
-  replaceDB(next: unknown): void
   /** 進行中の半荘を設定/更新する（null で破棄）。全端末で共有される。 */
   setDraft(draft: Draft | null): void
   /** 進行中の半荘を確定保存する（games に追加し、draft を null に戻す）。 */
@@ -36,15 +35,13 @@ const TABS: { id: TabId; label: string; ico: string }[] = [
 ]
 
 export default function App() {
-  const [db, setDB] = useState<DB>(() => loadDB())
+  const [db, setDB] = useState<DB>(() => emptyDB())
+  const [legacyDB, setLegacyDB] = useState<DB | null>(() => readLegacyLocalDB())
   const [tab, setTab] = useState<TabId>('record')
   const [roomCode, setRoomCode] = useState<string | null>(() =>
     normalizeRoomCode(new URLSearchParams(window.location.search).get(ROOM_QUERY_KEY)),
   )
 
-  // LAN同期（room queryが無いときだけ。サーバが居れば同期、居なければ何もしない）。
-  // 進行中の半荘(db.draft)も含めてDBまるごと同期されるので、対局中の画面は全端末で自動的に揃う。
-  const { mode: lanMode } = useLanSync(db, setDB, roomCode === null)
   const {
     mode: cloudMode,
     error: cloudError,
@@ -53,7 +50,6 @@ export default function App() {
     updateGame,
     deleteGame,
   } = useRoomSync(roomCode, setDB)
-  const mode = roomCode ? cloudMode : lanMode
 
   function joinRoom(code: string) {
     const url = new URL(window.location.href)
@@ -66,13 +62,9 @@ export default function App() {
     const url = new URL(window.location.href)
     url.searchParams.delete(ROOM_QUERY_KEY)
     window.history.replaceState({}, '', url)
+    setDB(emptyDB())
     setRoomCode(null)
   }
-
-  // localStorage への保存は端末ごとのバックアップとして常に行う。
-  useEffect(() => {
-    saveDB(db)
-  }, [db])
 
   const api = useMemo<Api>(
     () => ({
@@ -119,11 +111,6 @@ export default function App() {
         setDB(next)
         deleteGame(id)
       },
-      replaceDB(next) {
-        const normalized = normalizeDB(next)
-        setDB(normalized)
-        saveState(normalized)
-      },
       setDraft(draft) {
         const next = { ...db, draft }
         setDB(next)
@@ -144,25 +131,49 @@ export default function App() {
       <header className="app-header">
         <h1>麻雀トラッカー</h1>
         <span className="sub">AiRuu Mahjong</span>
-        <span className={`sync-badge sync-${mode}`}>{SYNC_LABEL[mode]}</span>
+        <span className={`sync-badge sync-${cloudMode}`}>{SYNC_LABEL[cloudMode]}</span>
       </header>
 
-      <RoomView db={db} roomCode={roomCode} onJoined={joinRoom} onLeave={leaveRoom} />
+      <RoomView
+        db={db}
+        legacyDB={legacyDB}
+        roomCode={roomCode}
+        onJoined={joinRoom}
+        onLeave={leaveRoom}
+        onLegacyMigrated={() => {
+          clearLegacyLocalDB()
+          setLegacyDB(null)
+        }}
+      />
       {cloudError && roomCode && <p className="sync-error">{cloudError}</p>}
 
-      {tab === 'record' && <RecordView db={db} api={api} onDone={() => setTab('history')} />}
-      {tab === 'stats' && <StatsView db={db} />}
-      {tab === 'history' && <HistoryView db={db} api={api} />}
-      {tab === 'settings' && <SettingsView db={db} api={api} cloudRoom={roomCode !== null} />}
+      {!roomCode ? null : cloudMode === 'cloud' ? (
+        <>
+          {tab === 'record' && <RecordView db={db} api={api} onDone={() => setTab('history')} />}
+          {tab === 'stats' && <StatsView db={db} />}
+          {tab === 'history' && <HistoryView db={db} api={api} />}
+          {tab === 'settings' && <SettingsView db={db} api={api} />}
 
-      <nav className="tabbar">
-        {TABS.map((t) => (
-          <button key={t.id} className={tab === t.id ? 'active' : ''} onClick={() => setTab(t.id)}>
-            <span className="ico">{t.ico}</span>
-            {t.label}
-          </button>
-        ))}
-      </nav>
+          <nav className="tabbar">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                className={tab === t.id ? 'active' : ''}
+                onClick={() => setTab(t.id)}
+              >
+                <span className="ico">{t.ico}</span>
+                {t.label}
+              </button>
+            ))}
+          </nav>
+        </>
+      ) : (
+        <div className="view">
+          <div className="card">
+            <p className="muted">共有ルームを読み込んでいます…</p>
+          </div>
+        </div>
+      )}
     </>
   )
 }

@@ -13,7 +13,7 @@
   - Dependencies: Task 1
 
 - [x] Task 3: App/BoardAppをroom query対応のクラウド同期へ接続
-  - Acceptance: room queryがある場合はWorker APIを1秒程度でポーリングし、無い場合は従来のlocalStorage/LANモードを使う。PC boardとスマホ入力が同じstateを表示する
+  - Acceptance: room queryがある場合はWorker APIを1秒程度でポーリングし、PC boardとスマホ入力が同じstateを表示する。旧local/LAN経路は後続のCloudflare-first化で廃止する
   - Verify: 2ブラウザ手動確認、同期判定テスト、`npm run check`
   - Files: `src/useRoomSync.ts`, `src/App.tsx`, `src/BoardApp.tsx`, `src/lib/remote.ts`, `src/main.tsx`
   - Dependencies: Task 1, Task 2
@@ -56,8 +56,34 @@
   - Files: `src/views/RoomView.tsx`, `src/lib/cloud-room-api.ts`
   - Dependencies: Task 8
 
-- [ ] Task 10: 移行仕様をドキュメント化し公開環境で確認
-  - Acceptance: 移行後もlocalStorageを削除しないことと、既存ルームへ自動送信しないことが文書化され、workers.devで確認できる
+- [x] Task 10: 移行仕様をドキュメント化し公開環境で確認
+  - Acceptance: 移行を明示操作に限定し、既存ルームへ自動送信しないことが文書化され、ローカルWorkerで確認できる
   - Verify: 新規移行・空ルーム・既存ルーム参加の手動確認、`npm run check`, `npm run build`
   - Files: `README.md`, `SETUP.md`, `docs/cloud-room-migration-spec.md`
   - Dependencies: Task 9
+
+## Cloudflare-first化
+
+- [x] Task 11: Cloudflare専用ランタイムへ切り替え
+  - Acceptance: room queryなしではルーム導線だけを表示し、App/BoardAppはD1同期だけで起動する。接続失敗時にlocal/LANへフォールバックしない
+  - Verify: `npm run check`, `npm run build`, 接続中/失敗/成功の手動確認
+  - Files: `src/App.tsx`, `src/BoardApp.tsx`, `src/views/RoomView.tsx`, `src/useRoomSync.ts`
+  - Dependencies: Task 10
+
+- [x] Task 12: 旧localStorage移行を一時境界へ分離
+  - Acceptance: 旧localStorageは明示した移行時だけ読み、通常状態管理では使わない。JSON exportは残る
+  - Verify: 移行テスト、`npm run check`, `npm run build`
+  - Files: `src/lib/store.ts`, `src/lib/legacy-local-data.ts`, `src/views/RoomView.tsx`, `src/views/SettingsView.tsx`
+  - Dependencies: Task 11
+
+- [x] Task 13: LAN・ローカル運用コードを削除
+  - Acceptance: `useLanSync`、LANサーバ、LAN API、関連ドキュメント・スクリプトがなく、Cloudflare公開URLだけで動く
+  - Verify: `npm run check`, `npm run build`, LANサーバなしの静的確認
+  - Files: `src/useLanSync.ts`, `src/lib/remote.ts`, `server/server.mjs`, `package.json`, docs
+  - Dependencies: Task 12
+
+- [ ] Task 14: Cloudflare-only本番確認
+  - Acceptance: ルーム作成・参加・リロード・board・再接続・旧履歴移行がworkers.devで成功する
+  - Verify: 本番手動確認、`npm run cf:deploy`
+  - Files: `tasks/plan.md`, `tasks/todo.md`
+  - Dependencies: Task 13

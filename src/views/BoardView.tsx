@@ -2,12 +2,12 @@
 // 誰かのPC/タブレットをテレビやモニターに繋いで、卓を囲む全員から見える大きさで
 // 「順位・名前・合計スコア」だけを映す。タブUIは持たず ?board=1 で単独ページとして開く
 // （main.tsx / BoardApp.tsx を参照）。値そのものは成績タブと同じ computeStats を使うので、
-// 記録した対局がある限りここにも自動的に反映される（LAN同期中なら他端末の入力も即映る）。
+// 記録した対局がある限りここにも自動的に反映される（クラウド同期中なら他端末の入力も即映る）。
 import { useMemo, useState } from 'react'
 import { computeStats, filterGamesByPeriod, type StatsPeriod } from '../lib/stats'
 import { currentDraftPointsFromDB } from '../lib/draft-stats'
 import { todayStr } from '../lib/date'
-import { SYNC_LABEL, type SyncMode } from '../useLanSync'
+import { SYNC_LABEL, type SyncMode } from '../useRoomSync'
 import type { DB } from '../lib/domain'
 
 const RANK_COLORS = ['var(--rank1)', 'var(--rank2)', 'var(--rank3)', 'var(--rank4)']

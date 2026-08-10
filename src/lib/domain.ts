@@ -152,7 +152,7 @@ export interface Draft {
   editingIndex?: number
 }
 
-/** DB全体（localStorageに保存する単位＝LAN同期の共有単位でもある） */
+/** DB全体（Cloudflareルームで共有する単位） */
 export interface DB {
   version: number
   players: Player[]

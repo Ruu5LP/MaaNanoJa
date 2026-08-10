@@ -1,6 +1,7 @@
-// localStorage への保存・読み込みと、初期データ。
+// DBの初期状態・正規化・JSON境界。Cloudflare-first化後の通常保存先はD1。
 import type { DB, Draft, Rules } from './domain'
 
+/** 旧localStorage移行でだけ参照するキー。通常のアプリ状態はD1に保存する。 */
 export const STORAGE_KEY = 'mahjong-tracker/v1'
 // v2: 進行中の半荘 draft を DB に持たせた（全端末共有）。旧データ(v1)は draft:null として読む。
 export const SCHEMA_VERSION = 2
@@ -25,21 +26,6 @@ export function emptyDB(): DB {
     games: [],
     draft: null,
   }
-}
-
-export function loadDB(): DB {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return emptyDB()
-    return normalizeDB(JSON.parse(raw))
-  } catch (e) {
-    console.warn('データの読み込みに失敗。空の状態から始めます。', e)
-    return emptyDB()
-  }
-}
-
-export function saveDB(db: DB): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(db))
 }
 
 /** 外部（保存済みJSON・import）から来た未知の形を、安全にDB型へ整える。 */

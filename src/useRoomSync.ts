@@ -10,7 +10,14 @@ import {
 import { toRoomState, type RoomSnapshot } from './lib/cloud-room'
 import type { DB, Game } from './lib/domain'
 import { normalizeDB, SCHEMA_VERSION } from './lib/store'
-import type { SyncMode } from './useLanSync'
+
+export type SyncMode = 'idle' | 'connecting' | 'cloud'
+
+export const SYNC_LABEL: Record<SyncMode, string> = {
+  idle: '☁️ ルーム未選択',
+  connecting: '☁️ 接続中…',
+  cloud: '☁️ クラウド同期中',
+}
 
 interface RoomSyncResult {
   mode: SyncMode
@@ -40,7 +47,7 @@ function syncErrorMessage(error: unknown): string {
 }
 
 export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void): RoomSyncResult {
-  const [mode, setMode] = useState<SyncMode>(roomCode ? 'connecting' : 'local')
+  const [mode, setMode] = useState<SyncMode>(roomCode ? 'connecting' : 'idle')
   const [error, setError] = useState<string | null>(null)
   const revisionRef = useRef(0)
   const readyRef = useRef(false)
@@ -60,7 +67,7 @@ export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void):
     setError(null)
 
     if (!roomCode) {
-      setMode('local')
+      setMode('idle')
       return () => {
         aliveRef.current = false
       }

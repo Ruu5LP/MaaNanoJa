@@ -1,19 +1,10 @@
-import { useRef, useState } from 'react'
-import { exportJSON, emptyDB } from '../lib/store'
+import { useState } from 'react'
+import { exportJSON } from '../lib/store'
 import type { DB } from '../lib/domain'
 import type { Api } from '../App'
 
-export default function SettingsView({
-  db,
-  api,
-  cloudRoom = false,
-}: {
-  db: DB
-  api: Api
-  cloudRoom?: boolean
-}) {
+export default function SettingsView({ db, api }: { db: DB; api: Api }) {
   const [newName, setNewName] = useState('')
-  const fileRef = useRef<HTMLInputElement>(null)
 
   function download() {
     const blob = new Blob([exportJSON(db)], { type: 'application/json' })
@@ -23,25 +14,6 @@ export default function SettingsView({
     a.download = `mahjong-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
-  }
-
-  function onImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const input = e.target
-    const reader = new FileReader()
-    reader.onload = () => {
-      try {
-        const next = JSON.parse(String(reader.result))
-        if (confirm('現在のデータを読み込んだ内容で置き換えます。よろしいですか？')) {
-          api.replaceDB(next)
-        }
-      } catch {
-        alert('JSONの読み込みに失敗しました。')
-      }
-      input.value = ''
-    }
-    reader.readAsText(file)
   }
 
   const usedPlayerIds = new Set(db.games.flatMap((g) => g.playerIds))
@@ -148,45 +120,11 @@ export default function SettingsView({
           <button className="btn" onClick={download}>
             JSONで書き出し
           </button>
-          <button
-            className="btn"
-            disabled={cloudRoom}
-            title={cloudRoom ? '共有ルームでは履歴の一括置換に未対応です' : ''}
-            onClick={() => fileRef.current?.click()}
-          >
-            JSONを読み込み
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="application/json"
-            style={{ display: 'none' }}
-            onChange={onImport}
-          />
         </div>
         <p className="muted" style={{ marginTop: 8 }}>
-          {cloudRoom
-            ? '共有ルームでは対局履歴がクラウドに蓄積されます。JSONの一括読み込みは、クラウド履歴との整合性を保つため無効です。'
-            : 'データはこの端末のブラウザ内（localStorage）にのみ保存されます。バックアップや別端末への移動は書き出し／読み込みで。'}
+          対局データはCloudflareの共有ルームに保存されます。JSONはバックアップとして書き出せます。
+          JSONからの復元は、クラウド履歴との整合性を確認できる移行導線で対応します。
         </p>
-        <div className="row" style={{ marginTop: 12 }}>
-          <button
-            className="btn danger"
-            disabled={cloudRoom}
-            title={cloudRoom ? '共有ルームでは履歴の一括削除に未対応です' : ''}
-            onClick={() => {
-              if (
-                confirm(
-                  'プレイヤー・対局データをすべて消去し、完全に空の状態にします。元に戻せません。よろしいですか？',
-                )
-              ) {
-                api.replaceDB(emptyDB())
-              }
-            }}
-          >
-            全て消去
-          </button>
-        </div>
       </div>
 
       <p className="muted" style={{ textAlign: 'center', marginTop: 8 }}>

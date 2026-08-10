@@ -5,12 +5,21 @@ import type { DB } from '../lib/domain'
 
 interface RoomViewProps {
   db: DB
+  legacyDB?: DB | null
   roomCode: string | null
   onJoined(roomCode: string): void
   onLeave(): void
+  onLegacyMigrated?(): void
 }
 
-export default function RoomView({ db, roomCode, onJoined, onLeave }: RoomViewProps) {
+export default function RoomView({
+  db,
+  legacyDB = null,
+  roomCode,
+  onJoined,
+  onLeave,
+  onLegacyMigrated,
+}: RoomViewProps) {
   const [input, setInput] = useState(roomCode ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -22,11 +31,14 @@ export default function RoomView({ db, roomCode, onJoined, onLeave }: RoomViewPr
     return url.toString()
   }, [roomCode])
 
+  const creationDB = legacyDB ?? db
+
   async function handleCreate(migrateGames: boolean) {
     setBusy(true)
     setError('')
     try {
-      const created = await createRoom(db, { migrateGames })
+      const created = await createRoom(creationDB, { migrateGames })
+      if (migrateGames && legacyDB && created.migratedGames > 0) onLegacyMigrated?.()
       onJoined(created.roomCode)
     } catch (e) {
       setError(e instanceof CloudRoomError ? e.message : 'ルームを作成できませんでした')
@@ -66,7 +78,7 @@ export default function RoomView({ db, roomCode, onJoined, onLeave }: RoomViewPr
           URLをコピー
         </button>
         <button className="btn sm ghost" onClick={onLeave}>
-          ローカルに戻る
+          ルーム選択に戻る
         </button>
       </div>
     )
@@ -77,9 +89,9 @@ export default function RoomView({ db, roomCode, onJoined, onLeave }: RoomViewPr
       <h2>みんなで使う</h2>
       <p className="muted">ルームを作ると、PCのモニターとスマホを同じ対局に接続できます。</p>
       <div className="room-actions">
-        {db.games.length > 0 ? (
+        {legacyDB && legacyDB.games.length > 0 ? (
           <div className="room-create-options">
-            <span className="muted">この端末の過去対局 {db.games.length}件</span>
+            <span className="muted">旧データの過去対局 {legacyDB.games.length}件</span>
             <button className="btn primary" disabled={busy} onClick={() => void handleCreate(true)}>
               {busy ? '作成中…' : '履歴を移行して作る'}
             </button>
