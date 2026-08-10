@@ -22,11 +22,11 @@ export default function RoomView({ db, roomCode, onJoined, onLeave }: RoomViewPr
     return url.toString()
   }, [roomCode])
 
-  async function handleCreate() {
+  async function handleCreate(migrateGames: boolean) {
     setBusy(true)
     setError('')
     try {
-      const created = await createRoom(db)
+      const created = await createRoom(db, { migrateGames })
       onJoined(created.roomCode)
     } catch (e) {
       setError(e instanceof CloudRoomError ? e.message : 'ルームを作成できませんでした')
@@ -77,9 +77,21 @@ export default function RoomView({ db, roomCode, onJoined, onLeave }: RoomViewPr
       <h2>みんなで使う</h2>
       <p className="muted">ルームを作ると、PCのモニターとスマホを同じ対局に接続できます。</p>
       <div className="room-actions">
-        <button className="btn primary" disabled={busy} onClick={handleCreate}>
-          {busy ? '作成中…' : '新しいルームを作る'}
-        </button>
+        {db.games.length > 0 ? (
+          <div className="room-create-options">
+            <span className="muted">この端末の過去対局 {db.games.length}件</span>
+            <button className="btn primary" disabled={busy} onClick={() => void handleCreate(true)}>
+              {busy ? '作成中…' : '履歴を移行して作る'}
+            </button>
+            <button className="btn ghost" disabled={busy} onClick={() => void handleCreate(false)}>
+              空のルームを作る
+            </button>
+          </div>
+        ) : (
+          <button className="btn primary" disabled={busy} onClick={() => void handleCreate(false)}>
+            {busy ? '作成中…' : '新しいルームを作る'}
+          </button>
+        )}
         <span className="muted">または</span>
         <div className="row room-join-row">
           <input

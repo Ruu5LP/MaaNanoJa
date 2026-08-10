@@ -1,5 +1,6 @@
 import {
-  toRoomState,
+  toRoomCreationPayload,
+  type RoomCreationOptions,
   type RoomGamePayload,
   type RoomSnapshot,
   type RoomStatePayload,
@@ -67,20 +68,30 @@ async function request(path: string, init?: RequestInit): Promise<unknown> {
   return payload
 }
 
-export async function createRoom(db: DB): Promise<{ roomCode: string; revision: number }> {
+export async function createRoom(
+  db: DB,
+  options: RoomCreationOptions = { migrateGames: false },
+): Promise<{ roomCode: string; revision: number; migratedGames: number }> {
   const payload = await request('/api/rooms', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ state: toRoomState(db) }),
+    body: JSON.stringify(toRoomCreationPayload(db, options)),
   })
   if (
     !isRecord(payload) ||
     typeof payload.roomCode !== 'string' ||
-    typeof payload.revision !== 'number'
+    typeof payload.revision !== 'number' ||
+    typeof payload.migratedGames !== 'number' ||
+    !Number.isInteger(payload.migratedGames) ||
+    payload.migratedGames < 0
   ) {
     throw new CloudRoomError('ルーム作成の応答が不正です', 502)
   }
-  return { roomCode: payload.roomCode, revision: payload.revision }
+  return {
+    roomCode: payload.roomCode,
+    revision: payload.revision,
+    migratedGames: payload.migratedGames,
+  }
 }
 
 export async function fetchRoom(roomCode: string): Promise<RoomSnapshot> {

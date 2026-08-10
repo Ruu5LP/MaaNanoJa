@@ -41,3 +41,23 @@
   - Verify: 通信遮断/復帰の手動確認、`npm run check`, `npm run build`
   - Files: `src/useRoomSync.ts`, `src/views/RoomView.tsx`, `src/styles.css`, `README.md`, `SETUP.md`
   - Dependencies: Task 3, Task 4, Task 6
+
+## Cloud Room Local History Migration
+
+- [x] Task 8: `POST /api/rooms` に任意の完了済みgames移行を追加
+  - Acceptance: 新規ルーム作成とgames登録が同じ処理で成功し、移行件数が返る。空配列ではgamesを登録しない
+  - Verify: `cloud-room` のpayloadテスト、`npm run check`, `npm run build`
+  - Files: `worker/index.ts`, `src/lib/cloud-room.ts`, `src/lib/cloud-room-api.ts`, `src/lib/cloud-room.test.ts`
+  - Dependencies: Task 1, Task 4
+
+- [x] Task 9: 新規ルーム作成時の履歴移行選択UIを追加
+  - Acceptance: ローカルgamesがある場合だけ「履歴を移行」「空のルーム」を選べる。既存ルーム参加では移行しない
+  - Verify: UI手動確認、`npm run check`, `npm run build`
+  - Files: `src/views/RoomView.tsx`, `src/lib/cloud-room-api.ts`
+  - Dependencies: Task 8
+
+- [ ] Task 10: 移行仕様をドキュメント化し公開環境で確認
+  - Acceptance: 移行後もlocalStorageを削除しないことと、既存ルームへ自動送信しないことが文書化され、workers.devで確認できる
+  - Verify: 新規移行・空ルーム・既存ルーム参加の手動確認、`npm run check`, `npm run build`
+  - Files: `README.md`, `SETUP.md`, `docs/cloud-room-migration-spec.md`
+  - Dependencies: Task 9

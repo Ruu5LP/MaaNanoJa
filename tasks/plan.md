@@ -66,6 +66,34 @@ Wrangler deployment + docs/manual QA
 - [x] `npx wrangler dev` でAPIの手動確認成功
 - [x] `npx wrangler deploy` 後にworkers.devで同じ確認成功
 
+## Phase 4: Cloud Room Local History Migration
+
+既存localStorageの完了済みgamesを、新規ルーム作成時だけ明示的に移行できるようにする。既存ルーム参加時の自動移行は行わない。
+
+### Task 8: ルーム作成APIにgames移行契約を追加
+
+- [x] `POST /api/rooms` が任意のgames配列を受け取り、ルーム作成と同じD1 batchで保存する
+- [x] gamesのID・日付・サイズをWorker側で検証し、移行件数を返す
+- [x] クライアントpayloadと変換テストを追加する
+
+### Task 9: 新規ルーム作成UIに移行選択を追加
+
+- [x] ローカルgamesがあるときだけ、履歴移行作成と空ルーム作成を選択できる
+- [x] 既存ルーム参加時はローカルgamesを送信しない
+- [x] 移行後もlocalStorageを削除しない
+
+### Task 10: ドキュメントと手動確認を更新
+
+- [x] SETUP/READMEに移行挙動とバックアップ方針を記載する
+- [ ] 移行・空ルーム・既存ルーム参加をworkers.devで確認する
+
+### Checkpoint: Local History Migration Complete
+
+- [x] `npm run check` 成功
+- [x] `npm run build` 成功
+- [x] ローカルWorkerで新規ルームの履歴移行が成功
+- [ ] 空ルームと既存ルーム参加で意図しないアップロードがない
+
 ## Risks and Mitigations
 
 | Risk                                  | Impact | Mitigation                                                                       |

@@ -5,6 +5,7 @@ import {
   isNewerRoomSnapshot,
   isRoomCode,
   normalizeRoomCode,
+  toRoomCreationPayload,
   toRoomState,
 } from './cloud-room'
 
@@ -41,5 +42,22 @@ describe('cloud room helpers', () => {
     expect(isNewerRoomSnapshot(snapshot, 3)).toBe(true)
     expect(isNewerRoomSnapshot(snapshot, 4)).toBe(false)
     expect(isNewerRoomSnapshot(snapshot, 5)).toBe(false)
+  })
+
+  it('includes local games only when migration is explicitly enabled', () => {
+    const db = emptyDB()
+    db.games = [
+      {
+        id: 'g-1',
+        date: '2026-08-10',
+        note: '過去対局',
+        playerIds: ['p-1', 'p-2', 'p-3', 'p-4'],
+        hands: [],
+        finalPoints: { 'p-1': 25000 },
+      },
+    ]
+
+    expect(toRoomCreationPayload(db, { migrateGames: false }).games).toEqual([])
+    expect(toRoomCreationPayload(db, { migrateGames: true }).games).toEqual(db.games)
   })
 })

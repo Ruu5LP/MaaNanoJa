@@ -22,6 +22,15 @@ export interface RoomStatePayload {
   state: RoomState
 }
 
+export interface RoomCreationOptions {
+  migrateGames: boolean
+}
+
+export interface RoomCreationPayload {
+  state: RoomState
+  games: Game[]
+}
+
 export interface RoomGamePayload {
   revision: number
   game: Game
@@ -44,6 +53,13 @@ export function toRoomState(db: DB): RoomState {
     players: db.players,
     rules: db.rules,
     draft: db.draft,
+  }
+}
+
+export function toRoomCreationPayload(db: DB, options: RoomCreationOptions): RoomCreationPayload {
+  return {
+    state: toRoomState(db),
+    games: options.migrateGames ? db.games : [],
   }
 }
 

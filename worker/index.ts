@@ -27,6 +27,12 @@ interface RoomStateInput {
   draft: unknown
 }
 
+interface ParsedGame {
+  id: string
+  date: string
+  json: string
+}
+
 interface RoomSnapshotResponse {
   roomCode: string
   revision: number
@@ -85,12 +91,24 @@ function parseRoomState(value: unknown): RoomStateInput {
   return { players: value.players, rules: value.rules, draft: value.draft }
 }
 
-function parseGame(value: unknown): { id: string; date: string; json: string } {
+function parseGame(value: unknown): ParsedGame {
   if (!isRecord(value) || typeof value.id !== 'string' || !value.id) {
     throw new RequestError('game.id が不正です', 400)
   }
   if (typeof value.date !== 'string') throw new RequestError('game.date が不正です', 400)
   return { id: value.id, date: value.date, json: jsonText(value, 'game') }
+}
+
+function parseCreationGames(value: unknown): ParsedGame[] {
+  if (value === undefined) return []
+  if (!Array.isArray(value)) throw new RequestError('games が不正です', 400)
+  const ids = new Set<string>()
+  return value.map((game) => {
+    const parsed = parseGame(game)
+    if (ids.has(parsed.id)) throw new RequestError('games に同じIDが重複しています', 400)
+    ids.add(parsed.id)
+    return parsed
+  })
 }
 
 async function readJson(request: Request): Promise<unknown> {
@@ -156,25 +174,38 @@ async function createRoom(request: Request, env: Env): Promise<Response> {
   const body = await readJson(request)
   const input = isRecord(body) && 'state' in body ? body.state : null
   const state = input === null ? { players: [], rules: {}, draft: null } : parseRoomState(input)
+  const games = parseCreationGames(isRecord(body) ? body.games : undefined)
   const now = Date.now()
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const code = generateRoomCode()
-    const result = await env.DB.prepare(
-      `INSERT OR IGNORE INTO rooms
-       (code, players_json, rules_json, draft_json, revision, last_write_token, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 0, '', ?, ?)`,
-    )
-      .bind(
+    const results = await env.DB.batch([
+      env.DB.prepare(
+        `INSERT OR IGNORE INTO rooms
+         (code, players_json, rules_json, draft_json, revision, last_write_token, created_at, updated_at)
+         VALUES (?, ?, ?, ?, 0, '', ?, ?)`,
+      ).bind(
         code,
         jsonText(state.players, 'players'),
         jsonText(state.rules, 'rules'),
         state.draft === null ? null : jsonText(state.draft, 'draft'),
         now,
         now,
-      )
-      .run()
-    if ((result.meta.changes ?? 0) === 1) return json({ roomCode: code, revision: 0 })
+      ),
+      ...games.map((game) =>
+        env.DB.prepare(
+          `INSERT OR IGNORE INTO games (id, room_code, date, game_json, created_at)
+           SELECT ?, ?, ?, ?, ?
+           WHERE EXISTS (SELECT 1 FROM rooms WHERE code = ?)`,
+        ).bind(game.id, code, game.date, game.json, now, code),
+      ),
+    ])
+    if ((results[0]?.meta.changes ?? 0) === 1) {
+      const migratedGames = results
+        .slice(1)
+        .reduce((count, result) => count + Number(result.meta.changes ?? 0), 0)
+      return json({ roomCode: code, revision: 0, migratedGames })
+    }
   }
 
   return errorResponse(503, 'ルームコードを発行できませんでした')

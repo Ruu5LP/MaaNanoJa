@@ -171,6 +171,13 @@ body {
   flex-wrap: wrap;
   margin-top: 12px;
 }
+.room-create-options {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  flex: 1 1 100%;
+}
 .room-join-row {
   flex: 1 1 260px;
 }
