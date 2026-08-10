@@ -82,6 +82,18 @@ body {
 .sync-badge.sync-connecting {
   color: var(--warn);
 }
+.account-badge {
+  color: var(--ink-2);
+  font-size: 11px;
+  margin-left: auto;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.account-badge + .sync-badge {
+  margin-left: 0;
+}
 
 /* ---- タブ（下部固定） ---- */
 .tabbar {
@@ -163,6 +175,48 @@ body {
 }
 .room-card {
   margin: 4px 16px 0;
+}
+.account-card {
+  margin-bottom: 8px;
+}
+.account-card h2 {
+  margin-bottom: 4px;
+}
+.account-rooms {
+  border-top: 1px solid var(--border);
+  margin-top: 12px;
+  padding-top: 10px;
+}
+.account-rooms h3 {
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 6px;
+}
+.account-room {
+  align-items: center;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--ink);
+  cursor: pointer;
+  display: flex;
+  gap: 10px;
+  margin-top: 6px;
+  padding: 8px 10px;
+  text-align: left;
+  width: 100%;
+}
+.account-room:hover {
+  border-color: var(--accent);
+}
+.account-room code {
+  color: var(--accent);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.account-room .muted {
+  margin-left: auto;
 }
 .room-actions {
   display: flex;

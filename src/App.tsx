@@ -1,7 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { emptyDB, uid } from './lib/store'
 import { clearLegacyLocalDB, readLegacyLocalDB } from './lib/legacy-local-data'
 import type { DB, Draft, Game } from './lib/domain'
+import { fetchAccount, fetchMyRooms } from './lib/account-api'
+import type { AccountRoom, AccountState } from './lib/account'
 import { SYNC_LABEL, useRoomSync } from './useRoomSync'
 import RecordView from './views/RecordView'
 import HistoryView from './views/HistoryView'
@@ -37,6 +39,9 @@ const TABS: { id: TabId; label: string; ico: string }[] = [
 export default function App() {
   const [db, setDB] = useState<DB>(() => emptyDB())
   const [legacyDB, setLegacyDB] = useState<DB | null>(() => readLegacyLocalDB())
+  const [account, setAccount] = useState<AccountState | null>(null)
+  const [accountRooms, setAccountRooms] = useState<AccountRoom[]>([])
+  const [accountError, setAccountError] = useState<string | null>(null)
   const [tab, setTab] = useState<TabId>('record')
   const [roomCode, setRoomCode] = useState<string | null>(() =>
     normalizeRoomCode(new URLSearchParams(window.location.search).get(ROOM_QUERY_KEY)),
@@ -50,6 +55,25 @@ export default function App() {
     updateGame,
     deleteGame,
   } = useRoomSync(roomCode, setDB)
+
+  const refreshAccount = useCallback(async () => {
+    try {
+      const next = await fetchAccount()
+      setAccount(next)
+      if (next.authenticated) {
+        setAccountRooms(await fetchMyRooms())
+      } else {
+        setAccountRooms([])
+      }
+      setAccountError(null)
+    } catch (error) {
+      setAccountError(error instanceof Error ? error.message : 'アカウント情報を取得できません')
+    }
+  }, [])
+
+  useEffect(() => {
+    void refreshAccount()
+  }, [refreshAccount])
 
   function joinRoom(code: string) {
     const url = new URL(window.location.href)
@@ -131,15 +155,20 @@ export default function App() {
       <header className="app-header">
         <h1>麻雀トラッカー</h1>
         <span className="sub">AiRuu Mahjong</span>
+        {account?.user && <span className="account-badge">👤 {account.user.displayName}</span>}
         <span className={`sync-badge sync-${cloudMode}`}>{SYNC_LABEL[cloudMode]}</span>
       </header>
 
       <RoomView
         db={db}
         legacyDB={legacyDB}
+        account={account}
+        accountRooms={accountRooms}
+        accountError={accountError}
         roomCode={roomCode}
         onJoined={joinRoom}
         onLeave={leaveRoom}
+        onAccountChanged={() => void refreshAccount()}
         onLegacyMigrated={() => {
           clearLegacyLocalDB()
           setLegacyDB(null)

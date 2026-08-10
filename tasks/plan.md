@@ -114,6 +114,35 @@ Wrangler deployment + docs/manual QA
 - MVPはworkers.dev公開で開始する。
 - 既存localStorageの移行は移行期間のlegacy経路として残し、通常の保存機能には戻さない。
 
+## Phase 6: Googleアカウントとルーム所有
+
+Cloudflare AccessのGoogleログインを認証基盤にし、MaaNanoJaはユーザーとルームの所有・参加関係だけをD1で管理する。Access未設定のデプロイでは既存room code運用を壊さず、Access有効化後に認証済みルートへ切り替わる。
+
+### Task 15: アカウント・ルーム所有モデル
+
+- [x] `users`、`rooms.owner_user_id`、`room_members`のD1 migrationを追加する
+- [x] `ctx.access.getIdentity()`から初回ログイン時にユーザーを自動作成する
+- [x] `GET /api/me` と `GET /api/my/rooms` を追加する
+- [x] 認証済みで作成したルームをownerとして保存する
+
+### Task 16: GoogleログインUIとルーム一覧
+
+- [x] Googleログイン・ログアウト導線を追加する
+- [x] ログイン済みユーザーの所有・参加ルームを一覧表示する
+- [x] ルームコード参加時に認証済みユーザーをmemberとして記録する
+
+### Task 17: Access設定と本番確認
+
+- [ ] Google OAuthクライアントを作成し、Cloudflare AccessのGoogle IdPを設定する
+- [ ] WorkerをAccess applicationで保護する
+- [ ] 初回ログイン、ルーム作成、ログアウト、再ログイン後のルーム一覧を確認する
+
+### Checkpoint: Account Complete
+
+- [x] 認証情報をアプリのパスワード・localStorageへ保存しない
+- [x] `npm run check` と本番ビルドが成功する
+- [ ] Googleログインから本番のルーム所有・再ログイン復元まで手動確認する
+
 ## Phase 5: Cloudflare-first化
 
 Cloudflare D1を唯一の正式保存先にし、localStorageとLAN同期を通常運用から外す。既存localStorageの移行は移行期間だけのlegacy経路として残す。

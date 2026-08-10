@@ -43,6 +43,12 @@ npm run check        # typecheck + lint + format:check + test
 
 移行は新規ルーム作成時の明示操作に限られます。既存ルームへ参加するときに旧履歴を自動送信することはありません。移行が成功した後は旧localStorageキーを削除し、以後はD1だけを使います。重要な履歴は、移行前に旧版のJSON書き出しでバックアップしてください。
 
+## Googleログインとアカウント
+
+Googleログインを有効にする場合は、Cloudflare AccessにGoogleをIdentity Providerとして追加し、公開WorkerをAccess applicationで保護します。Google Cloud ConsoleのOAuthリダイレクトURIには、Accessの画面に表示される`https://<team-name>.cloudflareaccess.com/cdn-cgi/access/callback`を登録してください。
+
+ログインすると初回アクセス時にMaaNanoJaアカウントが自動作成され、作成したルームの所有者になります。共有されたルームコードで参加したルームは、そのアカウントの「自分のルーム」に表示されます。詳細は[アカウント・Googleログイン仕様](docs/account-auth-spec.md)を参照してください。
+
 ## 本番公開
 
 1. `npx wrangler login` でCloudflareにログインする。

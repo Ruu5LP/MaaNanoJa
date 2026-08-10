@@ -4,6 +4,7 @@ const MAX_JSON_BYTES = 1_900_000
 
 interface RoomRow {
   code: string
+  owner_user_id: string | null
   players_json: string
   rules_json: string
   draft_json: string | null
@@ -11,6 +12,21 @@ interface RoomRow {
   last_write_token: string
   created_at: number
   updated_at: number
+}
+
+interface UserRow {
+  id: string
+  provider: string
+  provider_subject: string
+  email: string
+  display_name: string
+  created_at: number
+  updated_at: number
+}
+
+interface AuthContext {
+  enabled: boolean
+  user: UserRow | null
 }
 
 interface GameRow {
@@ -137,9 +153,112 @@ class RequestError extends Error {
   }
 }
 
+async function getAuthContext(ctx: ExecutionContext, env: Env): Promise<AuthContext> {
+  if (!ctx.access) return { enabled: false, user: null }
+
+  const identity = await ctx.access.getIdentity()
+  if (!identity) return { enabled: true, user: null }
+
+  const provider = typeof identity.idp?.type === 'string' ? identity.idp.type : 'cloudflare-access'
+  const email = typeof identity.email === 'string' ? identity.email.trim().toLowerCase() : ''
+  const subject =
+    typeof identity.user_uuid === 'string' && identity.user_uuid ? identity.user_uuid : email
+  if (!subject) throw new RequestError('Googleアカウントの識別情報を取得できません', 401)
+
+  const providerSubject = `${provider}:${subject}`
+  const now = Date.now()
+  const existing = await env.DB.prepare(
+    `SELECT id, provider, provider_subject, email, display_name, created_at, updated_at
+     FROM users WHERE provider_subject = ?`,
+  )
+    .bind(providerSubject)
+    .first<UserRow>()
+
+  if (existing) {
+    const nextEmail = email || existing.email
+    const displayName =
+      typeof identity.name === 'string' && identity.name.trim() ? identity.name.trim() : nextEmail
+    await env.DB.prepare(
+      'UPDATE users SET email = ?, display_name = ?, updated_at = ? WHERE id = ?',
+    )
+      .bind(nextEmail, displayName, now, existing.id)
+      .run()
+    return {
+      enabled: true,
+      user: { ...existing, email: nextEmail, display_name: displayName, updated_at: now },
+    }
+  }
+
+  const user: UserRow = {
+    id: `usr-${crypto.randomUUID()}`,
+    provider,
+    provider_subject: providerSubject,
+    email: email || `${subject}@cloudflare-access.invalid`,
+    display_name:
+      typeof identity.name === 'string' && identity.name.trim()
+        ? identity.name.trim()
+        : email || subject,
+    created_at: now,
+    updated_at: now,
+  }
+  await env.DB.prepare(
+    `INSERT OR IGNORE INTO users
+     (id, provider, provider_subject, email, display_name, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  )
+    .bind(
+      user.id,
+      user.provider,
+      user.provider_subject,
+      user.email,
+      user.display_name,
+      user.created_at,
+      user.updated_at,
+    )
+    .run()
+  const saved = await env.DB.prepare(
+    `SELECT id, provider, provider_subject, email, display_name, created_at, updated_at
+     FROM users WHERE provider_subject = ?`,
+  )
+    .bind(providerSubject)
+    .first<UserRow>()
+  if (!saved) throw new RequestError('アカウントを保存できませんでした', 500)
+  return { enabled: true, user: saved }
+}
+
+function requireUser(auth: AuthContext): UserRow {
+  if (!auth.user) throw new RequestError('Googleでログインしてください', 401)
+  return auth.user
+}
+
+function accountUser(user: UserRow | null): unknown {
+  if (!user) return null
+  return { id: user.id, email: user.email, displayName: user.display_name }
+}
+
+async function ensureRoomMember(env: Env, room: RoomRow, user: UserRow): Promise<void> {
+  const role = room.owner_user_id === user.id ? 'owner' : 'member'
+  await env.DB.prepare(
+    `INSERT OR IGNORE INTO room_members (room_code, user_id, role, created_at)
+     VALUES (?, ?, ?, ?)`,
+  )
+    .bind(room.code, user.id, role, Date.now())
+    .run()
+}
+
+async function getAuthorizedRoom(
+  env: Env,
+  code: string,
+  auth: AuthContext,
+): Promise<RoomRow | null> {
+  const room = await getRoom(env, code)
+  if (room && auth.enabled) await ensureRoomMember(env, room, requireUser(auth))
+  return room
+}
+
 async function getRoom(env: Env, code: string): Promise<RoomRow | null> {
   return env.DB.prepare(
-    `SELECT code, players_json, rules_json, draft_json, revision, last_write_token, created_at, updated_at
+    `SELECT code, owner_user_id, players_json, rules_json, draft_json, revision, last_write_token, created_at, updated_at
      FROM rooms WHERE code = ?`,
   )
     .bind(code)
@@ -170,7 +289,8 @@ async function conflict(env: Env, room: RoomRow): Promise<Response> {
   return json({ error: 'revision_conflict', snapshot: await roomSnapshot(env, room) }, 409)
 }
 
-async function createRoom(request: Request, env: Env): Promise<Response> {
+async function createRoom(request: Request, env: Env, auth: AuthContext): Promise<Response> {
+  const owner = auth.enabled ? requireUser(auth) : null
   const body = await readJson(request)
   const input = isRecord(body) && 'state' in body ? body.state : null
   const state = input === null ? { players: [], rules: {}, draft: null } : parseRoomState(input)
@@ -182,16 +302,26 @@ async function createRoom(request: Request, env: Env): Promise<Response> {
     const results = await env.DB.batch([
       env.DB.prepare(
         `INSERT OR IGNORE INTO rooms
-         (code, players_json, rules_json, draft_json, revision, last_write_token, created_at, updated_at)
-         VALUES (?, ?, ?, ?, 0, '', ?, ?)`,
+         (code, owner_user_id, players_json, rules_json, draft_json, revision, last_write_token, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, 0, '', ?, ?)`,
       ).bind(
         code,
+        owner?.id ?? null,
         jsonText(state.players, 'players'),
         jsonText(state.rules, 'rules'),
         state.draft === null ? null : jsonText(state.draft, 'draft'),
         now,
         now,
       ),
+      ...(owner
+        ? [
+            env.DB.prepare(
+              `INSERT OR IGNORE INTO room_members (room_code, user_id, role, created_at)
+               SELECT ?, ?, 'owner', ?
+               WHERE EXISTS (SELECT 1 FROM rooms WHERE code = ?)`,
+            ).bind(code, owner.id, now, code),
+          ]
+        : []),
       ...games.map((game) =>
         env.DB.prepare(
           `INSERT OR IGNORE INTO games (id, room_code, date, game_json, created_at)
@@ -201,8 +331,9 @@ async function createRoom(request: Request, env: Env): Promise<Response> {
       ),
     ])
     if ((results[0]?.meta.changes ?? 0) === 1) {
+      const gameResultOffset = owner ? 2 : 1
       const migratedGames = results
-        .slice(1)
+        .slice(gameResultOffset)
         .reduce((count, result) => count + Number(result.meta.changes ?? 0), 0)
       return json({ roomCode: code, revision: 0, migratedGames })
     }
@@ -211,8 +342,13 @@ async function createRoom(request: Request, env: Env): Promise<Response> {
   return errorResponse(503, 'ルームコードを発行できませんでした')
 }
 
-async function updateState(request: Request, env: Env, code: string): Promise<Response> {
-  const room = await getRoom(env, code)
+async function updateState(
+  request: Request,
+  env: Env,
+  code: string,
+  auth: AuthContext,
+): Promise<Response> {
+  const room = await getAuthorizedRoom(env, code, auth)
   if (!room) return errorResponse(404, 'ルームが見つかりません')
   const body = await readJson(request)
   if (!isRecord(body)) throw new RequestError('リクエストが不正です', 400)
@@ -243,8 +379,13 @@ async function updateState(request: Request, env: Env, code: string): Promise<Re
   return json({ revision: nextRevision })
 }
 
-async function addGame(request: Request, env: Env, code: string): Promise<Response> {
-  const room = await getRoom(env, code)
+async function addGame(
+  request: Request,
+  env: Env,
+  code: string,
+  auth: AuthContext,
+): Promise<Response> {
+  const room = await getAuthorizedRoom(env, code, auth)
   if (!room) return errorResponse(404, 'ルームが見つかりません')
   const body = await readJson(request)
   if (!isRecord(body)) throw new RequestError('リクエストが不正です', 400)
@@ -288,8 +429,9 @@ async function deleteGame(
   env: Env,
   code: string,
   gameId: string,
+  auth: AuthContext,
 ): Promise<Response> {
-  const room = await getRoom(env, code)
+  const room = await getAuthorizedRoom(env, code, auth)
   if (!room) return errorResponse(404, 'ルームが見つかりません')
   const body = await readJson(request)
   if (!isRecord(body)) throw new RequestError('リクエストが不正です', 400)
@@ -329,8 +471,9 @@ async function updateGame(
   env: Env,
   code: string,
   gameId: string,
+  auth: AuthContext,
 ): Promise<Response> {
-  const room = await getRoom(env, code)
+  const room = await getAuthorizedRoom(env, code, auth)
   if (!room) return errorResponse(404, 'ルームが見つかりません')
   const body = await readJson(request)
   if (!isRecord(body)) throw new RequestError('リクエストが不正です', 400)
@@ -363,7 +506,66 @@ async function updateGame(
   return json({ revision: nextRevision })
 }
 
-async function handleApi(request: Request, env: Env): Promise<Response> {
+async function getMe(auth: AuthContext): Promise<Response> {
+  return json({
+    accessEnabled: auth.enabled,
+    authenticated: Boolean(auth.user),
+    user: accountUser(auth.user),
+  })
+}
+
+async function getMyRooms(env: Env, auth: AuthContext): Promise<Response> {
+  const user = requireUser(auth)
+  const result = await env.DB.prepare(
+    `SELECT r.code AS room_code, rm.role, r.created_at, r.updated_at,
+            COUNT(g.id) AS game_count
+     FROM room_members rm
+     JOIN rooms r ON r.code = rm.room_code
+     LEFT JOIN games g ON g.room_code = r.code
+     WHERE rm.user_id = ?
+     GROUP BY r.code, rm.role, r.created_at, r.updated_at
+     ORDER BY r.updated_at DESC, r.code ASC`,
+  )
+    .bind(user.id)
+    .all<{
+      room_code: string
+      role: 'owner' | 'member'
+      created_at: number
+      updated_at: number
+      game_count: number
+    }>()
+
+  return json({
+    rooms: result.results.map((room) => ({
+      roomCode: room.room_code,
+      role: room.role,
+      createdAt: room.created_at,
+      updatedAt: room.updated_at,
+      gameCount: Number(room.game_count),
+    })),
+  })
+}
+
+async function joinRoom(
+  request: Request,
+  env: Env,
+  code: string,
+  auth: AuthContext,
+): Promise<Response> {
+  if (request.body) {
+    // The endpoint is intentionally bodyless; consume no input but reject malformed JSON callers.
+    const contentType = request.headers.get('Content-Type') ?? ''
+    if (contentType.includes('application/json')) await readJson(request)
+  }
+  const room = await getRoom(env, code)
+  if (!room) return errorResponse(404, 'ルームが見つかりません')
+  const user = requireUser(auth)
+  await ensureRoomMember(env, room, user)
+  return json({ roomCode: code })
+}
+
+async function handleApi(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  const auth = await getAuthContext(ctx, env)
   const url = new URL(request.url)
   const parts = url.pathname
     .split('/')
@@ -376,7 +578,20 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     parts[1] === 'rooms' &&
     request.method === 'POST'
   ) {
-    return createRoom(request, env)
+    return createRoom(request, env, auth)
+  }
+
+  if (parts.length === 2 && parts[0] === 'api' && parts[1] === 'me' && request.method === 'GET') {
+    return getMe(auth)
+  }
+  if (
+    parts.length === 3 &&
+    parts[0] === 'api' &&
+    parts[1] === 'my' &&
+    parts[2] === 'rooms' &&
+    request.method === 'GET'
+  ) {
+    return getMyRooms(env, auth)
   }
 
   if (parts.length < 3 || parts[0] !== 'api' || parts[1] !== 'rooms') {
@@ -386,29 +601,32 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
   if (!isRoomCode(code)) return errorResponse(400, 'ルームコードが不正です')
 
   if (parts.length === 3 && request.method === 'GET') {
-    const room = await getRoom(env, code)
+    const room = await getAuthorizedRoom(env, code, auth)
     return room ? json(await roomSnapshot(env, room)) : errorResponse(404, 'ルームが見つかりません')
   }
+  if (parts.length === 4 && parts[3] === 'join' && request.method === 'POST') {
+    return joinRoom(request, env, code, auth)
+  }
   if (parts.length === 4 && parts[3] === 'state' && request.method === 'PUT') {
-    return updateState(request, env, code)
+    return updateState(request, env, code, auth)
   }
   if (parts.length === 4 && parts[3] === 'games' && request.method === 'POST') {
-    return addGame(request, env, code)
+    return addGame(request, env, code, auth)
   }
   if (parts.length === 5 && parts[3] === 'games' && request.method === 'DELETE') {
-    return deleteGame(request, env, code, parts[4])
+    return deleteGame(request, env, code, parts[4], auth)
   }
   if (parts.length === 5 && parts[3] === 'games' && request.method === 'PUT') {
-    return updateGame(request, env, code, parts[4])
+    return updateGame(request, env, code, parts[4], auth)
   }
   return errorResponse(405, 'method not allowed')
 }
 
 export default {
-  async fetch(request, env): Promise<Response> {
+  async fetch(request, env, ctx): Promise<Response> {
     try {
       const url = new URL(request.url)
-      if (url.pathname.startsWith('/api/')) return await handleApi(request, env)
+      if (url.pathname.startsWith('/api/')) return await handleApi(request, env, ctx)
       return env.ASSETS.fetch(request)
     } catch (error) {
       if (error instanceof RequestError) return errorResponse(error.status, error.message)
