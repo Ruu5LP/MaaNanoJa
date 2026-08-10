@@ -178,14 +178,20 @@ async function getAuthContext(ctx: ExecutionContext, env: Env): Promise<AuthCont
     const nextEmail = email || existing.email
     const displayName =
       typeof identity.name === 'string' && identity.name.trim() ? identity.name.trim() : nextEmail
-    await env.DB.prepare(
-      'UPDATE users SET email = ?, display_name = ?, updated_at = ? WHERE id = ?',
-    )
-      .bind(nextEmail, displayName, now, existing.id)
-      .run()
+    const updatedAt =
+      existing.email !== nextEmail || existing.display_name !== displayName
+        ? now
+        : existing.updated_at
+    if (existing.email !== nextEmail || existing.display_name !== displayName) {
+      await env.DB.prepare(
+        'UPDATE users SET email = ?, display_name = ?, updated_at = ? WHERE id = ?',
+      )
+        .bind(nextEmail, displayName, now, existing.id)
+        .run()
+    }
     return {
       enabled: true,
-      user: { ...existing, email: nextEmail, display_name: displayName, updated_at: now },
+      user: { ...existing, email: nextEmail, display_name: displayName, updated_at: updatedAt },
     }
   }
 
