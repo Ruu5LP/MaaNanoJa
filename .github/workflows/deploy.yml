@@ -35,6 +35,9 @@ jobs:
         run: npm run check
 
       - name: Build
+        env:
+          VITE_ADSENSE_CLIENT: ${{ vars.VITE_ADSENSE_CLIENT }}
+          VITE_ADSENSE_LANDING_SLOT: ${{ vars.VITE_ADSENSE_LANDING_SLOT }}
         run: npm run build
 
       - name: Check Cloudflare deployment secrets

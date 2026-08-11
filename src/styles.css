@@ -89,6 +89,23 @@ body {
 .landing-hero .room-account-error {
   margin: 0 0 12px;
 }
+.ad-slot {
+  margin: 0 auto;
+  max-width: 728px;
+  min-height: 90px;
+  padding: 0 20px 24px;
+  text-align: center;
+}
+.ad-slot-label {
+  color: var(--ink-3);
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.ad-slot ins.adsbygoogle {
+  min-height: 60px;
+}
 .room-entry-card h2 {
   color: var(--ink);
   font-size: 18px;
@@ -209,6 +226,95 @@ body {
   flex: 0 0 14px;
   height: 14px;
   width: 14px;
+}
+.landing-footer .footer-link {
+  color: var(--ink-3);
+  text-decoration: none;
+}
+.landing-footer .footer-link:hover {
+  color: var(--accent);
+}
+
+/* ---- 規約・プライバシーポリシー ---- */
+.legal-page {
+  min-height: 100vh;
+  padding-bottom: 32px;
+}
+.legal-header {
+  align-items: baseline;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  padding: 16px;
+}
+.legal-brand {
+  color: var(--ink);
+  font-size: 18px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.legal-header span {
+  color: var(--ink-3);
+  font-size: 12px;
+}
+.legal-content {
+  margin: 0 auto;
+  max-width: 760px;
+  padding: 32px 20px 48px;
+}
+.legal-back {
+  color: var(--accent);
+  display: inline-block;
+  font-size: 13px;
+  margin-bottom: 28px;
+  text-decoration: none;
+}
+.legal-content h1 {
+  color: var(--ink);
+  font-size: clamp(26px, 4vw, 34px);
+  line-height: 1.35;
+  margin: 0;
+}
+.legal-content h2 {
+  border-top: 1px solid var(--border);
+  color: var(--ink-2);
+  font-size: 16px;
+  line-height: 1.5;
+  margin: 32px 0 12px;
+  padding-top: 18px;
+}
+.legal-content p,
+.legal-content li {
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.9;
+}
+.legal-content ul {
+  padding-left: 1.5em;
+}
+.legal-content a {
+  color: var(--accent);
+}
+.legal-updated {
+  color: var(--ink-3) !important;
+  font-size: 12px !important;
+  margin: 8px 0 28px;
+}
+.legal-contact {
+  border-top: 1px solid var(--border);
+  margin-top: 32px;
+  padding-top: 18px;
+}
+.legal-footer {
+  border-top: 1px solid var(--border);
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  padding: 20px;
+}
+.legal-footer a {
+  color: var(--ink-3);
+  font-size: 12px;
 }
 
 /* ---- ヘッダ ---- */

@@ -85,6 +85,19 @@ API Tokenはリポジトリへ保存せず、CloudflareのアカウントAPI Tok
 
 自動公開を待たずに実行する場合は、GitHubの **Actions → Deploy Worker → Run workflow** から手動実行できます。D1 migrationはデータ変更を伴うため、自動デプロイには含めていません。migrationが必要な変更では、公開前に `npm run cf:db:remote` を別途実行してください。
 
+### AdSense広告を有効にする
+
+広告を有効にする場合は、AdSenseでサイトの審査・承認を完了したあと、ビルド環境に次の公開変数を設定します。値はブラウザへ配信される広告識別子なので、Worker Secretには登録しません。
+
+```bash
+VITE_ADSENSE_CLIENT=ca-pub-xxxxxxxxxxxxxxxx
+VITE_ADSENSE_LANDING_SLOT=xxxxxxxxxx
+```
+
+GitHub Actionsで公開する場合は、GitHubリポジトリの **Settings → Environments → production → Environment variables** に、同じ名前の2つの変数を登録します。広告識別子は公開情報のため、SecretではなくEnvironment variableで構いません。
+
+広告はランディングページにだけ表示され、ルーム内の記録・成績・履歴・モニター画面には表示されません。未設定の場合は広告用スクリプトも読み込みません。AdSenseの審査前に、トップページから[プライバシーポリシー](/privacy)と[利用規約](/terms)へアクセスできることを確認してください。
+
 ## スコアのルール（初期値）
 
 - 25,000点持ち / 30,000点返し
