@@ -235,3 +235,64 @@ Issue #23として、成績画面の2つのグラフを比較しやすく、ス�
 ### Checkpoint: Stats Graph Readability Complete
 
 - [x] Issue #23の受け入れ条件を満たす
+
+## Phase 9: Webトップページ化
+
+ルーム未指定時の画面を、内部アプリの起動画面から、サービスの価値と使い方が伝わるWebサイト型のトップページへ変更する。ルームURLから来た利用者は、これまで通り直接アプリへ入れる。
+
+### Architecture Decisions
+
+- `/`（room queryなし）はサービス紹介ページとして表示し、対局入力UIや同期状態を表示しない。
+- `/?room=XXXX` は既存の対局アプリへ直接遷移し、招待リンクからの操作を増やさない。
+- ルーム作成・参加処理は紹介ページから呼び出せる共有の `RoomEntry` として分離し、紹介文と業務ロジックを混在させない。
+- ファーストビューには必ず「新しいルームを作る」「ルームコードで参加する」のCTAを残す。
+- ルームURLを知る人が閲覧・編集できる制約は、紹介ページでも明示する。
+- 開発者リンク（GitHub / X）はフッターにまとめ、サービスの主導線を邪魔しない。
+
+### Task 23: LandingViewとルーム導線の分離
+
+- [x] `LandingView`、`RoomEntry`を追加し、`roomCode`の有無でトップページとアプリを切り替える
+- [x] ルームURLからの既存アプリ遷移、ルーム作成、ルームコード参加、board表示を維持する
+- [x] トップページに同期バッジや対局用タブを表示しない
+
+**Verification:** `npm run check`、ルームなし/ルームあり/board URLの手動確認
+
+**Files likely touched:** `src/App.tsx`, `src/views/LandingView.tsx`, `src/views/RoomEntry.tsx`, `src/views/RoomView.tsx`
+
+### Task 24: Webサイト型トップページの情報設計とビジュアル
+
+- [x] ヒーローに「麻雀の対局を、みんなで記録・共有」と価値を表示する
+- [x] 点数記録・局ログ・成績・モニター表示の特徴を紹介する
+- [x] 「新しいルームを作る」「ルームコードで参加する」をファーストビューに配置する
+- [x] 使い方を「ルーム作成 → メンバー登録 → 対局記録」の3ステップで説明する
+- [x] 共有URLの閲覧・編集権限を注意表示する
+- [x] フッターにGitHub（`https://github.com/Ruu5LP`）とX（`https://x.com/Ruu5LP`）を設置する
+
+**Verification:** デスクトップ、390px幅、320px幅で視覚確認。横スクロールが発生しないこと。
+
+**Files likely touched:** `src/views/LandingView.tsx`, `src/styles.css`
+
+### Task 25: メタ情報と公開前QA
+
+- [x] タイトル、description、OGタイトル・説明をWebサイト型トップページの内容に合わせる
+- [x] ルームURLをSNSや検索向けの一般トップページとして誤って扱わない方針を確認する
+- [x] 初回訪問からルーム作成・参加・対局開始までの導線を手動確認する
+
+**Verification:** `npm run check`、`npm run build`、主要ブラウザでの手動確認
+
+**Files likely touched:** `index.html`, `README.md`, `SETUP.md`, `tasks/plan.md`, `tasks/todo.md`
+
+### Checkpoint: Webトップページ化 Complete
+
+- [x] ルームなしの訪問者が、サービス内容と次の操作を理解できる
+- [x] 招待リンク利用者が、紹介ページを経由せずアプリを開ける
+- [x] デスクトップ・スマホでCTAと説明が崩れない
+- [x] `npm run check` と `npm run build` が成功する
+
+### Risks and Mitigations
+
+| Risk                                     | Impact | Mitigation                                                          |
+| ---------------------------------------- | ------ | ------------------------------------------------------------------- |
+| 紹介を増やしてルーム操作が下がる         | Medium | CTAをファーストビューに固定し、作成・参加を最初の操作として残す     |
+| `RoomView`の分離で既存のルーム状態を壊す | High   | ルームなし/あり/boardの3経路を手動確認し、RoomEntryの処理を共有する |
+| ルームURLの権限説明が目立たなくなる      | High   | CTA付近に常設の注意表示を置く                                       |
