@@ -74,7 +74,7 @@ export default function LandingView(props: RoomEntryProps) {
       </section>
 
       <footer className="landing-footer">
-        <span>麻雀トラッカー · AiRuu Mahjong</span>
+        <span>麻雀トラッカー</span>
         <nav aria-label="開発者リンク">
           <a
             className="social-link"

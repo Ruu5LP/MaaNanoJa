@@ -177,7 +177,6 @@ export default function App() {
     <>
       <header className="app-header">
         <h1>麻雀トラッカー</h1>
-        <span className="sub">AiRuu Mahjong</span>
         {account?.user && <span className="account-badge">👤 {account.user.displayName}</span>}
         {roomCode && (
           <span className={`sync-badge sync-${syncStatus}`} role="status">

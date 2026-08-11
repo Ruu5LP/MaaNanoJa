@@ -1,4 +1,4 @@
-const OPERATOR_NAME = 'AiRuu Mahjong'
+const OPERATOR_NAME = 'AiRuu'
 const CONTACT_URL = 'https://x.com/Ruu5LP'
 const CONTACT_LABEL = 'X / @Ruu5LP'
 
