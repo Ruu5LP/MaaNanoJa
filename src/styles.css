@@ -54,51 +54,29 @@ body {
 }
 .landing-hero {
   display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.86fr);
   align-items: center;
-  gap: clamp(28px, 5vw, 72px);
+  gap: clamp(28px, 5vw, 64px);
   max-width: 1200px;
   margin: 0 auto;
-  padding: clamp(42px, 8vw, 92px) clamp(20px, 5vw, 64px) 64px;
+  padding: clamp(36px, 6vw, 68px) clamp(20px, 5vw, 64px) 56px;
 }
 .landing-hero-copy {
   min-width: 0;
 }
-.landing-eyebrow {
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  margin: 0 0 12px;
-  text-transform: uppercase;
-}
 .landing-hero h2 {
   color: var(--ink);
-  font-size: clamp(30px, 5vw, 54px);
-  letter-spacing: -0.03em;
-  line-height: 1.2;
+  font-size: clamp(28px, 4vw, 42px);
+  letter-spacing: -0.02em;
+  line-height: 1.35;
   margin: 0;
 }
 .landing-lead {
   color: var(--ink-2);
-  font-size: clamp(15px, 1.8vw, 18px);
-  line-height: 1.8;
-  margin: 22px 0 0;
+  font-size: 15px;
+  line-height: 1.85;
+  margin: 18px 0 0;
   max-width: 34em;
-}
-.landing-highlights {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 26px;
-}
-.landing-highlights span {
-  background: var(--surface-2);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  color: var(--ink-2);
-  font-size: 12px;
-  padding: 6px 10px;
 }
 .landing-hero .room-entry {
   min-width: 0;
@@ -119,36 +97,42 @@ body {
 .landing-section {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 64px clamp(20px, 5vw, 64px);
+  padding: 56px clamp(20px, 5vw, 64px);
 }
 .landing-section-heading {
   max-width: 680px;
-  margin-bottom: 28px;
+  margin-bottom: 22px;
 }
-.landing-section-heading h2,
-.landing-final h2 {
+.landing-section-heading h2 {
   color: var(--ink);
-  font-size: clamp(24px, 3vw, 36px);
+  font-size: clamp(22px, 3vw, 30px);
   letter-spacing: -0.02em;
   line-height: 1.35;
   margin: 0;
 }
+.landing-section-heading p {
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 8px 0 0;
+}
 .feature-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: 32px;
 }
 .feature-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 20px;
+  border-top: 1px solid var(--border);
+  padding: 16px 0 18px;
 }
-.feature-icon {
+.feature-number {
+  color: var(--accent);
   display: block;
-  font-size: 26px;
-  line-height: 1;
-  margin-bottom: 18px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-bottom: 10px;
 }
 .feature-card h3,
 .steps-list h3 {
@@ -157,8 +141,7 @@ body {
   margin: 0;
 }
 .feature-card p,
-.steps-list p,
-.landing-final p {
+.steps-list p {
   color: var(--ink-2);
   font-size: 13px;
   line-height: 1.7;
@@ -170,7 +153,7 @@ body {
 .steps-list {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 28px;
+  gap: 24px;
   list-style: none;
   margin: 0;
   padding: 0;
@@ -179,28 +162,16 @@ body {
   display: flex;
   gap: 12px;
   align-items: flex-start;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
 }
 .step-number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 30px;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-size: 14px;
-  font-weight: 800;
-}
-.landing-final {
-  max-width: 992px;
-  margin: 0 auto;
-  padding: 70px clamp(20px, 5vw, 64px) 80px;
-  text-align: center;
-}
-.landing-final p {
-  margin-top: 12px;
+  color: var(--accent);
+  flex: 0 0 34px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  letter-spacing: 0.08em;
 }
 .landing-footer {
   display: flex;
