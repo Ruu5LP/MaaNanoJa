@@ -10,6 +10,7 @@ import HistoryView from './views/HistoryView'
 import StatsView from './views/StatsView'
 import SettingsView from './views/SettingsView'
 import RoomView from './views/RoomView'
+import LandingView from './views/LandingView'
 import { normalizeRoomCode, ROOM_QUERY_KEY } from './lib/cloud-room'
 
 /** 画面から呼ぶ、DBを更新するアクション群。状態更新はここに集約する。 */
@@ -185,21 +186,23 @@ export default function App() {
         )}
       </header>
 
-      <RoomView
-        db={db}
-        legacyDB={legacyDB}
-        account={account}
-        accountRooms={accountRooms}
-        accountError={accountError}
-        roomCode={roomCode}
-        onJoined={joinRoom}
-        onLeave={leaveRoom}
-        onAccountChanged={() => void refreshAccount()}
-        onLegacyMigrated={() => {
-          clearLegacyLocalDB()
-          setLegacyDB(null)
-        }}
-      />
+      {roomCode ? (
+        <RoomView account={account} roomCode={roomCode} onLeave={leaveRoom} />
+      ) : (
+        <LandingView
+          db={db}
+          legacyDB={legacyDB}
+          account={account}
+          accountRooms={accountRooms}
+          accountError={accountError}
+          onJoined={joinRoom}
+          onAccountChanged={() => void refreshAccount()}
+          onLegacyMigrated={() => {
+            clearLegacyLocalDB()
+            setLegacyDB(null)
+          }}
+        />
+      )}
       {cloudError && roomCode && (
         <div className="sync-error-row" role="alert">
           <span>{cloudError}</span>

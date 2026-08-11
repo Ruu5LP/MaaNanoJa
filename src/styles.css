@@ -48,6 +48,184 @@ body {
   padding-bottom: 88px;
 }
 
+/* ---- Webトップページ ---- */
+.landing-page {
+  padding-bottom: 40px;
+}
+.landing-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(360px, 0.95fr);
+  align-items: center;
+  gap: clamp(28px, 5vw, 72px);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: clamp(42px, 8vw, 92px) clamp(20px, 5vw, 64px) 64px;
+}
+.landing-hero-copy {
+  min-width: 0;
+}
+.landing-eyebrow {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  margin: 0 0 12px;
+  text-transform: uppercase;
+}
+.landing-hero h2 {
+  color: var(--ink);
+  font-size: clamp(30px, 5vw, 54px);
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  margin: 0;
+}
+.landing-lead {
+  color: var(--ink-2);
+  font-size: clamp(15px, 1.8vw, 18px);
+  line-height: 1.8;
+  margin: 22px 0 0;
+  max-width: 34em;
+}
+.landing-highlights {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 26px;
+}
+.landing-highlights span {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--ink-2);
+  font-size: 12px;
+  padding: 6px 10px;
+}
+.landing-hero .room-entry {
+  min-width: 0;
+}
+.landing-hero .room-card {
+  margin: 0 0 12px;
+}
+.landing-hero .room-card:last-child {
+  margin-bottom: 0;
+}
+.landing-hero .room-account-error {
+  margin: 0 0 12px;
+}
+.room-entry-card h2 {
+  color: var(--ink);
+  font-size: 18px;
+}
+.landing-section {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 64px clamp(20px, 5vw, 64px);
+}
+.landing-section-heading {
+  max-width: 680px;
+  margin-bottom: 28px;
+}
+.landing-section-heading h2,
+.landing-final h2 {
+  color: var(--ink);
+  font-size: clamp(24px, 3vw, 36px);
+  letter-spacing: -0.02em;
+  line-height: 1.35;
+  margin: 0;
+}
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.feature-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+.feature-icon {
+  display: block;
+  font-size: 26px;
+  line-height: 1;
+  margin-bottom: 18px;
+}
+.feature-card h3,
+.steps-list h3 {
+  color: var(--ink);
+  font-size: 15px;
+  margin: 0;
+}
+.feature-card p,
+.steps-list p,
+.landing-final p {
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.7;
+  margin: 9px 0 0;
+}
+.landing-howto {
+  border-top: 1px solid var(--border);
+}
+.steps-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 28px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.steps-list li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 30px;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 14px;
+  font-weight: 800;
+}
+.landing-final {
+  max-width: 992px;
+  margin: 0 auto;
+  padding: 70px clamp(20px, 5vw, 64px) 80px;
+  text-align: center;
+}
+.landing-final p {
+  margin-top: 12px;
+}
+.landing-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 22px clamp(20px, 5vw, 64px) 0;
+  border-top: 1px solid var(--border);
+  color: var(--ink-3);
+  font-size: 12px;
+}
+.landing-footer nav {
+  display: flex;
+  gap: 16px;
+}
+.landing-footer a {
+  color: var(--ink-2);
+  text-decoration: none;
+}
+.landing-footer a:hover {
+  color: var(--accent);
+}
+
 /* ---- ヘッダ ---- */
 .app-header {
   padding: 16px 16px 8px;
@@ -249,12 +427,6 @@ body {
   align-items: center;
   gap: 10px;
   margin-top: 20px;
-}
-.room-lead {
-  color: var(--ink-2);
-  font-size: 14px;
-  line-height: 1.7;
-  margin: -2px 0 0;
 }
 .room-create-block,
 .room-join-block {
@@ -977,6 +1149,12 @@ h3.sec {
   }
 }
 
+@media (max-width: 960px) {
+  .feature-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
 /* ---- モニター表示（全画面スコアボード, ?board=1） ----
    position:fixed で #root の max-width/padding から完全に独立させ、画面いっぱいに使う。
    タブレット〜大画面のテレビまで想定し、文字サイズは clamp() でビューポートに追従させる。 */
@@ -1074,6 +1252,23 @@ h3.sec {
   color: var(--danger);
 }
 @media (max-width: 720px) {
+  .landing-hero {
+    grid-template-columns: 1fr;
+    gap: 30px;
+    padding-top: 42px;
+  }
+  .landing-section {
+    padding-top: 48px;
+    padding-bottom: 48px;
+  }
+  .feature-grid,
+  .steps-list {
+    grid-template-columns: 1fr;
+  }
+  .landing-footer {
+    align-items: flex-start;
+    flex-direction: column;
+  }
   .app-header {
     align-items: center;
     flex-wrap: wrap;

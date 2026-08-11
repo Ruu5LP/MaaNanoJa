@@ -137,3 +137,23 @@
   - Verify: デスクトップ/390px幅の手動確認、`npm run check`, `npm run build`
   - Files: `src/views/StatsPanels.tsx`, `src/styles.css`
   - Dependencies: Task 21
+
+## Webトップページ化
+
+- [x] Task 23: `LandingView`とルーム導線を分離
+  - Acceptance: room queryなしではサービス紹介ページ、room queryありでは既存アプリ、board queryでは既存boardが表示される
+  - Verify: `npm run check`、ルームなし/ルームあり/board URLの手動確認
+  - Files: `src/App.tsx`, `src/views/LandingView.tsx`, `src/views/RoomEntry.tsx`, `src/views/RoomView.tsx`
+  - Dependencies: Task 20, Task 21
+
+- [x] Task 24: Webサイト型トップページの情報設計とビジュアルを実装
+  - Acceptance: サービスの価値、4つの主な機能、3ステップの使い方、作成/参加CTA、共有権限の注意、GitHub/Xリンクが表示される
+  - Verify: デスクトップ/390px/320px幅の手動確認、横スクロールがないこと
+  - Files: `src/views/LandingView.tsx`, `src/styles.css`
+  - Dependencies: Task 23
+
+- [x] Task 25: メタ情報と公開前QAを更新
+  - Acceptance: タイトル・description・OG情報がトップページの内容と一致し、初回訪問から対局開始までの導線を確認できる
+  - Verify: `npm run check`, `npm run build`, 主要ブラウザの手動確認
+  - Files: `index.html`, `README.md`, `SETUP.md`, `tasks/plan.md`, `tasks/todo.md`
+  - Dependencies: Task 24
