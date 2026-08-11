@@ -3,8 +3,9 @@ import { emptyDB, uid } from './lib/store'
 import { clearLegacyLocalDB, readLegacyLocalDB } from './lib/legacy-local-data'
 import type { DB, Draft, Game } from './lib/domain'
 import { fetchAccount, fetchMyRooms } from './lib/account-api'
-import { createRoom } from './lib/cloud-room-api'
-import type { AccountRoom, AccountState } from './lib/account'
+import { CloudRoomError, createRoom } from './lib/cloud-room-api'
+import { GOOGLE_LOGIN_PATH, type AccountRoom, type AccountState } from './lib/account'
+import { clearGuestSessionDB, readGuestSessionDB, writeGuestSessionDB } from './lib/guest-session'
 import { SYNC_LABEL, type SyncStatus, useRoomSync } from './useRoomSync'
 import RecordView from './views/RecordView'
 import HistoryView from './views/HistoryView'
@@ -59,12 +60,27 @@ const TABS: { id: TabId; label: string; ico: string }[] = [
 export default function App() {
   const [db, setDB] = useState<DB>(() => emptyDB())
   const [legacyDB, setLegacyDB] = useState<DB | null>(() => readLegacyLocalDB())
+  const [guestDB, setGuestDB] = useState<DB | null>(() => readGuestSessionDB())
+  const [guestMode, setGuestMode] = useState(false)
+  const [guestSaveBusy, setGuestSaveBusy] = useState(false)
+  const [guestSaveError, setGuestSaveError] = useState<string | null>(null)
   const [account, setAccount] = useState<AccountState | null>(null)
   const [accountRooms, setAccountRooms] = useState<AccountRoom[]>([])
   const [accountError, setAccountError] = useState<string | null>(null)
   const [tab, setTab] = useState<TabId>('record')
   const [roomCode, setRoomCode] = useState<string | null>(() =>
     normalizeRoomCode(new URLSearchParams(window.location.search).get(ROOM_QUERY_KEY)),
+  )
+
+  const setAppDB = useCallback(
+    (next: DB) => {
+      setDB(next)
+      if (guestMode) {
+        writeGuestSessionDB(next)
+        setGuestDB(next)
+      }
+    },
+    [guestMode],
   )
 
   const {
@@ -78,7 +94,7 @@ export default function App() {
     saveGame,
     updateGame,
     deleteGame,
-  } = useRoomSync(roomCode, setDB)
+  } = useRoomSync(roomCode, setAppDB)
 
   const refreshAccount = useCallback(async () => {
     try {
@@ -99,28 +115,79 @@ export default function App() {
     void refreshAccount()
   }, [refreshAccount])
 
-  function joinRoom(code: string) {
+  const joinRoom = useCallback((code: string) => {
     const url = new URL(window.location.href)
     url.searchParams.set(ROOM_QUERY_KEY, code)
     window.history.replaceState({}, '', url)
+    setGuestMode(false)
+    setGuestSaveError(null)
     setRoomCode(code)
-  }
+  }, [])
 
   function leaveRoom() {
     const url = new URL(window.location.href)
     url.searchParams.delete(ROOM_QUERY_KEY)
     window.history.replaceState({}, '', url)
     setDB(emptyDB())
+    setGuestMode(false)
     setRoomCode(null)
   }
 
+  const startGuest = useCallback(() => {
+    const next = guestDB ?? emptyDB()
+    setDB(next)
+    writeGuestSessionDB(next)
+    setGuestDB(next)
+    setGuestMode(true)
+    setGuestSaveError(null)
+    setTab('record')
+  }, [guestDB])
+
+  const guestLoginUrl = useMemo(() => {
+    const current = `${window.location.pathname}${window.location.search}`
+    return `${GOOGLE_LOGIN_PATH}?returnTo=${encodeURIComponent(current)}`
+  }, [])
+
+  const saveGuestToCloud = useCallback(async () => {
+    if (!guestMode) return
+    if (!account?.user) {
+      setGuestSaveError('Googleでログインすると、データをクラウドに保存できます')
+      return
+    }
+
+    setGuestSaveBusy(true)
+    setGuestSaveError(null)
+    try {
+      const created = await createRoom(db, { migrateGames: true })
+      clearGuestSessionDB()
+      setGuestDB(null)
+      setGuestMode(false)
+      joinRoom(created.roomCode)
+      await refreshAccount()
+    } catch (error) {
+      setGuestSaveError(
+        error instanceof CloudRoomError ? error.message : 'クラウドに保存できませんでした',
+      )
+    } finally {
+      setGuestSaveBusy(false)
+    }
+  }, [account?.user, db, guestMode, joinRoom, refreshAccount])
+
   const restoreDB = useCallback(
     async (imported: DB) => {
+      if (guestMode && !account?.user) {
+        throw new Error('JSONから共有ルームを作るには、先にGoogleでログインしてください')
+      }
       const created = await createRoom(imported, { migrateGames: true })
+      if (guestMode) {
+        clearGuestSessionDB()
+        setGuestDB(null)
+        setGuestMode(false)
+      }
       joinRoom(created.roomCode)
       await refreshAccount()
     },
-    [refreshAccount],
+    [account?.user, guestMode, joinRoom, refreshAccount],
   )
 
   const api = useMemo<Api>(
@@ -130,7 +197,7 @@ export default function App() {
         if (!nm || db.players.length >= 4) return
         const previous = db
         const next = { ...db, players: [...db.players, { id: 'p-' + uid(), name: nm }] }
-        setDB(next)
+        setAppDB(next)
         saveState(next, previous)
       },
       renamePlayer(id, name) {
@@ -139,57 +206,57 @@ export default function App() {
           ...db,
           players: db.players.map((p) => (p.id === id ? { ...p, name } : p)),
         }
-        setDB(next)
+        setAppDB(next)
         saveState(next, previous)
       },
       removePlayer(id) {
         const previous = db
         const next = { ...db, players: db.players.filter((p) => p.id !== id) }
-        setDB(next)
+        setAppDB(next)
         saveState(next, previous)
       },
       updateRules(rules) {
         const previous = db
         const next = { ...db, rules }
-        setDB(next)
+        setAppDB(next)
         saveState(next, previous)
       },
       addGame(game) {
         const saved = { ...game, id: 'g-' + uid() }
         const previous = db
         const next = { ...db, games: [...db.games, saved] }
-        setDB(next)
+        setAppDB(next)
         saveGame(saved, next, previous)
       },
       updateGame(id, patch) {
         const nextGames = db.games.map((g) => (g.id === id ? { ...g, ...patch } : g))
         const previous = db
         const next = { ...db, games: nextGames }
-        setDB(next)
+        setAppDB(next)
         const updated = nextGames.find((g) => g.id === id)
         if (updated) updateGame(updated, next, previous)
       },
       removeGame(id) {
         const previous = db
         const next = { ...db, games: db.games.filter((g) => g.id !== id) }
-        setDB(next)
+        setAppDB(next)
         deleteGame(id, next, previous)
       },
       setDraft(draft) {
         const previous = db
         const next = { ...db, draft }
-        setDB(next)
+        setAppDB(next)
         saveState(next, previous)
       },
       commitDraft(game) {
         const saved = { ...game, id: 'g-' + uid() }
         const previous = db
         const next = { ...db, games: [...db.games, saved], draft: null }
-        setDB(next)
+        setAppDB(next)
         saveGame(saved, next, previous)
       },
     }),
-    [db, deleteGame, saveGame, saveState, updateGame],
+    [db, deleteGame, saveGame, saveState, setAppDB, updateGame],
   )
 
   return (
@@ -197,6 +264,7 @@ export default function App() {
       <header className="app-header">
         <h1>麻雀トラッカー</h1>
         {account?.user && <span className="account-badge">👤 {account.user.displayName}</span>}
+        {guestMode && <span className="sync-badge sync-guest">📝 一時保存</span>}
         {roomCode && (
           <span className={`sync-badge sync-${syncStatus}`} role="status">
             {syncStatusLabel(syncStatus, cloudMode)}
@@ -206,14 +274,50 @@ export default function App() {
 
       {roomCode ? (
         <RoomView account={account} roomCode={roomCode} onLeave={leaveRoom} />
+      ) : guestMode ? (
+        <div className="guest-strip">
+          <span className="room-label">お試しモード</span>
+          <span className="guest-strip-message">
+            このタブに一時保存中。タブを閉じると消えます。
+          </span>
+          <span className="spacer" />
+          {account?.user ? (
+            <button
+              className="btn sm primary"
+              disabled={guestSaveBusy}
+              onClick={() => void saveGuestToCloud()}
+            >
+              {guestSaveBusy ? '保存中…' : 'クラウドに保存'}
+            </button>
+          ) : account?.loginEnabled ? (
+            <a className="btn sm primary auth-action" href={guestLoginUrl}>
+              Googleでログインして保存
+            </a>
+          ) : (
+            <span className="muted guest-login-unavailable">
+              クラウド保存にはログインが必要です
+            </span>
+          )}
+          <button
+            className="btn sm ghost"
+            onClick={() => {
+              setGuestMode(false)
+              setDB(emptyDB())
+            }}
+          >
+            トップへ戻る
+          </button>
+        </div>
       ) : (
         <LandingView
           db={db}
           legacyDB={legacyDB}
+          guestDB={guestDB}
           account={account}
           accountRooms={accountRooms}
           accountError={accountError}
           onJoined={joinRoom}
+          onStartGuest={startGuest}
           onAccountChanged={() => void refreshAccount()}
           onLegacyMigrated={() => {
             clearLegacyLocalDB()
@@ -235,7 +339,13 @@ export default function App() {
         </p>
       )}
 
-      {!roomCode ? null : cloudMode === 'cloud' ? (
+      {guestSaveError && guestMode && (
+        <p className="error-text guest-save-error" role="alert">
+          {guestSaveError}
+        </p>
+      )}
+
+      {!roomCode && !guestMode ? null : guestMode || cloudMode === 'cloud' ? (
         <>
           {tab === 'record' && (
             <RecordView
@@ -247,7 +357,9 @@ export default function App() {
           )}
           {tab === 'stats' && <StatsView db={db} />}
           {tab === 'history' && <HistoryView db={db} api={api} />}
-          {tab === 'settings' && <SettingsView db={db} api={api} onRestore={restoreDB} />}
+          {tab === 'settings' && (
+            <SettingsView db={db} api={api} onRestore={restoreDB} guestMode={guestMode} />
+          )}
 
           <nav className="tabbar">
             {TABS.map((t) => (

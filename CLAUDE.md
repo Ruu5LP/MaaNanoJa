@@ -9,7 +9,7 @@
 
 麻雀のスコアと、放銃・流局・立直などの局データを記録して分析するWebアプリ。正式な保存先はCloudflare Workers + D1で、PC・スマホが同じルームURLから同じDBを扱う。
 
-ルームURLがない場合はルーム作成・参加画面だけを表示する。通常のDB状態をlocalStorageや家庭内サーバーへ保存したり、接続失敗時にローカルへフォールバックしたりしない。旧版のlocalStorage履歴を読む処理は、移行期間だけの明示操作に限る。
+ルームURLがない場合は、共有ルームの作成・参加画面と、未ログインのお試しモードへの導線を表示する。通常のDB状態をlocalStorageや家庭内サーバーへ保存したり、接続失敗時にローカルへフォールバックしたりしない。未ログインのお試し状態だけはsessionStorageへ一時保存する。旧版のlocalStorage履歴を読む処理は、移行期間だけの明示操作に限る。
 
 振る舞いの仕様は [SPEC.md](./SPEC.md)、Cloudflare-first化の設計は [docs/cloudflare-first-spec.md](./docs/cloudflare-first-spec.md) を参照する。
 
@@ -31,6 +31,7 @@ src/
     stats.ts      成績集計（純粋関数）
     store.ts      初期状態・正規化・JSON境界。通常の保存はしない
     legacy-local-data.ts 旧localStorageを移行時だけ読む境界
+    guest-session.ts      未ログインのお試し状態をsessionStorageへ一時保存する境界
     cloud-room.ts / cloud-room-api.ts Cloudflare API契約と通信
     *.test.ts     libのテスト（Vitest）
   views/        画面。表示とユーザー操作に専念
@@ -50,7 +51,7 @@ migrations/
 
 - **ロジックは `lib/` に、純粋関数で書く。** `views/` に計算ロジックを持ち込まない。`lib/` の純粋ロジックはReactやDOMをimportしない。
 - **状態は `App.tsx` の単一 `db` に集約し、更新は `api` 経由。** `views/` は `db`（読み）と `api`（書き）だけを受け取る。
-- **D1を正式な保存先にする。** `localStorage`を直接触ってよいのは `legacy-local-data.ts` だけで、旧履歴の明示的な移行処理に限る。
+- **D1を正式な保存先にする。** `localStorage`を直接触ってよいのは `legacy-local-data.ts` だけで、旧履歴の明示的な移行処理に限る。未ログインのお試し状態だけは`guest-session.ts`が`sessionStorage`へ保存する。
 - **型で縛る。** 外部入力は `unknown` として受け、境界で検証して絞る。`any` は原則禁止。
 - **スキーマ変更は移行付きで。** 保存データは `store.ts#normalizeDB` で後方互換に読み、形を変えるなら `version`を上げて移行を書く。
 - **Cloudflare接続失敗時にフォールバックしない。** エラー状態を表示し、再接続できる状態を保つ。

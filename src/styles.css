@@ -110,6 +110,16 @@ body {
   color: var(--ink);
   font-size: 18px;
 }
+.guest-entry-card {
+  border-color: #755b25;
+}
+.guest-entry-card .btn {
+  margin-top: 6px;
+}
+.guest-entry-note {
+  font-size: 11px;
+  margin: 10px 0 0;
+}
 .landing-section {
   max-width: 1120px;
   margin: 0 auto;
@@ -355,6 +365,10 @@ body {
   color: var(--danger);
   border-color: var(--danger);
 }
+.sync-badge.sync-guest {
+  color: var(--warn);
+  border-color: var(--warn);
+}
 .account-badge {
   color: var(--ink-2);
   font-size: 11px;
@@ -438,6 +452,9 @@ body {
   color: var(--danger);
   font-size: 13px;
   margin: 10px 0 0;
+}
+.guest-save-error {
+  margin: 8px 16px;
 }
 .sync-error-row {
   align-items: center;
@@ -585,6 +602,21 @@ body {
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   font-size: 12px;
+}
+.guest-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px 8px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 12px;
+}
+.guest-strip-message {
+  color: var(--ink-2);
+}
+.guest-login-unavailable {
+  font-size: 11px;
 }
 .room-strip .auth-action {
   margin-left: auto;
@@ -1372,6 +1404,16 @@ h3.sec {
   }
   .room-strip {
     flex-wrap: wrap;
+  }
+  .guest-strip {
+    flex-wrap: wrap;
+  }
+  .guest-strip-message {
+    flex: 1 1 100%;
+    order: 3;
+  }
+  .guest-strip .spacer {
+    display: none;
   }
   .room-strip .room-label {
     flex: 0 0 auto;

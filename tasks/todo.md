@@ -214,3 +214,29 @@
   - Acceptance: CI checks contract tests, types, dry run; release and rollback steps are documented
   - Verify: local CI-equivalent commands
   - Files: `.github/workflows/deploy.yml`, `SETUP.md`, `README.md`, `tasks/plan.md`, `tasks/todo.md`
+
+## 未ログインのお試しモード
+
+- [x] Task 37: お試しセッション保存境界を追加
+  - Acceptance: `sessionStorage`へ安全に保存・復元・削除でき、壊れた値は無視される。`localStorage`は使用しない
+  - Verify: `npm run test -- src/lib/guest-session.test.ts`, `npm run check`
+  - Files: `src/lib/guest-session.ts`, `src/lib/guest-session.test.ts`
+  - Dependencies: None
+
+- [x] Task 38: トップページからお試しモードへ入れる導線を追加
+  - Acceptance: 未ログインで「ログインなしで試す」を押すと記録画面へ入り、更新後も再開導線が表示される
+  - Verify: UI手動確認、`npm run check`
+  - Files: `src/App.tsx`, `src/views/RoomEntry.tsx`, `src/views/LandingView.tsx`
+  - Dependencies: Task 37
+
+- [x] Task 39: お試し画面の保存状態とログイン後移行を追加
+  - Acceptance: 一時保存が明示され、ログイン後に既存お試しデータを新規共有ルームへ移行できる。成功後に一時データを削除する
+  - Verify: 未ログイン/ログイン済み移行の手動確認、`npm run check`, `npm run build`
+  - Files: `src/App.tsx`, `src/views/SettingsView.tsx`, `src/styles.css`
+  - Dependencies: Task 38
+
+- [x] Task 40: お試しモードの文書化と検証
+  - Acceptance: README/SETUP/仕様書が一時保存と永続保存の境界を説明し、主要テストが成功する
+  - Verify: `npm run check`, `npm run build`
+  - Files: `README.md`, `SETUP.md`, `docs/guest-mode-spec.md`, `tasks/plan.md`, `tasks/todo.md`
+  - Dependencies: Task 39

@@ -15,7 +15,7 @@ MaaNanoJaをCloudflare Workers + D1を前提にした共有Webアプリへ整理
 ## Target Architecture
 
 - D1: players、rules、draft、gamesの正式な保存先
-- ブラウザ: ルームURL、画面状態、一時入力だけを保持。DBデータのlocalStorage保存はしない
+- ブラウザ: ルームURL、画面状態、一時入力だけを保持。共有ルームのDBデータはlocalStorageへ保存しない。未ログインのお試しモードだけはsessionStorageへタブ単位で一時保存する
 - 起動導線: ルーム作成または既存ルーム参加が必須
 - モニター表示: `?room=...&board=1` のCloudflareルームだけを対象にする
 - バックアップ: 設定画面のJSON書き出しを残す。読み込みはCloudflareルームへの明示操作として再設計する
@@ -44,10 +44,11 @@ npm run cf:deploy
 ## Project Boundaries
 
 - Always: D1を唯一の本体として扱い、通信失敗を隠さない。
-- Always: room queryなしでは記録・成績・設定などの本体UIを表示しない。
+- Always: 共有ルームのroom queryなしでは、共有用の記録・成績・設定などの本体UIを表示しない。未ログインのお試しモードは別の一時状態として例外扱いする。
 - Always: 既存localStorageの移行はユーザーの明示操作に限定する。
 - Ask first: ルームコード以外の認証、既存ルームへの自動統合、D1スキーマ変更。
 - Never: D1の状態をlocalStorageへ自動ミラーリングしない。
+- Never: 未ログインのお試し状態をD1やlocalStorageへ保存しない。
 - Never: Cloudflare接続失敗時にlocal/LANへサイレントフォールバックしない。
 
 ## Implementation Phases

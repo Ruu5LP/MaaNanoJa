@@ -7,10 +7,12 @@ import { GOOGLE_LOGIN_PATH, LOGOUT_PATH, type AccountRoom, type AccountState } f
 export interface RoomEntryProps {
   db: DB
   legacyDB?: DB | null
+  guestDB?: DB | null
   account?: AccountState | null
   accountRooms?: AccountRoom[]
   accountError?: string | null
   onJoined(roomCode: string): void
+  onStartGuest?(): void
   onAccountChanged?(): void
   onLegacyMigrated?(): void
 }
@@ -18,10 +20,12 @@ export interface RoomEntryProps {
 export default function RoomEntry({
   db,
   legacyDB = null,
+  guestDB = null,
   account = null,
   accountRooms = [],
   accountError = null,
   onJoined,
+  onStartGuest,
   onAccountChanged,
   onLegacyMigrated,
 }: RoomEntryProps) {
@@ -34,8 +38,13 @@ export default function RoomEntry({
   }, [])
 
   const creationDB = legacyDB ?? db
+  const requiresLogin = Boolean(account?.loginEnabled && !account.user)
 
   async function handleCreate(migrateGames: boolean) {
+    if (requiresLogin) {
+      setError('共有ルームを使うには、先にGoogleでログインしてください')
+      return
+    }
     setBusy(true)
     setError('')
     try {
@@ -51,6 +60,10 @@ export default function RoomEntry({
   }
 
   async function handleJoinCode(value: string) {
+    if (requiresLogin) {
+      setError('共有ルームを使うには、先にGoogleでログインしてください')
+      return
+    }
     const code = normalizeRoomCode(value)
     if (!code) {
       setError('8文字のルームコードを入力してください')
@@ -76,6 +89,18 @@ export default function RoomEntry({
           {accountError}
         </p>
       )}
+      <div className="card guest-entry-card room-card">
+        <h2>{guestDB ? 'お試し中のデータ' : 'まず試してみる'}</h2>
+        <p className="muted">
+          {guestDB
+            ? `このタブに一時保存したデータがあります（対局 ${guestDB.games.length}件）。`
+            : 'ログインなしで記録・成績機能を試せます。'}
+        </p>
+        <button className="btn primary" disabled={busy} onClick={() => onStartGuest?.()}>
+          {guestDB ? 'お試しを再開' : 'ログインなしで試す'}
+        </button>
+        <p className="muted guest-entry-note">タブを閉じると、お試しデータは消えます。</p>
+      </div>
       {account && (account.user || account.loginEnabled || accountError) && (
         <div className="card account-card room-card">
           <div className="row wrap">
@@ -135,14 +160,14 @@ export default function RoomEntry({
                 <span className="muted">旧データの過去対局 {legacyDB.games.length}件</span>
                 <button
                   className="btn primary"
-                  disabled={busy}
+                  disabled={busy || requiresLogin}
                   onClick={() => void handleCreate(true)}
                 >
                   {busy ? '作成中…' : '履歴を移行して作る'}
                 </button>
                 <button
                   className="btn ghost"
-                  disabled={busy}
+                  disabled={busy || requiresLogin}
                   onClick={() => void handleCreate(false)}
                 >
                   空のルームを作る
@@ -151,7 +176,7 @@ export default function RoomEntry({
             ) : (
               <button
                 className="btn primary"
-                disabled={busy}
+                disabled={busy || requiresLogin}
                 onClick={() => void handleCreate(false)}
               >
                 {busy ? '作成中…' : '新しいルームを作る'}
@@ -171,12 +196,17 @@ export default function RoomEntry({
                 autoCapitalize="characters"
                 autoComplete="off"
                 spellCheck={false}
+                disabled={busy || requiresLogin}
                 onChange={(e) => setInput(e.target.value.toUpperCase())}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') void handleJoinCode(input)
                 }}
               />
-              <button className="btn" disabled={busy} onClick={() => void handleJoinCode(input)}>
+              <button
+                className="btn"
+                disabled={busy || requiresLogin}
+                onClick={() => void handleJoinCode(input)}
+              >
                 参加
               </button>
             </div>

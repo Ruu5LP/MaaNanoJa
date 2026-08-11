@@ -8,6 +8,7 @@ interface SettingsViewProps {
   db: DB
   api: Api
   onRestore?(db: DB): Promise<void>
+  guestMode?: boolean
 }
 
 interface RuleForm {
@@ -24,7 +25,7 @@ function formFromRules(rules: DB['rules']): RuleForm {
   }
 }
 
-export default function SettingsView({ db, api, onRestore }: SettingsViewProps) {
+export default function SettingsView({ db, api, onRestore, guestMode = false }: SettingsViewProps) {
   const [newName, setNewName] = useState('')
   const [nameError, setNameError] = useState('')
   const [ruleForm, setRuleForm] = useState<RuleForm>(() => formFromRules(db.rules))
@@ -266,7 +267,11 @@ export default function SettingsView({ db, api, onRestore }: SettingsViewProps) 
             JSONで書き出し
           </button>
           <label className={`btn ghost${restoreBusy ? ' disabled' : ''}`}>
-            {restoreBusy ? '復元中…' : 'JSONから新しいルームを作る'}
+            {restoreBusy
+              ? '復元中…'
+              : guestMode
+                ? 'ログイン後に共有ルームを作る'
+                : 'JSONから新しいルームを作る'}
             <input
               type="file"
               accept="application/json,.json"
@@ -286,8 +291,9 @@ export default function SettingsView({ db, api, onRestore }: SettingsViewProps) 
           </p>
         )}
         <p className="muted" style={{ marginTop: 8 }}>
-          対局データはCloudflareの共有ルームに保存されます。JSONはバックアップとして書き出せます。
-          復元すると、現在のルームを変更せずにJSONの内容で新しい共有ルームを作成します。
+          {guestMode
+            ? '現在はお試しモードです。データはこのタブに一時保存されています。JSONの書き出しはできますが、共有ルームを作るにはGoogleログインが必要です。'
+            : '対局データはCloudflareの共有ルームに保存されます。JSONはバックアップとして書き出せます。復元すると、現在のルームを変更せずにJSONの内容で新しい共有ルームを作成します。'}
         </p>
       </div>
 

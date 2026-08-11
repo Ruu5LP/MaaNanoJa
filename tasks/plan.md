@@ -434,3 +434,30 @@ Issue #23として、成績画面の2つのグラフを比較しやすく、ス�
 - [x] malformed API payloadが拒否される
 - [ ] 2端末同期、再接続、復元、OAuthの手動確認が完了
 - [x] health/observability/rollback手順が実行可能
+
+## Phase 13: 未ログインのお試しモード
+
+### Overview
+
+Googleログイン前でも記録・成績機能を試せるようにする。お試しデータはタブ単位の`sessionStorage`にだけ保持し、ログイン後に新規共有ルームへ移行できるようにする。共有ルームの永続保存と別端末共有は引き続きログイン後に限定する。
+
+### Architecture Decisions
+
+- お試し状態の責務を`src/lib/guest-session.ts`へ分離し、`localStorage`の旧データ移行境界と混ぜない。
+- `roomCode`の有無とは別に`guestMode`を持ち、既存のクラウド同期フックは共有ルームでだけ動かす。
+- ログイン後の移行は既存の`POST /api/rooms`を利用し、既存ゲームも同じ新規ルームへ移行する。
+- Googleログイン無効環境の既存ルームコード運用は後方互換のためWorker側で維持する。
+
+### Tasks
+
+- [x] Task 37: お試しセッション保存境界を追加
+- [x] Task 38: トップページからお試しモードへ入れる導線を追加
+- [x] Task 39: お試し画面の保存状態とログイン後移行を追加
+- [x] Task 40: お試しモードの文書化と検証
+
+### Checkpoint: Guest Mode Complete
+
+- [x] 未ログインで記録・成績・履歴・設定を利用できる
+- [x] 更新では復元し、タブを閉じるとお試しデータが消える
+- [x] ログイン後に一時データを新規共有ルームへ移行できる
+- [x] `npm run check` と `npm run build` が成功する
