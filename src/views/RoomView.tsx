@@ -116,11 +116,11 @@ export default function RoomView({
             ルーム選択に戻る
           </button>
           {account?.user ? (
-            <a className="btn sm ghost" href={LOGOUT_PATH}>
+            <a className="btn sm ghost auth-action" href={LOGOUT_PATH}>
               ログアウト
             </a>
           ) : account?.loginEnabled ? (
-            <a className="btn sm primary" href={loginUrl}>
+            <a className="btn sm primary auth-action" href={loginUrl}>
               Googleでログイン
             </a>
           ) : null}
@@ -153,11 +153,11 @@ export default function RoomView({
             </div>
             <span className="spacer" />
             {account.user ? (
-              <a className="btn ghost" href={LOGOUT_PATH}>
+              <a className="btn ghost auth-action" href={LOGOUT_PATH}>
                 ログアウト
               </a>
             ) : account.loginEnabled ? (
-              <a className="btn primary" href={loginUrl}>
+              <a className="btn primary auth-action" href={loginUrl}>
                 Googleでログイン
               </a>
             ) : null}
