@@ -63,4 +63,7 @@ jobs:
           wranglerVersion: '4.118.0'
 
       - name: Smoke test health endpoint
-        run: curl --fail --retry 8 --retry-delay 5 --retry-connrefused https://maananaja.final0505.workers.dev/healthz
+        run: |
+          response="$(curl --fail --retry 8 --retry-delay 5 --retry-connrefused --silent https://maananaja.final0505.workers.dev/healthz)"
+          echo "$response" | grep -Eq '"ok"[[:space:]]*:[[:space:]]*true'
+          echo "$response" | grep -Eq '"service"[[:space:]]*:[[:space:]]*"maananaja"'
