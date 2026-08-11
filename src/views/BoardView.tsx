@@ -40,15 +40,28 @@ export default function BoardView({
       <div className="board-bar">
         <span className="board-title">麻雀トラッカー</span>
         <div className="seg-control period-tabs" style={{ marginBottom: 0 }}>
-          <button className={period === 'today' ? 'active' : ''} onClick={() => setPeriod('today')}>
+          <button
+            className={period === 'today' ? 'active' : ''}
+            aria-pressed={period === 'today'}
+            onClick={() => setPeriod('today')}
+          >
             今日
           </button>
-          <button className={period === 'all' ? 'active' : ''} onClick={() => setPeriod('all')}>
+          <button
+            className={period === 'all' ? 'active' : ''}
+            aria-pressed={period === 'all'}
+            onClick={() => setPeriod('all')}
+          >
             全期間
           </button>
         </div>
         <span className="spacer" />
-        <span className={`sync-badge sync-${syncMode}`}>{SYNC_LABEL[syncMode]}</span>
+        <span
+          className={`sync-badge ${syncError ? 'sync-error' : `sync-${syncMode}`}`}
+          role="status"
+        >
+          {syncError ? '⚠️ 同期エラー' : SYNC_LABEL[syncMode]}
+        </span>
         <button
           className="btn sm ghost"
           onClick={() => document.documentElement.requestFullscreen?.().catch(() => {})}

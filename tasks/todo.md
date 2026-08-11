@@ -107,3 +107,25 @@
   - Verify: Google OAuth Secret登録、OAuth callback、`/api/me`, `/api/my/rooms`、ルーム作成・再入室
   - Files: `docs/account-auth-spec.md`, `SETUP.md`, `README.md`
   - Dependencies: Task 16
+
+## 公開前UI/UX改善（Issue #21）
+
+- [x] Task 18: 共有編集と同期状態の可視化
+  - Acceptance: 共有編集を維持したまま更新者・最終更新・競合反映が分かり、保存状態を区別できる
+  - Verify: 同一ルームを2画面で開き、同時操作・通信失敗・復帰を手動確認。`npm run check`
+  - Dependencies: Task 3
+
+- [x] Task 19: データ保護と対局ルールの固定
+  - Acceptance: 破棄・削除・空保存が安全で、過去対局のルールが後から変わらない
+  - Verify: ルール変更前後の履歴・成績・board、破棄・削除確認、JSON互換テスト。`npm run check`
+  - Dependencies: Task 4
+
+- [x] Task 20: 初回導線・ルーム・入力UX
+  - Acceptance: 初回利用者がルーム作成から対局開始まで迷わず、URLコピー・公開範囲・重複名が明確
+  - Verify: 初回フロー、コピー失敗、重複名、設定入力の手動確認。`npm run check`
+  - Dependencies: Task 2, Task 16
+
+- [x] Task 21: スマホ・アクセシビリティ・公開向け仕上げ
+  - Acceptance: 390px幅の主要操作が使いやすく、フォーム・タブ・選択状態に適切なアクセシブルネームと状態がある
+  - Verify: 390px/デスクトップ手動確認、`npm run build`, `npm run check`
+  - Dependencies: Task 18, Task 19, Task 20

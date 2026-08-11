@@ -12,6 +12,7 @@ import type { DB, Game } from './lib/domain'
 import { normalizeDB, SCHEMA_VERSION } from './lib/store'
 
 export type SyncMode = 'idle' | 'connecting' | 'cloud'
+export type SyncStatus = 'idle' | 'connecting' | 'saving' | 'synced' | 'error'
 
 export const SYNC_LABEL: Record<SyncMode, string> = {
   idle: '☁️ ルーム未選択',
@@ -21,7 +22,11 @@ export const SYNC_LABEL: Record<SyncMode, string> = {
 
 interface RoomSyncResult {
   mode: SyncMode
+  status: SyncStatus
   error: string | null
+  notice: string | null
+  lastSyncedAt: number | null
+  retry(): void
   saveState(nextDB: DB): void
   saveGame(game: Game): void
   updateGame(game: Game): void
@@ -47,8 +52,12 @@ function syncErrorMessage(error: unknown): string {
 }
 
 export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void): RoomSyncResult {
+  const [retryCount, setRetryCount] = useState(0)
   const [mode, setMode] = useState<SyncMode>(roomCode ? 'connecting' : 'idle')
+  const [status, setStatus] = useState<SyncStatus>(roomCode ? 'connecting' : 'idle')
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null)
   const revisionRef = useRef(0)
   const readyRef = useRef(false)
   const aliveRef = useRef(true)
@@ -65,9 +74,13 @@ export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void):
     pendingRef.current = 0
     queueRef.current = Promise.resolve()
     setError(null)
+    setNotice(null)
+    setLastSyncedAt(null)
+    setStatus(roomCode ? 'connecting' : 'idle')
 
     if (!roomCode) {
       setMode('idle')
+      setStatus('idle')
       return () => {
         aliveRef.current = false
       }
@@ -83,12 +96,19 @@ export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void):
         const snapshot = await fetchRoom(code)
         if (!aliveRef.current || versionRef.current !== version) return
         if (snapshot.revision <= revisionRef.current) return
+        const remoteUpdate = readyRef.current && revisionRef.current > 0
         revisionRef.current = snapshot.revision
         setDB(snapshotDB(snapshot))
         setError(null)
+        if (remoteUpdate) setNotice('別端末の最新入力を反映しました')
+        setStatus('synced')
+        setLastSyncedAt(Date.now())
         setMode('cloud')
       } catch (e) {
-        if (aliveRef.current && versionRef.current === version) setError(syncErrorMessage(e))
+        if (aliveRef.current && versionRef.current === version) {
+          setError(syncErrorMessage(e))
+          setStatus('error')
+        }
       }
     }
 
@@ -100,11 +120,15 @@ export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void):
         setDB(snapshotDB(snapshot))
         readyRef.current = true
         setError(null)
+        setNotice(null)
+        setStatus('synced')
+        setLastSyncedAt(Date.now())
         setMode('cloud')
         timer = setInterval(() => void poll(), 1000)
       } catch (e) {
         if (aliveRef.current && versionRef.current === version) {
           setError(syncErrorMessage(e))
+          setStatus('error')
           setMode('connecting')
         }
       }
@@ -115,7 +139,7 @@ export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void):
       readyRef.current = false
       if (timer) clearInterval(timer)
     }
-  }, [roomCode, setDB])
+  }, [roomCode, retryCount, setDB])
 
   const enqueue = useCallback((operation: () => Promise<void>) => {
     pendingRef.current += 1
@@ -134,8 +158,17 @@ export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void):
       if (error instanceof CloudRoomError && error.snapshot && aliveRef.current) {
         revisionRef.current = error.snapshot.revision
         setDB(snapshotDB(error.snapshot))
+        setError(null)
+        setNotice('別端末の最新入力を反映しました')
+        setStatus('synced')
+        setLastSyncedAt(Date.now())
+        return
       }
-      if (aliveRef.current) setError(syncErrorMessage(error))
+      if (aliveRef.current) {
+        setError(syncErrorMessage(error))
+        setNotice(null)
+        setStatus('error')
+      }
     },
     [setDB],
   )
@@ -143,6 +176,8 @@ export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void):
   const saveState = useCallback(
     (nextDB: DB) => {
       if (!roomCode) return
+      setStatus('saving')
+      setError(null)
       const code = roomCode
       const version = versionRef.current
       void enqueue(async () => {
@@ -154,6 +189,9 @@ export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void):
           })
           revisionRef.current = nextRevision
           setError(null)
+          setNotice(null)
+          setStatus('synced')
+          setLastSyncedAt(Date.now())
           setMode('cloud')
         } catch (e) {
           handleWriteError(e)
@@ -166,6 +204,8 @@ export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void):
   const saveGame = useCallback(
     (game: Game) => {
       if (!roomCode) return
+      setStatus('saving')
+      setError(null)
       const code = roomCode
       const version = versionRef.current
       void enqueue(async () => {
@@ -174,6 +214,9 @@ export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void):
           const nextRevision = await addRoomGame(code, { revision: revisionRef.current, game })
           revisionRef.current = nextRevision
           setError(null)
+          setNotice(null)
+          setStatus('synced')
+          setLastSyncedAt(Date.now())
           setMode('cloud')
         } catch (e) {
           handleWriteError(e)
@@ -186,6 +229,8 @@ export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void):
   const updateGame = useCallback(
     (game: Game) => {
       if (!roomCode) return
+      setStatus('saving')
+      setError(null)
       const code = roomCode
       const version = versionRef.current
       void enqueue(async () => {
@@ -194,6 +239,9 @@ export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void):
           const nextRevision = await updateRoomGame(code, { revision: revisionRef.current, game })
           revisionRef.current = nextRevision
           setError(null)
+          setNotice(null)
+          setStatus('synced')
+          setLastSyncedAt(Date.now())
           setMode('cloud')
         } catch (e) {
           handleWriteError(e)
@@ -206,6 +254,8 @@ export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void):
   const deleteGame = useCallback(
     (gameId: string) => {
       if (!roomCode) return
+      setStatus('saving')
+      setError(null)
       const code = roomCode
       const version = versionRef.current
       void enqueue(async () => {
@@ -214,6 +264,9 @@ export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void):
           const nextRevision = await deleteRoomGame(code, gameId, revisionRef.current)
           revisionRef.current = nextRevision
           setError(null)
+          setNotice(null)
+          setStatus('synced')
+          setLastSyncedAt(Date.now())
           setMode('cloud')
         } catch (e) {
           handleWriteError(e)
@@ -223,5 +276,18 @@ export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void):
     [enqueue, handleWriteError, roomCode],
   )
 
-  return { mode, error, saveState, saveGame, updateGame, deleteGame }
+  const retry = useCallback(() => setRetryCount((count) => count + 1), [])
+
+  return {
+    mode,
+    status,
+    error,
+    notice,
+    lastSyncedAt,
+    retry,
+    saveState,
+    saveGame,
+    updateGame,
+    deleteGame,
+  }
 }

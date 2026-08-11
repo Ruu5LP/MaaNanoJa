@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { replay, rotateToDealer } from './game'
+import { gameResults, replay, rotateToDealer } from './game'
 import type { Game, Rules } from './domain'
 
 const RULES: Rules = {
@@ -48,5 +48,33 @@ describe('点数修正（adjustハンド）の再生', () => {
     // 2局目（親のツモ）が終わったあとは通常どおり連荘・本場が進む
     expect(state.dealerIndex).toBe(0)
     expect(state.honba).toBe(1)
+  })
+})
+
+describe('対局ごとのルール', () => {
+  it('現在の設定を変更しても、保存済みの対局は記録時のルールで計算する', () => {
+    const game: Game = {
+      id: 'g-rules',
+      date: '2026-08-11',
+      note: '',
+      playerIds: ['A', 'B', 'C', 'D'],
+      finalPoints: { A: 25000, B: 25000, C: 25000, D: 25000 },
+      hands: [],
+      rules: {
+        startPoints: 25000,
+        returnPoints: 25000,
+        uma: [0, 0, 0, 0],
+        tiebreak: 'shimocha',
+      },
+    }
+
+    const changedRules: Rules = {
+      startPoints: 25000,
+      returnPoints: 30000,
+      uma: [30, 10, -10, -30],
+      tiebreak: 'shimocha',
+    }
+
+    expect(gameResults(game, changedRules).map((result) => result.score)).toEqual([0, 0, 0, 0])
   })
 })

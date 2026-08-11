@@ -1,10 +1,36 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { exportJSON } from '../lib/store'
 import type { DB } from '../lib/domain'
 import type { Api } from '../App'
 
 export default function SettingsView({ db, api }: { db: DB; api: Api }) {
   const [newName, setNewName] = useState('')
+  const [nameError, setNameError] = useState('')
+
+  function addPlayer() {
+    const name = newName.trim()
+    if (!name) {
+      setNameError('プレイヤー名を入力してください')
+      return
+    }
+    if (db.players.some((player) => player.name.trim() === name)) {
+      setNameError('同じ名前のプレイヤーがすでに登録されています')
+      return
+    }
+    api.addPlayer(name)
+    setNewName('')
+    setNameError('')
+  }
+
+  function renamePlayer(id: string, name: string): boolean {
+    if (db.players.some((player) => player.id !== id && player.name.trim() === name)) {
+      setNameError('同じ名前のプレイヤーがすでに登録されています')
+      return false
+    }
+    api.renamePlayer(id, name)
+    setNameError('')
+    return true
+  }
 
   function download() {
     const blob = new Blob([exportJSON(db)], { type: 'application/json' })
@@ -24,9 +50,13 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
       <div className="card">
         <h2>プレイヤー</h2>
         <div className="stack">
-          {db.players.map((p) => (
+          {db.players.map((p, index) => (
             <div className="row" key={p.id}>
-              <input value={p.name} onChange={(e) => api.renamePlayer(p.id, e.target.value)} />
+              <PlayerNameEditor
+                name={p.name}
+                label={`プレイヤー${index + 1}の名前`}
+                onCommit={(name) => renamePlayer(p.id, name)}
+              />
               <button
                 className="btn sm danger"
                 disabled={usedPlayerIds.has(p.id)}
@@ -42,24 +72,17 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
           <input
             value={newName}
             placeholder="新しいメンバー名"
+            aria-label="新しいメンバー名"
             onChange={(e) => setNewName(e.target.value)}
             onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                api.addPlayer(newName)
-                setNewName('')
-              }
+              if (e.key === 'Enter') addPlayer()
             }}
           />
-          <button
-            className="btn"
-            onClick={() => {
-              api.addPlayer(newName)
-              setNewName('')
-            }}
-          >
+          <button className="btn" onClick={addPlayer}>
             追加
           </button>
         </div>
+        {nameError && <p className="error-text">{nameError}</p>}
         <p className="muted" style={{ marginTop: 6 }}>
           対局記録のあるメンバーは、記録が壊れないよう削除できません。
         </p>
@@ -131,5 +154,40 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
         スコア計算は namimori 氏の麻雀集計スプレッドシートのルールに準拠。
       </p>
     </div>
+  )
+}
+
+function PlayerNameEditor({
+  name,
+  label,
+  onCommit,
+}: {
+  name: string
+  label: string
+  onCommit: (name: string) => boolean
+}) {
+  const [value, setValue] = useState(name)
+
+  useEffect(() => setValue(name), [name])
+
+  function commit() {
+    const next = value.trim()
+    if (!next) {
+      setValue(name)
+      return
+    }
+    if (next !== name && !onCommit(next)) setValue(name)
+  }
+
+  return (
+    <input
+      value={value}
+      aria-label={label}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') e.currentTarget.blur()
+      }}
+    />
   )
 }

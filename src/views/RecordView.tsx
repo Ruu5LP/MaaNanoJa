@@ -36,6 +36,7 @@ function draftToGame(
   draft: Draft,
   hands: Hand[],
   finalPoints: Record<string, number>,
+  rules: Rules,
 ): Omit<Game, 'id'> {
   return {
     date: draft.date,
@@ -43,17 +44,30 @@ function draftToGame(
     playerIds: draft.playerIds,
     hands,
     finalPoints,
+    rules: draft.rules ?? rules,
     createdAt: Date.now(),
   }
 }
 
-export default function RecordView({ db, api, onDone }: { db: DB; api: Api; onDone: () => void }) {
+export default function RecordView({
+  db,
+  api,
+  onDone,
+  onOpenSettings,
+}: {
+  db: DB
+  api: Api
+  onDone: () => void
+  onOpenSettings?: () => void
+}) {
   // 進行中の半荘は DB に持たせて全端末で共有する（`db.draft`）。
   // どの端末からでも同じ対局に入力でき、席・局ログ・持ち点はCloudflare同期で自動的に揃う。
   // 誰かが「新しい半荘」を始めると全端末がその入力画面になり、保存すると全端末が新規フォームに戻る。
   const draft = db.draft
   const start = (d: Draft) => api.setDraft(d)
-  const cancel = () => api.setDraft(null)
+  const cancel = () => {
+    if (confirm('進行中の半荘を破棄しますか？全端末の入力内容が消えます。')) api.setDraft(null)
+  }
   const save: SaveFn = (game) => {
     api.commitDraft(game)
     onDone()
@@ -66,7 +80,7 @@ export default function RecordView({ db, api, onDone }: { db: DB; api: Api; onDo
       <LiveView db={db} api={api} draft={draft} onSave={save} onCancel={cancel} />
     )
 
-  return <SetupView db={db} onStart={start} />
+  return <SetupView db={db} onStart={start} onOpenSettings={onOpenSettings} />
 }
 
 /** 前回の対局の並びを引き継ぐ（全員が現在も登録済みのときだけ）。無ければ空スロット。 */
@@ -80,7 +94,15 @@ function lastUsedSeats(db: DB): (string | null)[] {
 }
 
 /* ---------- セットアップ ---------- */
-function SetupView({ db, onStart }: { db: DB; onStart: (draft: Draft) => void }) {
+function SetupView({
+  db,
+  onStart,
+  onOpenSettings,
+}: {
+  db: DB
+  onStart: (draft: Draft) => void
+  onOpenSettings?: () => void
+}) {
   const initialSeats = useMemo(() => lastUsedSeats(db), [db])
   const [seats, setSeats] = useState<(string | null)[]>(initialSeats)
   const [editingSeats, setEditingSeats] = useState(initialSeats.some((s) => !s))
@@ -106,6 +128,7 @@ function SetupView({ db, onStart }: { db: DB; onStart: (draft: Draft) => void })
       note,
       playerIds,
       hands: [],
+      rules: { ...db.rules, uma: [...db.rules.uma] as Rules['uma'] },
       finalPoints: Object.fromEntries(playerIds.map((pid) => [pid, db.rules.startPoints])),
       form: null,
       // quick モードの入力中の点数も全端末で共有する（初期値は配給原点）。
@@ -117,7 +140,16 @@ function SetupView({ db, onStart }: { db: DB; onStart: (draft: Draft) => void })
     <div className="card">
       <h2>新しい半荘</h2>
       {db.players.length < 4 ? (
-        <p className="muted">プレイヤーが4人未満です。「設定」タブでメンバーを登録してください。</p>
+        <>
+          <p className="muted">
+            対局を始めるには、まず4人のプレイヤーを登録してください。登録後は席順と起家を選べます。
+          </p>
+          {onOpenSettings && (
+            <button className="btn primary" onClick={onOpenSettings}>
+              メンバーを設定する
+            </button>
+          )}
+        </>
       ) : (
         <>
           <div className="grid2" style={{ marginBottom: 12 }}>
@@ -151,6 +183,7 @@ function SetupView({ db, onStart }: { db: DB; onStart: (draft: Draft) => void })
                 <div className="slot" key={i}>
                   <span className="wind">{WINDS[i]}</span>
                   <select
+                    aria-label={`${WINDS[i]}のプレイヤー`}
                     value={sid ?? ''}
                     onChange={(e) => {
                       const v = e.target.value || null
@@ -169,8 +202,9 @@ function SetupView({ db, onStart }: { db: DB; onStart: (draft: Draft) => void })
             </div>
           ) : (
             <div className="pick-row">
-              {chosen.map((pid) => (
+              {chosen.map((pid, i) => (
                 <span className="pill" key={pid}>
+                  <b className="wind">{WINDS[i]}</b>
                   {name(pid)}
                 </span>
               ))}
@@ -185,6 +219,8 @@ function SetupView({ db, onStart }: { db: DB; onStart: (draft: Draft) => void })
                   <button
                     key={pid}
                     className={`pill ${effectiveDealer === pid ? 'on' : ''}`}
+                    type="button"
+                    aria-pressed={effectiveDealer === pid}
                     onClick={() => setDealerId(pid)}
                   >
                     {name(pid)}
@@ -233,7 +269,7 @@ function QuickView({
   const setPt = (pid: string, v: string) =>
     api.setDraft({ ...draft, quickPoints: { ...pts, [pid]: v } })
 
-  const game = draftToGame(draft, [], numify(pts))
+  const game = draftToGame(draft, [], numify(pts), db.rules)
   const check = pointsCheck({ ...game, id: 'draft' }, db.rules)
   const results = safeResults({ ...game, id: 'draft' }, db.rules)
 
@@ -295,7 +331,7 @@ function LiveView({
   onSave: SaveFn
   onCancel: () => void
 }) {
-  const rules = db.rules
+  const rules = draft.rules ?? db.rules
   const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '?'
   const gameForReplay: Game = { ...draft, id: 'draft' }
   const { state } = useMemo(() => replay({ ...draft, id: 'draft' }, rules), [draft, rules])
@@ -392,7 +428,7 @@ function LiveView({
   const dealerId = draft.playerIds[state.dealerIndex] ?? ''
 
   if (finishing) {
-    const game = draftToGame(draft, draft.hands, { ...state.points })
+    const game = draftToGame(draft, draft.hands, { ...state.points }, rules)
     const gameWithId: Game = { ...game, id: 'draft' }
     const results = gameResults(gameWithId, rules)
     const check = pointsCheck(gameWithId, rules)
@@ -530,7 +566,11 @@ function LiveView({
         </div>
 
         <div className="row">
-          <button className="btn primary" onClick={() => setFinishing(true)}>
+          <button
+            className="btn primary"
+            disabled={draft.hands.length === 0}
+            onClick={() => setFinishing(true)}
+          >
             半荘を終了
           </button>
           <button className="btn ghost" onClick={onCancel}>
@@ -675,7 +715,13 @@ function HandForm({
     <div style={{ marginTop: 14 }}>
       <div className="seg-control" style={{ marginBottom: 10 }}>
         {TYPE_LABELS.map(([v, l]) => (
-          <button key={v} className={type === v ? 'active' : ''} onClick={() => changeType(v)}>
+          <button
+            key={v}
+            type="button"
+            className={type === v ? 'active' : ''}
+            aria-pressed={type === v}
+            onClick={() => changeType(v)}
+          >
             {l}
           </button>
         ))}
@@ -691,7 +737,9 @@ function HandForm({
               {playerIds.map((pid) => (
                 <button
                   key={pid}
+                  type="button"
                   className={`pill ${winners.includes(pid) ? 'on' : ''}`}
+                  aria-pressed={winners.includes(pid)}
                   disabled={type === 'ron' && pid === loser}
                   onClick={() => toggleWinner(pid)}
                 >
@@ -709,7 +757,9 @@ function HandForm({
                 {playerIds.map((pid) => (
                   <button
                     key={pid}
+                    type="button"
                     className={`pill ${loser === pid ? 'on' : ''}`}
+                    aria-pressed={loser === pid}
                     disabled={winners.includes(pid)}
                     onClick={() => toggleLoser(pid)}
                   >
@@ -741,7 +791,9 @@ function HandForm({
             {playerIds.map((pid) => (
               <button
                 key={pid}
+                type="button"
                 className={`pill ${tenpai.includes(pid) ? 'on' : ''}`}
+                aria-pressed={tenpai.includes(pid)}
                 onClick={() => toggleField('tenpai', pid)}
               >
                 {name(pid)}
@@ -760,7 +812,9 @@ function HandForm({
             {playerIds.map((pid) => (
               <button
                 key={pid}
+                type="button"
                 className={`pill ${riichi.includes(pid) ? 'on' : ''}`}
+                aria-pressed={riichi.includes(pid)}
                 onClick={() => toggleField('riichi', pid)}
               >
                 {name(pid)}
@@ -880,7 +934,10 @@ function ScorePicker({
                 {row.map((c) => (
                   <td key={c.fu}>
                     <button
+                      type="button"
                       className={`score-cell ${value.han === c.han && value.fu === c.fu ? 'on' : ''}`}
+                      aria-label={`${c.han}翻${c.fu}符 ${c.total.toLocaleString()}点`}
+                      aria-pressed={value.han === c.han && value.fu === c.fu}
                       onClick={() => onChange(c.han, c.fu)}
                     >
                       {c.total.toLocaleString()}
@@ -898,7 +955,9 @@ function ScorePicker({
         {mangans.map((m) => (
           <button
             key={m.han}
+            type="button"
             className={`pill ${value.han === m.han ? 'on' : ''}`}
+            aria-pressed={value.han === m.han}
             onClick={() => onChange(m.han, m.fu)}
           >
             {m.total.toLocaleString()}（{hanLabel(m.han)}）

@@ -32,6 +32,7 @@ export default function RoomView({
   const [input, setInput] = useState(roomCode ?? '')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [copyState, setCopyState] = useState<'idle' | 'done' | 'error'>('idle')
   const roomUrl = useMemo(() => {
     if (!roomCode) return ''
     const url = new URL(window.location.href)
@@ -45,6 +46,20 @@ export default function RoomView({
   }, [])
 
   const creationDB = legacyDB ?? db
+
+  async function copyRoomUrl() {
+    if (!navigator.clipboard) {
+      setCopyState('error')
+      return
+    }
+    try {
+      await navigator.clipboard.writeText(roomUrl)
+      setCopyState('done')
+      window.setTimeout(() => setCopyState('idle'), 2000)
+    } catch {
+      setCopyState('error')
+    }
+  }
 
   async function handleCreate(migrateGames: boolean) {
     setBusy(true)
@@ -86,29 +101,36 @@ export default function RoomView({
 
   if (roomCode) {
     return (
-      <div className="room-strip">
-        <span className="room-label">共有ルーム</span>
-        <code className="room-code">{roomCode}</code>
-        <button
-          className="btn sm ghost"
-          onClick={() => navigator.clipboard?.writeText(roomUrl).catch(() => {})}
-          title="参加用URLをコピー"
-        >
-          URLをコピー
-        </button>
-        <button className="btn sm ghost" onClick={onLeave}>
-          ルーム選択に戻る
-        </button>
-        {account?.user ? (
-          <a className="btn sm ghost" href={LOGOUT_PATH}>
-            ログアウト
-          </a>
-        ) : account?.loginEnabled ? (
-          <a className="btn sm primary" href={loginUrl}>
-            Googleでログイン
-          </a>
-        ) : null}
-      </div>
+      <>
+        <div className="room-strip">
+          <span className="room-label">共有ルーム</span>
+          <code className="room-code">{roomCode}</code>
+          <button
+            className="btn sm ghost"
+            onClick={() => void copyRoomUrl()}
+            title="参加用URLをコピー"
+          >
+            {copyState === 'done' ? 'コピーしました' : 'URLをコピー'}
+          </button>
+          <button className="btn sm ghost" onClick={onLeave}>
+            ルーム選択に戻る
+          </button>
+          {account?.user ? (
+            <a className="btn sm ghost" href={LOGOUT_PATH}>
+              ログアウト
+            </a>
+          ) : account?.loginEnabled ? (
+            <a className="btn sm primary" href={loginUrl}>
+              Googleでログイン
+            </a>
+          ) : null}
+        </div>
+        {copyState === 'error' && (
+          <p className="error-text room-copy-error">
+            URLをコピーできませんでした。URLを長押ししてコピーしてください。
+          </p>
+        )}
+      </>
     )
   }
 
@@ -163,6 +185,9 @@ export default function RoomView({
       <div className="card room-card">
         <h2>みんなで使う</h2>
         <p className="muted">ルームを作ると、PCのモニターとスマホを同じ対局に接続できます。</p>
+        <p className="muted room-privacy">
+          ルームURLを知っている人は、ログインなしで閲覧・入力できます。信頼できる相手にだけ共有してください。
+        </p>
         <div className="room-actions">
           {legacyDB && legacyDB.games.length > 0 ? (
             <div className="room-create-options">

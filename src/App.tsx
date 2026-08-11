@@ -4,7 +4,7 @@ import { clearLegacyLocalDB, readLegacyLocalDB } from './lib/legacy-local-data'
 import type { DB, Draft, Game } from './lib/domain'
 import { fetchAccount, fetchMyRooms } from './lib/account-api'
 import type { AccountRoom, AccountState } from './lib/account'
-import { SYNC_LABEL, useRoomSync } from './useRoomSync'
+import { SYNC_LABEL, type SyncStatus, useRoomSync } from './useRoomSync'
 import RecordView from './views/RecordView'
 import HistoryView from './views/HistoryView'
 import StatsView from './views/StatsView'
@@ -29,6 +29,24 @@ export interface Api {
 
 type TabId = 'record' | 'stats' | 'history' | 'settings'
 
+function syncStatusLabel(status: SyncStatus, mode: 'idle' | 'connecting' | 'cloud'): string {
+  if (status === 'saving') return '☁️ 保存中…'
+  if (status === 'error') return '⚠️ 同期エラー'
+  if (status === 'connecting') return SYNC_LABEL.connecting
+  if (status === 'synced') return '☁️ 保存済み'
+  return SYNC_LABEL[mode]
+}
+
+function syncNoticeLabel(notice: string, lastSyncedAt: number | null): string {
+  if (!lastSyncedAt) return notice
+  const time = new Date(lastSyncedAt).toLocaleTimeString('ja-JP', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+  return `${notice}（${time}）`
+}
+
 const TABS: { id: TabId; label: string; ico: string }[] = [
   { id: 'record', label: '記録', ico: '🀄' },
   { id: 'stats', label: '成績', ico: '📊' },
@@ -49,7 +67,11 @@ export default function App() {
 
   const {
     mode: cloudMode,
+    status: syncStatus,
     error: cloudError,
+    notice: syncNotice,
+    lastSyncedAt,
+    retry: retrySync,
     saveState,
     saveGame,
     updateGame,
@@ -156,7 +178,9 @@ export default function App() {
         <h1>麻雀トラッカー</h1>
         <span className="sub">AiRuu Mahjong</span>
         {account?.user && <span className="account-badge">👤 {account.user.displayName}</span>}
-        <span className={`sync-badge sync-${cloudMode}`}>{SYNC_LABEL[cloudMode]}</span>
+        <span className={`sync-badge sync-${syncStatus}`} role="status">
+          {syncStatusLabel(syncStatus, cloudMode)}
+        </span>
       </header>
 
       <RoomView
@@ -174,11 +198,30 @@ export default function App() {
           setLegacyDB(null)
         }}
       />
-      {cloudError && roomCode && <p className="sync-error">{cloudError}</p>}
+      {cloudError && roomCode && (
+        <div className="sync-error-row" role="alert">
+          <span>{cloudError}</span>
+          <button className="btn sm ghost" onClick={retrySync}>
+            再接続
+          </button>
+        </div>
+      )}
+      {syncNotice && roomCode && (
+        <p className="sync-notice" role="status">
+          {syncNoticeLabel(syncNotice, lastSyncedAt)}
+        </p>
+      )}
 
       {!roomCode ? null : cloudMode === 'cloud' ? (
         <>
-          {tab === 'record' && <RecordView db={db} api={api} onDone={() => setTab('history')} />}
+          {tab === 'record' && (
+            <RecordView
+              db={db}
+              api={api}
+              onDone={() => setTab('history')}
+              onOpenSettings={() => setTab('settings')}
+            />
+          )}
           {tab === 'stats' && <StatsView db={db} />}
           {tab === 'history' && <HistoryView db={db} api={api} />}
           {tab === 'settings' && <SettingsView db={db} api={api} />}
@@ -188,6 +231,7 @@ export default function App() {
               <button
                 key={t.id}
                 className={tab === t.id ? 'active' : ''}
+                aria-current={tab === t.id ? 'page' : undefined}
                 onClick={() => setTab(t.id)}
               >
                 <span className="ico">{t.ico}</span>
