@@ -68,6 +68,23 @@ printf '%s' '<client-secret>' | npx wrangler secret put GOOGLE_CLIENT_SECRET
 
 `workers_dev` が有効なので、初期状態では `*.workers.dev` のURLでアクセスできます。公開URLを参加者へ共有すれば、別WiFiのPC・スマホから同じルームを利用できます。ルームコードを知る人は閲覧・編集できるため、必要な人だけに共有してください。
 
+### GitHub Actionsから自動公開
+
+`.github/workflows/deploy.yml` は、`main`へのpush時に次の順序で実行されます。
+
+1. `npm run check`
+2. `npm run build`
+3. Cloudflare Workersへ `wrangler deploy`
+
+初回だけ、GitHubリポジトリの **Settings → Secrets and variables → Actions** に次のRepository Secretを登録してください。
+
+- `CLOUDFLARE_ACCOUNT_ID`: デプロイ先CloudflareアカウントのAccount ID
+- `CLOUDFLARE_API_TOKEN`: Workersを編集できる権限に絞ったCloudflare API Token
+
+API Tokenはリポジトリへ保存せず、CloudflareのアカウントAPI Tokenで対象アカウントだけにスコープしてください。Secretが未設定の場合はデプロイせず、GitHub Actionsにエラーを表示します。
+
+自動公開を待たずに実行する場合は、GitHubの **Actions → Deploy Worker → Run workflow** から手動実行できます。D1 migrationはデータ変更を伴うため、自動デプロイには含めていません。migrationが必要な変更では、公開前に `npm run cf:db:remote` を別途実行してください。
+
 ## スコアのルール（初期値）
 
 - 25,000点持ち / 30,000点返し
