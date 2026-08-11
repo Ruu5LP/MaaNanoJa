@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Cloudflare Workers + D1で月イチ麻雀のスコア・局データを共有するWebアプリ",
+  "description": "Cloudflare Workers + D1で麻雀のスコア・局データを共有するWebアプリ",
   "scripts": {
     "dev": "npm run cf:dev",
     "build": "tsc --noEmit && vite build",
