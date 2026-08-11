@@ -95,6 +95,8 @@ export interface Game {
   hands: Hand[]
   /** 局ログが無いとき（かんたん入力）の最終持ち点。playerId -> 点数。 */
   finalPoints: Record<string, number>
+  /** この対局を記録した時点のルール。旧データでは省略され、呼び出し側のルールを使う。 */
+  rules?: Rules
   createdAt?: number
 }
 
@@ -132,6 +134,8 @@ export interface Draft {
   playerIds: string[]
   /** これまでに確定した局。 */
   hands: Hand[]
+  /** この半荘を開始した時点のルール。旧draftでは省略され、現在のルールを使う。 */
+  rules?: Rules
   /** quick モードの最終持ち点（playerId -> 点数）。live モードでは未使用。 */
   finalPoints: Record<string, number>
   /** 入力中の1局（未確定）。全端末で共有して同じ入力画面を映す。未入力なら null。 */

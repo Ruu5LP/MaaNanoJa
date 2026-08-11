@@ -29,10 +29,18 @@ export default function StatsView({ db }: { db: DB }) {
   const tabs = (
     <div className="row wrap" style={{ marginBottom: 14 }}>
       <div className="seg-control period-tabs" style={{ marginBottom: 0 }}>
-        <button className={period === 'today' ? 'active' : ''} onClick={() => setPeriod('today')}>
+        <button
+          className={period === 'today' ? 'active' : ''}
+          aria-pressed={period === 'today'}
+          onClick={() => setPeriod('today')}
+        >
           今日
         </button>
-        <button className={period === 'all' ? 'active' : ''} onClick={() => setPeriod('all')}>
+        <button
+          className={period === 'all' ? 'active' : ''}
+          aria-pressed={period === 'all'}
+          onClick={() => setPeriod('all')}
+        >
           全期間
         </button>
       </div>
@@ -78,8 +86,9 @@ export default function StatsView({ db }: { db: DB }) {
         {/* 順位系の表 */}
         <div className="card">
           <h2>順位・スコア</h2>
+          <p className="table-hint">スマホでは左右にスクロールできます。</p>
           <div className="table-wrap">
-            <table>
+            <table className="stats-detail-table">
               <thead>
                 <tr>
                   <th>プレイヤー</th>
@@ -127,38 +136,41 @@ export default function StatsView({ db }: { db: DB }) {
               ここに放銃率・和了率などが出ます。
             </p>
           ) : (
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>プレイヤー</th>
-                    <th>局数</th>
-                    <th>和了率</th>
-                    <th>放銃率</th>
-                    <th>立直率</th>
-                    <th>ツモ率</th>
-                    <th>平均和了</th>
-                    <th>平均放銃</th>
-                    <th>テンパイ率</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats.map((s) => (
-                    <tr key={s.playerId}>
-                      <td>{s.name}</td>
-                      <td className="num">{s.handsPlayed || '—'}</td>
-                      <td className="num">{pct(s.agariRate)}</td>
-                      <td className="num">{pct(s.houjuRate)}</td>
-                      <td className="num">{pct(s.riichiRate)}</td>
-                      <td className="num">{pct(s.tsumoRate)}</td>
-                      <td className="num">{s.avgAgari?.toLocaleString() ?? '—'}</td>
-                      <td className="num">{s.avgHouju?.toLocaleString() ?? '—'}</td>
-                      <td className="num">{pct(s.tenpaiRate)}</td>
+            <>
+              <p className="table-hint">スマホでは左右にスクロールできます。</p>
+              <div className="table-wrap">
+                <table className="stats-detail-table">
+                  <thead>
+                    <tr>
+                      <th>プレイヤー</th>
+                      <th>局数</th>
+                      <th>和了率</th>
+                      <th>放銃率</th>
+                      <th>立直率</th>
+                      <th>ツモ率</th>
+                      <th>平均和了</th>
+                      <th>平均放銃</th>
+                      <th>テンパイ率</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {stats.map((s) => (
+                      <tr key={s.playerId}>
+                        <td>{s.name}</td>
+                        <td className="num">{s.handsPlayed || '—'}</td>
+                        <td className="num">{pct(s.agariRate)}</td>
+                        <td className="num">{pct(s.houjuRate)}</td>
+                        <td className="num">{pct(s.riichiRate)}</td>
+                        <td className="num">{pct(s.tsumoRate)}</td>
+                        <td className="num">{s.avgAgari?.toLocaleString() ?? '—'}</td>
+                        <td className="num">{s.avgHouju?.toLocaleString() ?? '—'}</td>
+                        <td className="num">{pct(s.tenpaiRate)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
           <p className="muted" style={{ marginTop: 8 }}>
             率はいずれも「参加した局数」に対する割合。テンパイ率は流局時のテンパイ割合。

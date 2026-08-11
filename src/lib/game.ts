@@ -83,6 +83,10 @@ export interface ReplayResult {
   steps: HandStep[]
 }
 
+function rulesForGame(game: Game, fallback: Rules): Rules {
+  return game.rules ?? fallback
+}
+
 export function initialState(rules: Rules, playerIds: string[]): GameState {
   const points: Record<string, number> = {}
   for (const pid of playerIds) points[pid] = rules.startPoints
@@ -124,7 +128,8 @@ function advance(state: GameState, hand: Hand, seats: string[]): GameState {
 
 /** 局ログを最初から再生し、各局の点数移動と最終状態を返す */
 export function replay(game: Game, rules: Rules): ReplayResult {
-  let st = initialState(rules, game.playerIds)
+  const effectiveRules = rulesForGame(game, rules)
+  let st = initialState(effectiveRules, game.playerIds)
   const seats = game.playerIds
   const steps: HandStep[] = []
   for (const h of game.hands) {
@@ -153,13 +158,14 @@ export function finalPoints(game: Game, rules: Rules): Record<string, number> {
 
 /** 半荘の順位・スコア（ウマ・オカ込み） */
 export function gameResults(game: Game, rules: Rules): GameResult[] {
-  const pts = finalPoints(game, rules)
+  const effectiveRules = rulesForGame(game, rules)
+  const pts = finalPoints(game, effectiveRules)
   const entries = game.playerIds.map((pid, idx) => ({
     playerId: pid,
     points: pts[pid] ?? 0,
     seatIndex: idx,
   }))
-  return computeResults(entries, rules)
+  return computeResults(entries, effectiveRules)
 }
 
 export interface PointsCheck {
@@ -171,8 +177,9 @@ export interface PointsCheck {
 
 /** 入力の合計チェック（配給原点×人数と一致するか）。供託残りは許容。 */
 export function pointsCheck(game: Game, rules: Rules): PointsCheck {
-  const pts = finalPoints(game, rules)
+  const effectiveRules = rulesForGame(game, rules)
+  const pts = finalPoints(game, effectiveRules)
   const sum = game.playerIds.reduce((a, pid) => a + (pts[pid] ?? 0), 0)
-  const expected = rules.startPoints * game.playerIds.length
+  const expected = effectiveRules.startPoints * game.playerIds.length
   return { sum, expected, diff: sum - expected, ok: sum === expected }
 }

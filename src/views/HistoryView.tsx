@@ -73,7 +73,7 @@ function GameCard({
 
       <div className="row" style={{ marginTop: 10 }}>
         {hasHands ? (
-          <button className="btn sm ghost" onClick={() => setOpen((o) => !o)}>
+          <button className="btn sm ghost" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
             {open ? '局ログを隠す' : `局ログを見る（${game.hands.length}）`}
           </button>
         ) : (
@@ -83,7 +83,8 @@ function GameCard({
         <button
           className="btn sm danger"
           onClick={() => {
-            if (confirm('この対局を削除しますか？')) api.removeGame(game.id)
+            if (confirm('この対局を削除しますか？この操作は元に戻せません。'))
+              api.removeGame(game.id)
           }}
         >
           削除
