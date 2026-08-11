@@ -15,12 +15,20 @@ export function TotalScorePanel({ stats }: { stats: PlayerStats[] }) {
   const maxAbs = Math.max(1, ...stats.map((s) => Math.abs(s.totalScore)))
   return (
     <div className="card">
-      <h2>合計スコア</h2>
+      <h2>総合ランキング（合計スコア）</h2>
+      <p className="chart-hint">中央が0。棒の長さは表示中の期間の最大スコアを基準にしています。</p>
       <div className="hbars">
-        {stats.map((s) => (
+        {stats.map((s, i) => (
           <div className="hbar" key={s.playerId}>
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.name}</span>
-            <div className="track">
+            <span className="hbar-rank">{i + 1}位</span>
+            <span className="hbar-name" title={s.name}>
+              {s.name}
+            </span>
+            <div
+              className="track"
+              role="img"
+              aria-label={`${i + 1}位 ${s.name}、合計スコア ${signed(s.totalScore)}、平均順位 ${s.avgRank.toFixed(2)}位`}
+            >
               <div className="zero" style={{ left: '50%' }} />
               <div
                 className="fill"
@@ -32,11 +40,9 @@ export function TotalScorePanel({ stats }: { stats: PlayerStats[] }) {
                 }}
               />
             </div>
-            <span
-              className={`num ${s.totalScore >= 0 ? 'pos' : 'neg'}`}
-              style={{ textAlign: 'right' }}
-            >
-              {signed(s.totalScore)}
+            <span className={`hbar-score num ${s.totalScore >= 0 ? 'pos' : 'neg'}`}>
+              <strong>{signed(s.totalScore)}</strong>
+              <small>平均{s.avgRank.toFixed(2)}位</small>
             </span>
           </div>
         ))}
@@ -54,7 +60,8 @@ export function TotalScorePanel({ stats }: { stats: PlayerStats[] }) {
 export function RankDistPanel({ stats }: { stats: PlayerStats[] }) {
   return (
     <div className="card">
-      <h2>着順分布</h2>
+      <h2>着順の内訳</h2>
+      <p className="chart-hint">バーは割合、下の数値で回数と割合を確認できます。</p>
       <div className="stack">
         {stats.map((s) => {
           const total = Math.max(1, s.games)
@@ -67,7 +74,11 @@ export function RankDistPanel({ stats }: { stats: PlayerStats[] }) {
                   平均{s.avgRank.toFixed(2)}位 ・ {s.games}戦
                 </span>
               </div>
-              <div className="rankbar">
+              <div
+                className="rankbar"
+                role="img"
+                aria-label={`${s.name}の着順内訳: ${s.rankCounts.map((count, i) => `${RANK_LABELS[i]} ${count}回`).join('、')}`}
+              >
                 {s.rankCounts.map((c, i) =>
                   c > 0 ? (
                     <div
@@ -75,9 +86,7 @@ export function RankDistPanel({ stats }: { stats: PlayerStats[] }) {
                       className="seg"
                       style={{ background: RANK_COLORS[i], flexGrow: c }}
                       title={`${RANK_LABELS[i]} ${c}回`}
-                    >
-                      {Math.round((c / total) * 100)}%
-                    </div>
+                    />
                   ) : null,
                 )}
               </div>

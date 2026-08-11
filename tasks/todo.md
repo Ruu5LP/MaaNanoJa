@@ -129,3 +129,11 @@
   - Acceptance: 390px幅の主要操作が使いやすく、フォーム・タブ・選択状態に適切なアクセシブルネームと状態がある
   - Verify: 390px/デスクトップ手動確認、`npm run build`, `npm run check`
   - Dependencies: Task 18, Task 19, Task 20
+
+## 成績グラフ改善（Issue #23）
+
+- [x] Task 22: 合計スコア・着順分布グラフの改善
+  - Acceptance: 順位・基準・平均順位が分かり、着順分布の数値がスマホでも読みやすい
+  - Verify: デスクトップ/390px幅の手動確認、`npm run check`, `npm run build`
+  - Files: `src/views/StatsPanels.tsx`, `src/styles.css`
+  - Dependencies: Task 21

@@ -220,3 +220,18 @@ Cloudflare D1を唯一の正式保存先にし、localStorageとLAN同期を通�
 - [x] `npm run build` 成功
 - [x] 主要フローをデスクトップ・390px幅で確認
 - [x] Issue #21の受け入れ条件を満たす
+
+## Phase 8: Stats Graph Readability
+
+Issue #23として、成績画面の2つのグラフを比較しやすく、スマホでも読みやすくする。
+
+### Task 22: 合計スコア・着順分布グラフの改善
+
+- [x] 合計スコアに順位・平均順位・0軸・スケール説明を追加する
+- [x] 着順分布バー内の細かい文字を外し、下段の回数・割合を主表示にする
+- [x] グラフの内容をアクセシブルなラベルでも伝える
+- [x] デスクトップ・390px幅で視覚確認し、`npm run check` と `npm run build` を通す
+
+### Checkpoint: Stats Graph Readability Complete
+
+- [x] Issue #23の受け入れ条件を満たす
