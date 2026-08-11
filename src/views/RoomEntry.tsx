@@ -66,7 +66,7 @@ export default function RoomEntry({
     }
     const code = normalizeRoomCode(value)
     if (!code) {
-      setError('8文字のルームコードを入力してください')
+      setError('8文字の招待コードを入力してください')
       return
     }
     setBusy(true)
@@ -90,16 +90,18 @@ export default function RoomEntry({
         </p>
       )}
       <div className="card guest-entry-card room-card">
-        <h2>{guestDB ? 'お試し中のデータ' : 'まず試してみる'}</h2>
+        <h2>{guestDB ? '前回の続き' : 'ログインなしで使う'}</h2>
         <p className="muted">
           {guestDB
-            ? `このタブに一時保存したデータがあります（対局 ${guestDB.games.length}件）。`
-            : 'ログインなしで記録・成績機能を試せます。'}
+            ? `このタブに入力内容が残っています（対局記録 ${guestDB.games.length}件）。`
+            : 'ログインせずに、記録・成績機能を使えます。'}
         </p>
         <button className="btn primary" disabled={busy} onClick={() => onStartGuest?.()}>
-          {guestDB ? 'お試しを再開' : 'ログインなしで試す'}
+          {guestDB ? '続きを開く' : 'このまま使う'}
         </button>
-        <p className="muted guest-entry-note">タブを閉じると、お試しデータは消えます。</p>
+        <p className="muted guest-entry-note">
+          ログインせずに入力した内容は、このタブを閉じると消えます。残すにはログインしてください。
+        </p>
       </div>
       {account && (account.user || account.loginEnabled || accountError) && (
         <div className="card account-card room-card">
@@ -110,7 +112,7 @@ export default function RoomEntry({
                 <p className="muted">{account.user.email} でログイン中</p>
               ) : account.loginEnabled ? (
                 <p className="muted">
-                  ルームの作成・参加にはGoogleアカウントでのログインが必要です。ログイン後、この画面に戻ります。
+                  共有ルームを使うにはGoogleでログインしてください。ログイン後、この画面に戻ります。
                 </p>
               ) : null}
             </div>
@@ -150,11 +152,11 @@ export default function RoomEntry({
         </div>
       )}
       <div className="card room-card room-entry-card">
-        <h2>ルームをはじめる</h2>
-        <p className="muted">新しいルームを作るか、共有されたルームに参加してください。</p>
+        <h2>みんなで使う</h2>
+        <p className="muted">ルームを作るか、招待コードで参加してください。</p>
         <div className="room-actions">
           <div className="room-create-block">
-            <h3 className="room-option-title">新しく始める</h3>
+            <h3 className="room-option-title">新しいルームを作る</h3>
             {legacyDB && legacyDB.games.length > 0 ? (
               <div className="room-create-options">
                 <span className="muted">旧データの過去対局 {legacyDB.games.length}件</span>
@@ -185,14 +187,14 @@ export default function RoomEntry({
           </div>
           <span className="muted room-or">または</span>
           <div className="room-join-block">
-            <h3 className="room-option-title">招待されたルームに参加</h3>
-            <p className="muted">共有された8文字のルームコードを入力してください。</p>
+            <h3 className="room-option-title">招待コードで参加</h3>
+            <p className="muted">共有された8文字の招待コードを入力してください。</p>
             <div className="row room-join-row">
               <input
                 value={input}
                 maxLength={8}
-                placeholder="ルームコード"
-                aria-label="ルームコード"
+                placeholder="招待コード"
+                aria-label="招待コード"
                 autoCapitalize="characters"
                 autoComplete="off"
                 spellCheck={false}
@@ -213,13 +215,13 @@ export default function RoomEntry({
           </div>
         </div>
         <div className="room-access-notice">
-          <strong>共有ルームの注意</strong>
+          <strong>共有について</strong>
           <span>
             {account === null
               ? '認証設定を確認中です。ルームURLは信頼できる相手にだけ共有してください。'
               : account.loginEnabled
-                ? 'ログインしたユーザーがルームURLを知っている場合に閲覧・編集できます。URLは信頼できる相手にだけ共有してください。'
-                : 'ルームURLを知っている人は閲覧・編集できます。信頼できる相手にだけ共有してください。'}
+                ? 'ログインしたユーザーは、共有URLからこのルームを開いて編集できます。URLは参加者だけに共有してください。'
+                : 'ルームURLを知っている人は閲覧・編集できます。URLは参加者だけに共有してください。'}
           </span>
         </div>
         {error && (

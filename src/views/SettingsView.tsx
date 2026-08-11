@@ -270,7 +270,7 @@ export default function SettingsView({ db, api, onRestore, guestMode = false }: 
             {restoreBusy
               ? '復元中…'
               : guestMode
-                ? 'ログイン後に共有ルームを作る'
+                ? 'ログインして共有ルームを作る'
                 : 'JSONから新しいルームを作る'}
             <input
               type="file"
@@ -292,8 +292,8 @@ export default function SettingsView({ db, api, onRestore, guestMode = false }: 
         )}
         <p className="muted" style={{ marginTop: 8 }}>
           {guestMode
-            ? '現在はお試しモードです。データはこのタブに一時保存されています。JSONの書き出しはできますが、共有ルームを作るにはGoogleログインが必要です。'
-            : '対局データはCloudflareの共有ルームに保存されます。JSONはバックアップとして書き出せます。復元すると、現在のルームを変更せずにJSONの内容で新しい共有ルームを作成します。'}
+            ? 'ログインせずに入力した内容は、このタブに一時保存されています。JSONの書き出しはできます。共有ルームを作るにはGoogleでログインしてください。'
+            : '対局データは共有ルームに保存されます。JSONはバックアップとして書き出せます。復元すると、現在のルームを変更せずにJSONの内容で新しい共有ルームを作成します。'}
         </p>
       </div>
 

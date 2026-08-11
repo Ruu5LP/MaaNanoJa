@@ -151,7 +151,7 @@ export default function App() {
   const saveGuestToCloud = useCallback(async () => {
     if (!guestMode) return
     if (!account?.user) {
-      setGuestSaveError('Googleでログインすると、データをクラウドに保存できます')
+      setGuestSaveError('保存するにはGoogleでログインしてください')
       return
     }
 
@@ -166,7 +166,7 @@ export default function App() {
       await refreshAccount()
     } catch (error) {
       setGuestSaveError(
-        error instanceof CloudRoomError ? error.message : 'クラウドに保存できませんでした',
+        error instanceof CloudRoomError ? error.message : 'データを保存できませんでした',
       )
     } finally {
       setGuestSaveBusy(false)
@@ -264,7 +264,7 @@ export default function App() {
       <header className="app-header">
         <h1>麻雀トラッカー</h1>
         {account?.user && <span className="account-badge">👤 {account.user.displayName}</span>}
-        {guestMode && <span className="sync-badge sync-guest">📝 一時保存</span>}
+        {guestMode && <span className="sync-badge sync-guest">📝 一時保存中</span>}
         {roomCode && (
           <span className={`sync-badge sync-${syncStatus}`} role="status">
             {syncStatusLabel(syncStatus, cloudMode)}
@@ -276,9 +276,9 @@ export default function App() {
         <RoomView account={account} roomCode={roomCode} onLeave={leaveRoom} />
       ) : guestMode ? (
         <div className="guest-strip">
-          <span className="room-label">お試しモード</span>
+          <span className="room-label">一時保存中</span>
           <span className="guest-strip-message">
-            このタブに一時保存中。タブを閉じると消えます。
+            ログインせずに入力した内容です。このタブを閉じると消えます。
           </span>
           <span className="spacer" />
           {account?.user ? (
@@ -287,15 +287,15 @@ export default function App() {
               disabled={guestSaveBusy}
               onClick={() => void saveGuestToCloud()}
             >
-              {guestSaveBusy ? '保存中…' : 'クラウドに保存'}
+              {guestSaveBusy ? '保存中…' : 'このデータを保存する'}
             </button>
           ) : account?.loginEnabled ? (
             <a className="btn sm primary auth-action" href={guestLoginUrl}>
-              Googleでログインして保存
+              Googleでログイン
             </a>
           ) : (
             <span className="muted guest-login-unavailable">
-              クラウド保存にはログインが必要です
+              残すにはGoogleでログインしてください
             </span>
           )}
           <button

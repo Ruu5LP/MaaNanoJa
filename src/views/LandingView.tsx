@@ -46,7 +46,7 @@ export default function LandingView(props: RoomEntryProps) {
       <section className="landing-section landing-howto" aria-labelledby="howto-title">
         <div className="landing-section-heading">
           <h2 id="howto-title">使い方</h2>
-          <p>ルームを作って、メンバーと共有するだけです。</p>
+          <p>ログインなしで使うことも、共有ルームを作ってみんなで使うこともできます。</p>
         </div>
         <ol className="steps-list">
           <li>
