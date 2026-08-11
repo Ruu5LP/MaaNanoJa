@@ -53,16 +53,15 @@ body {
   padding-bottom: 40px;
 }
 .landing-hero {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 0.86fr);
-  align-items: center;
-  gap: clamp(28px, 5vw, 64px);
+  display: block;
   max-width: 1200px;
   margin: 0 auto;
   padding: clamp(36px, 6vw, 68px) clamp(20px, 5vw, 64px) 56px;
 }
 .landing-hero-copy {
+  max-width: 640px;
   min-width: 0;
+  margin-bottom: 32px;
 }
 .landing-hero h2 {
   color: var(--ink);
@@ -187,14 +186,29 @@ body {
 }
 .landing-footer nav {
   display: flex;
-  gap: 16px;
+  gap: 8px;
 }
-.landing-footer a {
+.landing-footer a.social-link {
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
   color: var(--ink-2);
+  display: inline-flex;
+  gap: 6px;
+  padding: 7px 10px;
   text-decoration: none;
 }
-.landing-footer a:hover {
+.landing-footer a.social-link:hover {
+  background: var(--surface-2);
+  border-color: var(--accent);
   color: var(--accent);
+}
+.social-icon {
+  display: block;
+  fill: currentColor;
+  flex: 0 0 14px;
+  height: 14px;
+  width: 14px;
 }
 
 /* ---- ヘッダ ---- */
@@ -1224,8 +1238,6 @@ h3.sec {
 }
 @media (max-width: 720px) {
   .landing-hero {
-    grid-template-columns: 1fr;
-    gap: 30px;
     padding-top: 42px;
   }
   .landing-section {
