@@ -1,16 +1,56 @@
 import { useEffect, useState } from 'react'
 import { exportJSON } from '../lib/store'
+import { parseDB } from '../lib/room-validation'
 import type { DB } from '../lib/domain'
 import type { Api } from '../App'
 
-export default function SettingsView({ db, api }: { db: DB; api: Api }) {
+interface SettingsViewProps {
+  db: DB
+  api: Api
+  onRestore?(db: DB): Promise<void>
+}
+
+interface RuleForm {
+  startPoints: string
+  returnPoints: string
+  uma: [string, string, string, string]
+}
+
+function formFromRules(rules: DB['rules']): RuleForm {
+  return {
+    startPoints: String(rules.startPoints),
+    returnPoints: String(rules.returnPoints),
+    uma: rules.uma.map(String) as RuleForm['uma'],
+  }
+}
+
+export default function SettingsView({ db, api, onRestore }: SettingsViewProps) {
   const [newName, setNewName] = useState('')
   const [nameError, setNameError] = useState('')
+  const [ruleForm, setRuleForm] = useState<RuleForm>(() => formFromRules(db.rules))
+  const [rulesError, setRulesError] = useState('')
+  const [rulesDirty, setRulesDirty] = useState(false)
+  const [restoreError, setRestoreError] = useState('')
+  const [restoreBusy, setRestoreBusy] = useState(false)
+
+  useEffect(() => {
+    setRuleForm(formFromRules(db.rules))
+    setRulesDirty(false)
+    setRulesError('')
+  }, [db.rules])
 
   function addPlayer() {
     const name = newName.trim()
     if (!name) {
       setNameError('プレイヤー名を入力してください')
+      return
+    }
+    if (name.length > 120) {
+      setNameError('プレイヤー名は120文字以内で入力してください')
+      return
+    }
+    if (db.players.length >= 4) {
+      setNameError('プレイヤーは最大4人までです')
       return
     }
     if (db.players.some((player) => player.name.trim() === name)) {
@@ -23,6 +63,10 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
   }
 
   function renamePlayer(id: string, name: string): boolean {
+    if (!name || name.length > 120) {
+      setNameError('プレイヤー名は1〜120文字で入力してください')
+      return false
+    }
     if (db.players.some((player) => player.id !== id && player.name.trim() === name)) {
       setNameError('同じ名前のプレイヤーがすでに登録されています')
       return false
@@ -42,7 +86,70 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
     URL.revokeObjectURL(url)
   }
 
-  const usedPlayerIds = new Set(db.games.flatMap((g) => g.playerIds))
+  function updateRuleField(field: keyof RuleForm, value: string): void {
+    setRulesDirty(true)
+    setRulesError('')
+    setRuleForm((current) => ({ ...current, [field]: value }))
+  }
+
+  function updateUma(index: number, value: string): void {
+    setRulesDirty(true)
+    setRulesError('')
+    setRuleForm((current) => {
+      const uma = [...current.uma] as RuleForm['uma']
+      uma[index] = value
+      return { ...current, uma }
+    })
+  }
+
+  function saveRules() {
+    const startPoints = Number(ruleForm.startPoints)
+    const returnPoints = Number(ruleForm.returnPoints)
+    const uma = ruleForm.uma.map(Number)
+    if (
+      !Number.isSafeInteger(startPoints) ||
+      startPoints <= 0 ||
+      !Number.isSafeInteger(returnPoints) ||
+      returnPoints <= 0 ||
+      uma.some((value) => !Number.isSafeInteger(value))
+    ) {
+      setRulesError('ルールは整数で入力してください。空欄や小数は保存できません')
+      return
+    }
+    api.updateRules({
+      startPoints,
+      returnPoints,
+      uma: uma as DB['rules']['uma'],
+      tiebreak: db.rules.tiebreak,
+    })
+    setRulesDirty(false)
+    setRulesError('')
+  }
+
+  function cancelRules() {
+    setRuleForm(formFromRules(db.rules))
+    setRulesDirty(false)
+    setRulesError('')
+  }
+
+  async function restore(file: File): Promise<void> {
+    setRestoreBusy(true)
+    setRestoreError('')
+    try {
+      const imported = parseDB(JSON.parse(await file.text()))
+      if (!onRestore) throw new Error('復元機能が利用できません')
+      await onRestore(imported)
+    } catch (error) {
+      setRestoreError(error instanceof Error ? error.message : 'JSONを復元できませんでした')
+    } finally {
+      setRestoreBusy(false)
+    }
+  }
+
+  const usedPlayerIds = new Set([
+    ...db.games.flatMap((g) => g.playerIds),
+    ...(db.draft?.playerIds ?? []),
+  ])
 
   return (
     <div className="view">
@@ -71,6 +178,7 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
         <div className="row" style={{ marginTop: 10 }}>
           <input
             value={newName}
+            maxLength={120}
             placeholder="新しいメンバー名"
             aria-label="新しいメンバー名"
             onChange={(e) => setNewName(e.target.value)}
@@ -78,13 +186,13 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
               if (e.key === 'Enter') addPlayer()
             }}
           />
-          <button className="btn" onClick={addPlayer}>
+          <button className="btn" disabled={db.players.length >= 4} onClick={addPlayer}>
             追加
           </button>
         </div>
         {nameError && <p className="error-text">{nameError}</p>}
         <p className="muted" style={{ marginTop: 6 }}>
-          対局記録のあるメンバーは、記録が壊れないよう削除できません。
+          最大4人。対局記録または進行中の半荘に関係するメンバーは、記録が壊れないよう削除できません。
         </p>
       </div>
 
@@ -96,16 +204,20 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
             配給原点（持ち点）
             <input
               type="number"
-              value={db.rules.startPoints}
-              onChange={(e) => api.updateRules({ startPoints: Number(e.target.value) || 0 })}
+              min={1}
+              step={1}
+              value={ruleForm.startPoints}
+              onChange={(e) => updateRuleField('startPoints', e.target.value)}
             />
           </label>
           <label className="field">
             返し点（原点）
             <input
               type="number"
-              value={db.rules.returnPoints}
-              onChange={(e) => api.updateRules({ returnPoints: Number(e.target.value) || 0 })}
+              min={1}
+              step={1}
+              value={ruleForm.returnPoints}
+              onChange={(e) => updateRuleField('returnPoints', e.target.value)}
             />
           </label>
         </div>
@@ -118,15 +230,25 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
               {lbl}
               <input
                 type="number"
-                value={db.rules.uma[i]}
-                onChange={(e) => {
-                  const uma = [...db.rules.uma] as DB['rules']['uma']
-                  uma[i] = Number(e.target.value) || 0
-                  api.updateRules({ uma })
-                }}
+                step={1}
+                value={ruleForm.uma[i]}
+                onChange={(e) => updateUma(i, e.target.value)}
               />
             </label>
           ))}
+        </div>
+        {rulesError && (
+          <p className="error-text" role="alert">
+            {rulesError}
+          </p>
+        )}
+        <div className="row wrap" style={{ marginTop: 10 }}>
+          <button className="btn primary" disabled={!rulesDirty} onClick={saveRules}>
+            ルールを保存
+          </button>
+          <button className="btn ghost" disabled={!rulesDirty} onClick={cancelRules}>
+            変更を取り消す
+          </button>
         </div>
         <p className="muted" style={{ marginTop: 8 }}>
           オカは（返し点 − 持ち点）× 人数 を1位に自動加算。同点は上家（起家に近い方）優先。
@@ -143,10 +265,29 @@ export default function SettingsView({ db, api }: { db: DB; api: Api }) {
           <button className="btn" onClick={download}>
             JSONで書き出し
           </button>
+          <label className={`btn ghost${restoreBusy ? ' disabled' : ''}`}>
+            {restoreBusy ? '復元中…' : 'JSONから新しいルームを作る'}
+            <input
+              type="file"
+              accept="application/json,.json"
+              hidden
+              disabled={restoreBusy || !onRestore}
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                e.currentTarget.value = ''
+                if (file) void restore(file)
+              }}
+            />
+          </label>
         </div>
+        {restoreError && (
+          <p className="error-text" role="alert">
+            {restoreError}
+          </p>
+        )}
         <p className="muted" style={{ marginTop: 8 }}>
           対局データはCloudflareの共有ルームに保存されます。JSONはバックアップとして書き出せます。
-          JSONからの復元は、クラウド履歴との整合性を確認できる移行導線で対応します。
+          復元すると、現在のルームを変更せずにJSONの内容で新しい共有ルームを作成します。
         </p>
       </div>
 

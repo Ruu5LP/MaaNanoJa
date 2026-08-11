@@ -23,4 +23,30 @@
     "enabled": true,
     "head_sampling_rate": 1,
   },
+  "ratelimits": [
+    {
+      "name": "ROOM_READ_RATE_LIMITER",
+      "namespace_id": "2026081101",
+      "simple": {
+        "limit": 180,
+        "period": 60,
+      },
+    },
+    {
+      "name": "ROOM_WRITE_RATE_LIMITER",
+      "namespace_id": "2026081102",
+      "simple": {
+        "limit": 60,
+        "period": 60,
+      },
+    },
+    {
+      "name": "AUTH_RATE_LIMITER",
+      "namespace_id": "2026081103",
+      "simple": {
+        "limit": 20,
+        "period": 60,
+      },
+    },
+  ],
 }

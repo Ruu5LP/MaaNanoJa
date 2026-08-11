@@ -18,6 +18,7 @@ npm run cf:dev       # Worker + Vite成果物をローカル起動
 npm run preview      # 静的ビルドの表示確認
 npm test             # 単体テスト
 npm run check        # typecheck + lint + format:check + test
+npm run cf:types     # wrangler.jsoncからWorker binding型を更新
 ```
 
 アプリを使うにはルームURLが必要です。ルームURLなしで開いた場合は、ルーム作成・参加画面だけが表示されます。
@@ -64,7 +65,24 @@ printf '%s' '<client-secret>' | npx wrangler secret put GOOGLE_CLIENT_SECRET
 1. `npx wrangler login` でCloudflareにログインする。
 2. 初回だけ `npx wrangler d1 create maananaja` を実行し、表示された `database_id` を `wrangler.jsonc` に設定する。
 3. `npm run cf:db:remote` でD1 migrationを適用する。
-4. `npm run cf:deploy` でWorkersへ公開する。
+4. `curl -fsS https://maananaja.final0505.workers.dev/healthz` でD1接続を確認する。
+5. `npm run cf:deploy` でWorkersへ公開する。
+
+公開前後の確認順序は、`npm run check` → D1 migration → `/healthz` → deploy → 公開URLでルーム作成・参加・記録・復元のスモークテストです。Workerの`/healthz`はD1へ`SELECT 1`を実行するため、静的アセットが表示できるだけでは公開成功と判断しません。
+
+### 本番障害時の切り戻し
+
+- アプリのコードだけが原因なら、Cloudflare Dashboardまたは`wrangler rollback`で直前のWorker versionへ戻します。
+- D1 migrationは自動デプロイに含めず、後方互換性を保てる変更を先に適用します。破壊的な列削除・データ形式変更は、読み取り互換 → 移行 → 新コード → 旧コードで読める期間の終了、の順で別途計画してください。
+- ルーム内の設定からJSONバックアップを定期的に書き出せます。復元は「JSONから新しいルームを作る」で実行し、現在のルームを上書きしません。復元後に件数・最終点・ルールを確認してから共有URLを配布してください。
+
+### Rate Limiting
+
+`wrangler.jsonc`には、ルームの読み取り・書き込み・OAuthを分けたWorkers Rate Limiting bindingを設定しています。`namespace_id`はCloudflareアカウント内で一意である必要があるため、別環境や既存設定と衝突する場合は、未使用の正の整数へ置き換えてください。Rate Limiting bindingが未作成・一時利用不能でもアプリは可用性を優先して処理を継続し、構造化ログに記録します。公開前にCloudflare DashboardのWorkers → Rate limitingでbindingが作成済みか確認してください。
+
+### Googleログインを有効にした場合
+
+Google Client IDとSecretが両方設定されると、ルームの作成・閲覧・編集にログインが必要になります。ルームURLだけを知っているユーザーも、Googleログイン後に参加できます。Client Secretを削除するとログイン必須モードは解除されますが、公開運用では意図した認証ポリシーと一致しているか確認してください。
 
 `workers_dev` が有効なので、初期状態では `*.workers.dev` のURLでアクセスできます。公開URLを参加者へ共有すれば、別WiFiのPC・スマホから同じルームを利用できます。ルームコードを知る人は閲覧・編集できるため、必要な人だけに共有してください。
 

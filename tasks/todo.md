@@ -157,3 +157,60 @@
   - Verify: `npm run check`, `npm run build`, 主要ブラウザの手動確認
   - Files: `index.html`, `README.md`, `SETUP.md`, `tasks/plan.md`, `tasks/todo.md`
   - Dependencies: Task 24
+
+## Production Hardening Tasks
+
+- [x] Task 26: Runtime contract validation
+  - Acceptance: malformed RoomState/Draft/Game/Hand/Rules are rejected with 400
+  - Verify: validator and Worker contract tests, `npm run check`
+  - Files: `src/lib/room-validation.ts`, `src/lib/room-validation.test.ts`, `worker/index.ts`, `worker/index.test.ts`
+
+- [x] Task 27: Request/response security boundary
+  - Acceptance: body/record limits, security headers, request IDs, health endpoint, rate limiting
+  - Verify: `npx wrangler types --check`, dry run, local HTTP checks
+  - Files: `worker/index.ts`, `wrangler.jsonc`, `SETUP.md`, `docs/production-hardening-spec.md`
+
+- [x] Task 28: Atomic game mutation guards
+  - Acceptance: nonexistent update does not advance revision; isolation and conflict are tested
+  - Verify: Worker/D1 integration tests
+  - Files: `worker/index.ts`, `worker/index.test.ts`
+
+- [x] Task 29: Reconcile and rollback policy
+  - Acceptance: write failure never presents unsaved local state as saved; stale room responses are ignored
+  - Verify: `useRoomSync` tests and failure simulation
+  - Files: `src/useRoomSync.ts`, `src/App.tsx`, `src/useRoomSync.test.ts`
+
+- [x] Task 30: Conditional polling
+  - Acceptance: unchanged revision does not download full room history
+  - Verify: API/client polling tests
+  - Files: `worker/index.ts`, `src/lib/cloud-room-api.ts`, `src/useRoomSync.ts`
+
+- [x] Task 31: Settings commit flow and player invariant
+  - Acceptance: input is local until commit; maximum four players; Draft references protect deletion
+  - Verify: UI tests and 390px manual check
+  - Files: `src/views/SettingsView.tsx`, `src/App.tsx`, `src/lib/room-validation.ts`
+
+- [x] Task 32: Record input safeguards
+  - Acceptance: quick mismatch confirmation and clean mode transitions
+  - Verify: Record UI/scoring tests
+  - Files: `src/views/RecordView.tsx`, `src/lib/stats.ts`, `src/lib/stats.test.ts`
+
+- [x] Task 33: Error boundary and recovery UI
+  - Acceptance: malformed responses and unexpected errors show recovery UI, including Board
+  - Verify: UI manual checks
+  - Files: `src/components/AppErrorBoundary.tsx`, `src/main.tsx`, `src/App.tsx`, `src/BoardApp.tsx`, `src/views/BoardView.tsx`
+
+- [x] Task 34: Backup restore as a new room
+  - Acceptance: valid JSON creates a new room; invalid JSON leaves current room untouched
+  - Verify: JSON validator tests and manual flow
+  - Files: `src/views/SettingsView.tsx`, `src/App.tsx`, `src/lib/cloud-room-api.ts`, `src/lib/room-validation.ts`
+
+- [x] Task 35: Stats/history/accessibility corrections
+  - Acceptance: adjustments do not distort hand rates; details and errors are accessible
+  - Verify: stats/accessibility tests
+  - Files: `src/lib/stats.ts`, `src/views/HistoryView.tsx`, `src/views/SettingsView.tsx`, `src/styles.css`
+
+- [x] Task 36: Launch automation and documentation
+  - Acceptance: CI checks contract tests, types, dry run; release and rollback steps are documented
+  - Verify: local CI-equivalent commands
+  - Files: `.github/workflows/deploy.yml`, `SETUP.md`, `README.md`, `tasks/plan.md`, `tasks/todo.md`

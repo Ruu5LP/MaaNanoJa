@@ -3,6 +3,7 @@ import { emptyDB, uid } from './lib/store'
 import { clearLegacyLocalDB, readLegacyLocalDB } from './lib/legacy-local-data'
 import type { DB, Draft, Game } from './lib/domain'
 import { fetchAccount, fetchMyRooms } from './lib/account-api'
+import { createRoom } from './lib/cloud-room-api'
 import type { AccountRoom, AccountState } from './lib/account'
 import { SYNC_LABEL, type SyncStatus, useRoomSync } from './useRoomSync'
 import RecordView from './views/RecordView'
@@ -18,7 +19,7 @@ export interface Api {
   addPlayer(name: string): void
   renamePlayer(id: string, name: string): void
   removePlayer(id: string): void
-  updateRules(patch: Partial<DB['rules']>): void
+  updateRules(rules: DB['rules']): void
   addGame(game: Omit<Game, 'id'>): void
   updateGame(id: string, patch: Partial<Game>): void
   removeGame(id: string): void
@@ -113,61 +114,79 @@ export default function App() {
     setRoomCode(null)
   }
 
+  const restoreDB = useCallback(
+    async (imported: DB) => {
+      const created = await createRoom(imported, { migrateGames: true })
+      joinRoom(created.roomCode)
+      await refreshAccount()
+    },
+    [refreshAccount],
+  )
+
   const api = useMemo<Api>(
     () => ({
       addPlayer(name) {
         const nm = name.trim()
-        if (!nm) return
+        if (!nm || db.players.length >= 4) return
+        const previous = db
         const next = { ...db, players: [...db.players, { id: 'p-' + uid(), name: nm }] }
         setDB(next)
-        saveState(next)
+        saveState(next, previous)
       },
       renamePlayer(id, name) {
+        const previous = db
         const next = {
           ...db,
           players: db.players.map((p) => (p.id === id ? { ...p, name } : p)),
         }
         setDB(next)
-        saveState(next)
+        saveState(next, previous)
       },
       removePlayer(id) {
+        const previous = db
         const next = { ...db, players: db.players.filter((p) => p.id !== id) }
         setDB(next)
-        saveState(next)
+        saveState(next, previous)
       },
-      updateRules(patch) {
-        const next = { ...db, rules: { ...db.rules, ...patch } }
+      updateRules(rules) {
+        const previous = db
+        const next = { ...db, rules }
         setDB(next)
-        saveState(next)
+        saveState(next, previous)
       },
       addGame(game) {
         const saved = { ...game, id: 'g-' + uid() }
+        const previous = db
         const next = { ...db, games: [...db.games, saved] }
         setDB(next)
-        saveGame(saved)
+        saveGame(saved, next, previous)
       },
       updateGame(id, patch) {
         const nextGames = db.games.map((g) => (g.id === id ? { ...g, ...patch } : g))
+        const previous = db
         const next = { ...db, games: nextGames }
         setDB(next)
         const updated = nextGames.find((g) => g.id === id)
-        if (updated) updateGame(updated)
+        if (updated) updateGame(updated, next, previous)
       },
       removeGame(id) {
+        const previous = db
         const next = { ...db, games: db.games.filter((g) => g.id !== id) }
         setDB(next)
-        deleteGame(id)
+        deleteGame(id, next, previous)
       },
       setDraft(draft) {
+        const previous = db
         const next = { ...db, draft }
         setDB(next)
-        saveState(next)
+        saveState(next, previous)
       },
       commitDraft(game) {
         const saved = { ...game, id: 'g-' + uid() }
+        const previous = db
         const next = { ...db, games: [...db.games, saved], draft: null }
         setDB(next)
-        saveGame(saved)
+        saveGame(saved, next, previous)
       },
     }),
     [db, deleteGame, saveGame, saveState, updateGame],
@@ -228,7 +247,7 @@ export default function App() {
           )}
           {tab === 'stats' && <StatsView db={db} />}
           {tab === 'history' && <HistoryView db={db} api={api} />}
-          {tab === 'settings' && <SettingsView db={db} api={api} />}
+          {tab === 'settings' && <SettingsView db={db} api={api} onRestore={restoreDB} />}
 
           <nav className="tabbar">
             {TABS.map((t) => (

@@ -13,7 +13,7 @@ export default function BoardApp() {
   const roomCode = normalizeRoomCode(
     new URLSearchParams(window.location.search).get(ROOM_QUERY_KEY),
   )
-  const { mode: cloudMode, error } = useRoomSync(roomCode, setDB)
+  const { mode: cloudMode, error, retry } = useRoomSync(roomCode, setDB)
 
   if (!roomCode) {
     return (
@@ -23,5 +23,5 @@ export default function BoardApp() {
     )
   }
 
-  return <BoardView db={db} syncMode={cloudMode} syncError={error} />
+  return <BoardView db={db} syncMode={cloudMode} syncError={error} onRetry={retry} />
 }

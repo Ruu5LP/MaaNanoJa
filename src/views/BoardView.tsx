@@ -20,10 +20,12 @@ export default function BoardView({
   db,
   syncMode,
   syncError,
+  onRetry,
 }: {
   db: DB
   syncMode: SyncMode
   syncError?: string | null
+  onRetry?: () => void
 }) {
   // モニターに映すのは基本「今日、今まさに戦っている順位」なので今日をデフォルトにする。
   // 過去分も含めた総合順位を映したい場合は全期間に切り替えられる。
@@ -69,7 +71,16 @@ export default function BoardView({
           ⛶ 全画面
         </button>
       </div>
-      {syncError && <div className="board-sync-error">{syncError}</div>}
+      {syncError && (
+        <div className="board-sync-error" role="alert">
+          <span>{syncError}</span>
+          {onRetry && (
+            <button className="btn sm ghost" onClick={onRetry}>
+              再接続
+            </button>
+          )}
+        </div>
+      )}
 
       {draftPoints ? (
         <>

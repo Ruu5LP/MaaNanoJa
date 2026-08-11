@@ -1,4 +1,10 @@
-import { isRoomCode } from '../src/lib/cloud-room'
+import { isRoomCode, type RoomState } from '../src/lib/cloud-room'
+import {
+  MAX_GAMES,
+  RoomValidationError,
+  parseGame as parseValidatedGame,
+  parseRoomState as parseValidatedRoomState,
+} from '../src/lib/room-validation'
 
 const MAX_JSON_BYTES = 1_900_000
 const SESSION_COOKIE = 'maananaja_session'
@@ -8,6 +14,13 @@ const OAUTH_STATE_TTL_MS = 10 * 60 * 1000
 type AuthEnv = Env & {
   GOOGLE_CLIENT_ID?: string
   GOOGLE_CLIENT_SECRET?: string
+  ROOM_READ_RATE_LIMITER?: RateLimitBinding
+  ROOM_WRITE_RATE_LIMITER?: RateLimitBinding
+  AUTH_RATE_LIMITER?: RateLimitBinding
+}
+
+interface RateLimitBinding {
+  limit(input: { key: string }): Promise<{ success: boolean }>
 }
 
 interface RoomRow {
@@ -60,16 +73,13 @@ interface GameRow {
   created_at: number
 }
 
-interface RoomStateInput {
-  players: unknown
-  rules: unknown
-  draft: unknown
-}
+type RoomStateInput = RoomState
 
 interface ParsedGame {
   id: string
   date: string
   json: string
+  value: ReturnType<typeof parseValidatedGame>
 }
 
 interface RoomSnapshotResponse {
@@ -77,6 +87,42 @@ interface RoomSnapshotResponse {
   revision: number
   state: RoomStateInput
   games: unknown[]
+}
+
+const SECURITY_HEADERS: Record<string, string> = {
+  'Content-Security-Policy': [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "form-action 'self'",
+    "script-src 'self' https://pagead2.googlesyndication.com",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: https:",
+    "font-src 'self' data:",
+    "connect-src 'self' https://pagead2.googlesyndication.com https://oauth2.googleapis.com https://openidconnect.googleapis.com",
+    'frame-src https://googleads.g.doubleclick.net https://tpc.googlesyndication.com',
+  ].join('; '),
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY',
+}
+
+function withSecurityHeaders(response: Response, requestId: string): Response {
+  const headers = new Headers(response.headers)
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) headers.set(name, value)
+  headers.set('X-Request-ID', requestId)
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  })
+}
+
+function logEvent(event: string, fields: Record<string, unknown> = {}): void {
+  console.log(JSON.stringify({ event, ...fields }))
 }
 
 function json(data: unknown, status = 200): Response {
@@ -113,34 +159,55 @@ function parseStoredJson(text: string, field: string): unknown {
   }
 }
 
-function parseRevision(value: unknown): number {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value < 0) {
+export function parseRevision(value: unknown): number {
+  if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0) {
     throw new RequestError('revision が不正です', 400)
   }
   return value
 }
 
-function parseRoomState(value: unknown): RoomStateInput {
-  if (!isRecord(value)) throw new RequestError('state が不正です', 400)
-  if (!Array.isArray(value.players)) throw new RequestError('players が不正です', 400)
-  if (!isRecord(value.rules)) throw new RequestError('rules が不正です', 400)
-  if (value.draft !== null && !isRecord(value.draft)) {
-    throw new RequestError('draft が不正です', 400)
+function parseRoomState(value: unknown, allowLegacyDefaults = false): RoomStateInput {
+  try {
+    return parseValidatedRoomState(value, allowLegacyDefaults)
+  } catch (error) {
+    if (error instanceof RoomValidationError) throw new RequestError(error.message, 400)
+    throw error
   }
-  return { players: value.players, rules: value.rules, draft: value.draft }
+}
+
+function storedRoomState(room: RoomRow): RoomStateInput {
+  return parseRoomState(
+    {
+      players: parseStoredJson(room.players_json, 'players'),
+      rules: parseStoredJson(room.rules_json, 'rules'),
+      draft: room.draft_json === null ? null : parseStoredJson(room.draft_json, 'draft'),
+    },
+    true,
+  )
+}
+
+function assertGameReferencesPlayers(game: ParsedGame, state: RoomStateInput): void {
+  const playerIds = new Set(state.players.map((player) => player.id))
+  if (game.value.playerIds.some((playerId) => !playerIds.has(playerId))) {
+    throw new RequestError('ゲームに存在しないプレイヤーIDがあります', 400)
+  }
 }
 
 function parseGame(value: unknown): ParsedGame {
-  if (!isRecord(value) || typeof value.id !== 'string' || !value.id) {
-    throw new RequestError('game.id が不正です', 400)
+  try {
+    const parsed = parseValidatedGame(value)
+    return { id: parsed.id, date: parsed.date, json: jsonText(parsed, 'game'), value: parsed }
+  } catch (error) {
+    if (error instanceof RoomValidationError) throw new RequestError(error.message, 400)
+    throw error
   }
-  if (typeof value.date !== 'string') throw new RequestError('game.date が不正です', 400)
-  return { id: value.id, date: value.date, json: jsonText(value, 'game') }
 }
 
 function parseCreationGames(value: unknown): ParsedGame[] {
   if (value === undefined) return []
-  if (!Array.isArray(value)) throw new RequestError('games が不正です', 400)
+  if (!Array.isArray(value) || value.length > MAX_GAMES) {
+    throw new RequestError('games が不正です', 400)
+  }
   const ids = new Set<string>()
   return value.map((game) => {
     const parsed = parseGame(game)
@@ -150,12 +217,42 @@ function parseCreationGames(value: unknown): ParsedGame[] {
   })
 }
 
-async function readJson(request: Request): Promise<unknown> {
-  const contentLength = Number(request.headers.get('Content-Length') ?? 0)
-  if (contentLength > MAX_JSON_BYTES) throw new RequestError('リクエストが大きすぎます', 413)
+export async function readJson(request: Request): Promise<unknown> {
+  const contentLengthHeader = request.headers.get('Content-Length')
+  if (contentLengthHeader !== null) {
+    if (!/^\d+$/.test(contentLengthHeader)) {
+      throw new RequestError('Content-Length が不正です', 400)
+    }
+    const contentLength = Number(contentLengthHeader)
+    if (!Number.isSafeInteger(contentLength) || contentLength > MAX_JSON_BYTES) {
+      throw new RequestError('リクエストが大きすぎます', 413)
+    }
+  }
+
+  const reader = request.body?.getReader()
+  if (!reader) throw new RequestError('JSONを読み取れません', 400)
+  const chunks: Uint8Array[] = []
+  let total = 0
   try {
-    return await request.json()
-  } catch {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      total += value.byteLength
+      if (total > MAX_JSON_BYTES) {
+        await reader.cancel()
+        throw new RequestError('リクエストが大きすぎます', 413)
+      }
+      chunks.push(value)
+    }
+    const bytes = new Uint8Array(total)
+    let offset = 0
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset)
+      offset += chunk.byteLength
+    }
+    return JSON.parse(new TextDecoder().decode(bytes))
+  } catch (error) {
+    if (error instanceof RequestError) throw error
     throw new RequestError('JSONを読み取れません', 400)
   }
 }
@@ -173,6 +270,42 @@ class RequestError extends Error {
     readonly status: number,
   ) {
     super(message)
+  }
+}
+
+function rateLimitBinding(request: Request, env: AuthEnv): RateLimitBinding | undefined {
+  const url = new URL(request.url)
+  if (url.pathname.startsWith('/auth/')) return env.AUTH_RATE_LIMITER
+  if (url.pathname.startsWith('/api/')) {
+    return request.method === 'GET' ? env.ROOM_READ_RATE_LIMITER : env.ROOM_WRITE_RATE_LIMITER
+  }
+  return undefined
+}
+
+async function enforceRateLimit(request: Request, env: AuthEnv): Promise<Response | null> {
+  const binding = rateLimitBinding(request, env)
+  if (!binding) return null
+  const url = new URL(request.url)
+  const client = request.headers.get('CF-Connecting-IP') ?? 'unknown-client'
+  const room = url.pathname.match(/^\/api\/rooms\/([A-Z0-9]+)/)?.[1] ?? url.pathname
+  const key = `${request.method}:${room}:${client}`
+  try {
+    const result = await binding.limit({ key })
+    if (result.success) return null
+    logEvent('rate_limited', { method: request.method, path: url.pathname })
+    return errorResponse(429, 'アクセスが集中しています。少し待ってから再試行してください')
+  } catch (error) {
+    logEvent('rate_limit_unavailable', { message: String(error), path: url.pathname })
+    return null
+  }
+}
+
+async function health(env: AuthEnv): Promise<Response> {
+  try {
+    await env.DB.prepare('SELECT 1 AS ok').first<{ ok: number }>()
+    return json({ ok: true, service: 'maananaja' })
+  } catch {
+    return errorResponse(503, 'サービスが利用できません')
   }
 }
 
@@ -231,10 +364,20 @@ function redirectUri(request: Request): string {
   return new URL('/auth/google/callback', request.url).toString()
 }
 
-function returnTo(request: Request): string {
+function sameOriginPath(value: string, origin: string): string {
+  try {
+    const candidate = new URL(value, origin)
+    if (candidate.origin !== origin || !candidate.pathname.startsWith('/')) return '/'
+    return `${candidate.pathname}${candidate.search}`
+  } catch {
+    return '/'
+  }
+}
+
+export function returnTo(request: Request): string {
   const requested = new URL(request.url).searchParams.get('returnTo')
-  if (!requested || !requested.startsWith('/') || requested.startsWith('//')) return '/'
-  return requested
+  if (!requested) return '/'
+  return sameOriginPath(requested, new URL(request.url).origin)
 }
 
 async function upsertUser(
@@ -418,7 +561,8 @@ async function googleCallback(request: Request, env: AuthEnv): Promise<Response>
     .bind(await sha256(sessionToken), user.id, Date.now() + SESSION_TTL_MS, Date.now())
     .run()
 
-  const destination = new URL(stateRow.return_to, new URL(request.url).origin).toString()
+  const origin = new URL(request.url).origin
+  const destination = new URL(sameOriginPath(stateRow.return_to, origin), origin).toString()
   return redirectResponse(destination, {
     'Set-Cookie': cookieHeader(sessionToken, SESSION_TTL_MS / 1000),
   })
@@ -474,22 +618,30 @@ async function getRoom(env: Env, code: string): Promise<RoomRow | null> {
 }
 
 async function roomSnapshot(env: Env, room: RoomRow): Promise<RoomSnapshotResponse> {
-  const games = await env.DB.prepare(
+  const gamesResult = await env.DB.prepare(
     `SELECT id, room_code, date, game_json, created_at
      FROM games WHERE room_code = ? ORDER BY date ASC, created_at ASC, id ASC`,
   )
     .bind(room.code)
     .all<GameRow>()
 
+  const state = storedRoomState(room)
+  const games = gamesResult.results.map((game) => {
+    try {
+      return parseValidatedGame(parseStoredJson(game.game_json, 'game'))
+    } catch (error) {
+      if (error instanceof RoomValidationError) {
+        throw new RequestError(error.message, 500)
+      }
+      throw error
+    }
+  })
+
   return {
     roomCode: room.code,
     revision: room.revision,
-    state: {
-      players: parseStoredJson(room.players_json, 'players'),
-      rules: parseStoredJson(room.rules_json, 'rules'),
-      draft: room.draft_json === null ? null : parseStoredJson(room.draft_json, 'draft'),
-    },
-    games: games.results.map((game) => parseStoredJson(game.game_json, 'game')),
+    state,
+    games,
   }
 }
 
@@ -501,8 +653,21 @@ async function createRoom(request: Request, env: Env, auth: AuthContext): Promis
   const owner = auth.enabled ? requireUser(auth) : null
   const body = await readJson(request)
   const input = isRecord(body) && 'state' in body ? body.state : null
-  const state = input === null ? { players: [], rules: {}, draft: null } : parseRoomState(input)
+  const state =
+    input === null
+      ? parseRoomState({
+          players: [],
+          rules: {
+            startPoints: 25_000,
+            returnPoints: 30_000,
+            uma: [30, 10, -10, -30],
+            tiebreak: 'shimocha',
+          },
+          draft: null,
+        })
+      : parseRoomState(input)
   const games = parseCreationGames(isRecord(body) ? body.games : undefined)
+  games.forEach((game) => assertGameReferencesPlayers(game, state))
   const now = Date.now()
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
@@ -563,6 +728,30 @@ async function updateState(
   const revision = parseRevision(body.revision)
   const state = parseRoomState(body.state)
   if (revision !== room.revision) return conflict(env, room)
+  const playerIds = new Set(state.players.map((player) => player.id))
+  const previousState = storedRoomState(room)
+  const removedPlayer = previousState.players.some((player) => !playerIds.has(player.id))
+  if (removedPlayer) {
+    const existingGames = await env.DB.prepare(
+      'SELECT game_json FROM games WHERE room_code = ? ORDER BY created_at ASC, id ASC',
+    )
+      .bind(code)
+      .all<Pick<GameRow, 'game_json'>>()
+    for (const existingGame of existingGames.results) {
+      let parsed: ReturnType<typeof parseValidatedGame>
+      try {
+        parsed = parseValidatedGame(parseStoredJson(existingGame.game_json, 'game'))
+      } catch (error) {
+        if (error instanceof RoomValidationError) {
+          throw new RequestError(error.message, 500)
+        }
+        throw error
+      }
+      if (parsed.playerIds.some((playerId) => !playerIds.has(playerId))) {
+        throw new RequestError('対局記録のあるプレイヤーは削除できません', 400)
+      }
+    }
+  }
 
   const nextRevision = revision + 1
   const result = await env.DB.prepare(
@@ -599,6 +788,7 @@ async function addGame(
   if (!isRecord(body)) throw new RequestError('リクエストが不正です', 400)
   const revision = parseRevision(body.revision)
   const game = parseGame(body.game)
+  assertGameReferencesPlayers(game, storedRoomState(room))
   if (revision !== room.revision) return conflict(env, room)
 
   const duplicate = await env.DB.prepare(
@@ -687,8 +877,16 @@ async function updateGame(
   if (!isRecord(body)) throw new RequestError('リクエストが不正です', 400)
   const revision = parseRevision(body.revision)
   const game = parseGame(body.game)
+  assertGameReferencesPlayers(game, storedRoomState(room))
   if (game.id !== gameId) throw new RequestError('ゲームIDが一致しません', 400)
   if (revision !== room.revision) return conflict(env, room)
+
+  const present = await env.DB.prepare(
+    'SELECT 1 AS present FROM games WHERE room_code = ? AND id = ?',
+  )
+    .bind(code, gameId)
+    .first<{ present: number }>()
+  if (!present) return errorResponse(404, 'ゲームが見つかりません')
 
   const token = crypto.randomUUID()
   const nextRevision = revision + 1
@@ -767,6 +965,7 @@ async function joinRoom(
   }
   const room = await getRoom(env, code)
   if (!room) return errorResponse(404, 'ルームが見つかりません')
+  if (!auth.enabled) return json({ roomCode: code })
   const user = requireUser(auth)
   await ensureRoomMember(env, room, user)
   return json({ roomCode: code })
@@ -778,7 +977,13 @@ async function handleApi(request: Request, env: AuthEnv): Promise<Response> {
   const parts = url.pathname
     .split('/')
     .filter(Boolean)
-    .map((part) => decodeURIComponent(part))
+    .map((part) => {
+      try {
+        return decodeURIComponent(part)
+      } catch {
+        throw new RequestError('URLが不正です', 400)
+      }
+    })
 
   if (
     parts.length === 2 &&
@@ -810,7 +1015,15 @@ async function handleApi(request: Request, env: AuthEnv): Promise<Response> {
 
   if (parts.length === 3 && request.method === 'GET') {
     const room = await getAuthorizedRoom(env, code, auth)
-    return room ? json(await roomSnapshot(env, room)) : errorResponse(404, 'ルームが見つかりません')
+    if (!room) return errorResponse(404, 'ルームが見つかりません')
+    const sinceValue = url.searchParams.get('since')
+    if (sinceValue !== null) {
+      if (!/^\d+$/.test(sinceValue)) throw new RequestError('since が不正です', 400)
+      const since = parseRevision(Number(sinceValue))
+      if (room.revision <= since)
+        return json({ roomCode: code, revision: room.revision, unchanged: true })
+    }
+    return json(await roomSnapshot(env, room))
   }
   if (parts.length === 4 && parts[3] === 'join' && request.method === 'POST') {
     return joinRoom(request, env, code, auth)
@@ -832,17 +1045,47 @@ async function handleApi(request: Request, env: AuthEnv): Promise<Response> {
 
 export default {
   async fetch(request, env: AuthEnv): Promise<Response> {
+    const requestId = crypto.randomUUID()
+    const url = new URL(request.url)
     try {
-      const url = new URL(request.url)
-      if (url.pathname === '/auth/google') return await startGoogleLogin(request, env)
-      if (url.pathname === '/auth/google/callback') return await googleCallback(request, env)
-      if (url.pathname === '/auth/logout') return await logout(request, env)
-      if (url.pathname.startsWith('/api/')) return await handleApi(request, env)
-      return env.ASSETS.fetch(request)
+      let response: Response
+      if (url.pathname === '/healthz' && request.method === 'GET') {
+        response = await health(env)
+      } else {
+        const limited = await enforceRateLimit(request, env)
+        if (limited) {
+          response = limited
+        } else if (url.pathname === '/auth/google') {
+          response = await startGoogleLogin(request, env)
+        } else if (url.pathname === '/auth/google/callback') {
+          response = await googleCallback(request, env)
+        } else if (url.pathname === '/auth/logout') {
+          response = await logout(request, env)
+        } else if (url.pathname.startsWith('/api/')) {
+          response = await handleApi(request, env)
+        } else {
+          response = await env.ASSETS.fetch(request)
+        }
+      }
+      logEvent('request', {
+        requestId,
+        method: request.method,
+        path: url.pathname,
+        status: response.status,
+      })
+      return withSecurityHeaders(response, requestId)
     } catch (error) {
-      if (error instanceof RequestError) return errorResponse(error.status, error.message)
-      console.error(JSON.stringify({ event: 'worker_error', message: String(error) }))
-      return errorResponse(500, 'サーバー内部でエラーが発生しました')
+      const response =
+        error instanceof RequestError
+          ? errorResponse(error.status, error.message)
+          : errorResponse(500, 'サーバー内部でエラーが発生しました')
+      logEvent('worker_error', {
+        requestId,
+        method: request.method,
+        path: url.pathname,
+        message: String(error),
+      })
+      return withSecurityHeaders(response, requestId)
     }
   },
 } satisfies ExportedHandler<AuthEnv>

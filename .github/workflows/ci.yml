@@ -23,5 +23,7 @@ jobs:
         run: npm run format:check
       - name: テスト
         run: npm test
+      - name: 本番依存の監査
+        run: npm audit --omit=dev --audit-level=high
       - name: ビルド
         run: npm run build

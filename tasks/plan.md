@@ -296,3 +296,141 @@ Issue #23として、成績画面の2つのグラフを比較しやすく、ス�
 | 紹介を増やしてルーム操作が下がる         | Medium | CTAをファーストビューに固定し、作成・参加を最初の操作として残す     |
 | `RoomView`の分離で既存のルーム状態を壊す | High   | ルームなし/あり/boardの3経路を手動確認し、RoomEntryの処理を共有する |
 | ルームURLの権限説明が目立たなくなる      | High   | CTA付近に常設の注意表示を置く                                       |
+
+## Phase 10: Production Hardening
+
+このPhaseは、監査で見つかったデータ破壊・同期・認証・運用リスクを修正する。詳細仕様は `docs/production-hardening-spec.md`。
+
+### Task 26: Runtime contract validation [x]
+
+- [ ] RoomState、Draft、Game、Hand、RulesをWorkerとクライアントでruntime validationする
+- [ ] 人数、重複ID、参照整合性、finite integer、日付、文字列長、hand typeを検証する
+- [ ] malformed payloadが400になり、既存の正常データは読み込める
+
+**Verification:** validator unit tests、Worker API contract tests、`npm run check`
+
+**Dependencies:** Task 25
+
+### Task 27: Request/response security boundary [x]
+
+- [ ] 実体のrequest body上限、ゲーム件数、履歴件数、名前/メモ長を制限する
+- [ ] security headers、request ID、structured error log、`/healthz`を追加する
+- [ ] Rate Limiting bindingを導入し、namespace IDの設定手順を文書化する
+
+**Verification:** header/health/rate-limit tests、`npx wrangler types --check`、dry run
+
+**Dependencies:** Task 26
+
+### Task 28: Atomic game mutation guards [x]
+
+- [ ] 存在しないgame updateでroom revisionを増やさない
+- [ ] room code、game ID、payloadの境界を一貫して検証する
+- [ ] room isolationと競合のWorkerテストを追加する
+
+**Verification:** Worker integration tests、local D1 API test
+
+**Dependencies:** Task 26
+
+### Checkpoint: Worker Foundation
+
+- [ ] `npm run check`
+- [ ] `npm run build`
+- [ ] malformed state/gameが拒否される
+- [ ] health/security headers/rate limitが確認できる
+
+### Phase 11: Safe Shared Sync
+
+### Task 29: Reconcile and rollback policy [x]
+
+- [ ] write success/error/conflict/reconcileを明示的な同期状態として扱う
+- [ ] 通信失敗時はサーバー再取得、失敗時は最後に同期済みのDBへ戻す
+- [ ] room切替後の古いリクエストが現在のroom stateを変更しない
+
+**Verification:** useRoomSync tests、通信遮断・復帰の手動確認
+
+**Dependencies:** Task 28
+
+### Task 30: Conditional polling [x]
+
+- [ ] revisionが変わらないpollでゲーム全件を返さない
+- [ ] API clientがnot-modifiedを扱う
+- [ ] pollingとwrite queueの相互作用を検証する
+
+**Verification:** API/client tests、local Worker polling test
+
+**Dependencies:** Task 29
+
+### Task 31: Settings commit flow and player invariant [x]
+
+- [ ] 設定入力途中はAPIへ保存しない
+- [ ] 保存・キャンセル・保存失敗を表示する
+- [ ] 4人制とDraft参照中の削除禁止をUI/Worker双方で守る
+
+**Verification:** Settings UI tests、390px manual check、`npm run check`
+
+**Dependencies:** Task 29
+
+### Task 32: Record input safeguards [x]
+
+- [ ] quick modeの点数不一致に明確な確認を要求する
+- [ ] 局タイプ変更時に不要なriichi/tenpaiを消す
+- [ ] 途中流局に必要な立直情報を記録できるか仕様とUIを一致させる
+
+**Verification:** Record UI tests、scoring regression tests
+
+**Dependencies:** Task 31
+
+### Checkpoint: Shared Data Safety
+
+- [ ] 2端末のDraft共有と競合表示が確認できる
+- [ ] 通信失敗後に保存済み表示が残らない
+- [ ] settings/quick/recordの主要入力が不正値を保存しない
+
+### Phase 12: Recovery, UX and Launch Operations
+
+### Task 33: Error boundary and recovery UI [x]
+
+- [ ] malformed/予期せぬ例外で白画面にならない
+- [ ] 再試行・ルーム選択へ戻る導線を用意する
+- [ ] Board表示にも再接続導線を追加する
+
+**Verification:** malformed response simulation、desktop/390px manual check
+
+**Dependencies:** Task 29
+
+### Task 34: Backup restore as a new room [x]
+
+- [ ] JSONファイルを検証して読み込める
+- [ ] 既存roomを上書きせず、新規roomとして作成する
+- [ ] restore失敗時に元のroom stateを変更しない
+
+**Verification:** valid/invalid/legacy JSON tests、manual restore flow
+
+**Dependencies:** Task 26, Task 31
+
+### Task 35: Stats/history/accessibility corrections [x]
+
+- [ ] adjustを局数の分母から除外する
+- [ ] 局ログに内容を確認できる情報を追加する
+- [ ] alert、focus、button state、同期文言を整える
+
+**Verification:** stats tests、accessibility checks、390px manual check
+
+**Dependencies:** Task 32
+
+### Task 36: Launch automation and documentation [x]
+
+- [ ] CIでvalidator/Worker契約テスト、wrangler types、dry runを実行する
+- [ ] health smoke test、migration手順、rollback手順、rate-limit設定を文書化する
+- [ ] OAuth本番確認とstaging smokeのチェックリストを更新する
+
+**Verification:** GitHub Actions-equivalent local commands、`npm run check`、`npm run build`
+
+**Dependencies:** Task 27, Task 33, Task 34
+
+### Checkpoint: Production Release Gate
+
+- [x] check/build/dry-runが成功
+- [x] malformed API payloadが拒否される
+- [ ] 2端末同期、再接続、復元、OAuthの手動確認が完了
+- [x] health/observability/rollback手順が実行可能

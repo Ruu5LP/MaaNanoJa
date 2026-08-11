@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client'
 import App from './App'
 import BoardApp from './BoardApp'
 import LegalView from './views/LegalView'
+import AppErrorBoundary from './components/AppErrorBoundary'
 import './styles.css'
 
 const rootEl = document.getElementById('root')
@@ -20,6 +21,8 @@ const legalPage =
 
 createRoot(rootEl).render(
   <React.StrictMode>
-    {isBoard ? <BoardApp /> : legalPage ? <LegalView page={legalPage} /> : <App />}
+    <AppErrorBoundary>
+      {isBoard ? <BoardApp /> : legalPage ? <LegalView page={legalPage} /> : <App />}
+    </AppErrorBoundary>
   </React.StrictMode>,
 )

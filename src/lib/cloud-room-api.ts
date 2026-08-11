@@ -6,6 +6,13 @@ import {
   type RoomStatePayload,
 } from './cloud-room'
 import type { DB } from './domain'
+import { parseRoomSnapshot } from './room-validation'
+
+interface UnchangedRoomResponse {
+  roomCode: string
+  revision: number
+  unchanged: true
+}
 
 export class CloudRoomError extends Error {
   constructor(
@@ -30,17 +37,22 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 }
 
 function isRoomSnapshot(value: unknown): value is RoomSnapshot {
-  if (!isRecord(value)) return false
-  const state = value.state
+  try {
+    parseRoomSnapshot(value)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function isUnchangedRoomResponse(value: unknown): value is UnchangedRoomResponse {
   return (
+    isRecord(value) &&
     typeof value.roomCode === 'string' &&
     typeof value.revision === 'number' &&
-    Number.isInteger(value.revision) &&
-    isRecord(state) &&
-    Array.isArray(state.players) &&
-    isRecord(state.rules) &&
-    (state.draft === null || isRecord(state.draft)) &&
-    Array.isArray(value.games)
+    Number.isSafeInteger(value.revision) &&
+    value.revision >= 0 &&
+    value.unchanged === true
   )
 }
 
@@ -57,8 +69,14 @@ async function request(path: string, init?: RequestInit): Promise<unknown> {
   }
   const payload = await readResponse(response)
   if (!response.ok) {
-    const snapshot =
-      isRecord(payload) && isRoomSnapshot(payload.snapshot) ? payload.snapshot : undefined
+    let snapshot: RoomSnapshot | undefined
+    if (isRecord(payload) && isRoomSnapshot(payload.snapshot)) {
+      try {
+        snapshot = parseRoomSnapshot(payload.snapshot)
+      } catch {
+        snapshot = undefined
+      }
+    }
     throw new CloudRoomError(
       errorMessage(payload, `クラウドAPIエラー (${response.status})`),
       response.status,
@@ -94,10 +112,19 @@ export async function createRoom(
   }
 }
 
-export async function fetchRoom(roomCode: string): Promise<RoomSnapshot> {
-  const payload = await request(`/api/rooms/${encodeURIComponent(roomCode)}`)
-  if (!isRoomSnapshot(payload)) throw new CloudRoomError('ルーム取得の応答が不正です', 502)
-  return payload
+export async function fetchRoom(
+  roomCode: string,
+  sinceRevision?: number,
+): Promise<RoomSnapshot | null> {
+  const query =
+    sinceRevision === undefined ? '' : `?since=${encodeURIComponent(String(sinceRevision))}`
+  const payload = await request(`/api/rooms/${encodeURIComponent(roomCode)}${query}`)
+  if (isUnchangedRoomResponse(payload)) return null
+  try {
+    return parseRoomSnapshot(payload)
+  } catch {
+    throw new CloudRoomError('ルーム取得の応答が不正です', 502)
+  }
 }
 
 export async function updateRoomState(

@@ -103,7 +103,7 @@ export function computeStats(db: DB): PlayerStats[] {
       const seats = game.playerIds
       for (const pid of seats) {
         const s = byId[pid]
-        if (s) s.handsPlayed += game.hands.length
+        if (s) s.handsPlayed += game.hands.filter((hand) => hand.type !== 'adjust').length
       }
       const { steps } = replay(game, rules)
       for (const step of steps) {

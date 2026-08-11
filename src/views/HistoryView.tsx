@@ -107,12 +107,27 @@ function HandLog({ game, rules, name }: { game: Game; rules: Rules; name: NameFn
               {s.label}
             </span>
             {handTag(s.hand)}
+            <span className="muted">{handDescription(s.hand, name)}</span>
           </div>
           <DeltaChips playerIds={game.playerIds} name={name} delta={s.delta} />
         </div>
       ))}
     </div>
   )
+}
+
+function handDescription(hand: Hand, name: NameFn): string {
+  if (hand.type === 'ron') {
+    return `${hand.wins.map((win) => `${name(win.winner)} ${win.han}翻${win.fu}符`).join('・')} / 放銃 ${name(hand.loser)}`
+  }
+  if (hand.type === 'tsumo') return `${name(hand.winner)} ${hand.han}翻${hand.fu}符`
+  if (hand.type === 'draw') return `テンパイ ${hand.tenpai.map(name).join('、') || 'なし'}`
+  if (hand.type === 'adjust') {
+    return Object.entries(hand.delta)
+      .map(([pid, delta]) => `${name(pid)} ${delta > 0 ? '+' : ''}${delta.toLocaleString()}`)
+      .join('・')
+  }
+  return '連荘・点数移動なし'
 }
 
 function handTag(h: Hand) {

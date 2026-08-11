@@ -9,6 +9,6 @@ export default defineConfig({
   test: {
     // lib/ の純粋ロジックはブラウザ非依存。node環境でテストする。
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'worker/**/*.test.ts'],
   },
 })

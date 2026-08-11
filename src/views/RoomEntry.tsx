@@ -85,7 +85,7 @@ export default function RoomEntry({
                 <p className="muted">{account.user.email} でログイン中</p>
               ) : account.loginEnabled ? (
                 <p className="muted">
-                  Googleアカウントでログインすると、作成したルームを保存できます。
+                  ルームの作成・参加にはGoogleアカウントでのログインが必要です。ログイン後、この画面に戻ります。
                 </p>
               ) : null}
             </div>
@@ -185,7 +185,11 @@ export default function RoomEntry({
         <div className="room-access-notice">
           <strong>共有ルームの注意</strong>
           <span>
-            ルームURLを知っている人は、ログインなしで閲覧・編集できます。信頼できる相手にだけ共有してください。
+            {account === null
+              ? '認証設定を確認中です。ルームURLは信頼できる相手にだけ共有してください。'
+              : account.loginEnabled
+                ? 'ログインしたユーザーがルームURLを知っている場合に閲覧・編集できます。URLは信頼できる相手にだけ共有してください。'
+                : 'ルームURLを知っている人は閲覧・編集できます。信頼できる相手にだけ共有してください。'}
           </span>
         </div>
         {error && (

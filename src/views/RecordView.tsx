@@ -289,6 +289,8 @@ function QuickView({
               <input
                 type="number"
                 inputMode="numeric"
+                min={-1000000}
+                max={1000000}
                 value={pts[pid] ?? ''}
                 onChange={(e) => setPt(pid, e.target.value)}
               />
@@ -305,7 +307,17 @@ function QuickView({
         {results.length > 0 && <ResultPreview results={results} name={name} />}
 
         <div className="row" style={{ marginTop: 14 }}>
-          <button className="btn primary" onClick={() => onSave(game)}>
+          <button
+            className="btn primary"
+            onClick={() => {
+              if (
+                !check.ok &&
+                !confirm('点数の合計が配給原点と一致していません。このまま保存しますか？')
+              )
+                return
+              onSave(game)
+            }}
+          >
             保存
           </button>
           <button className="btn ghost" onClick={onCancel}>
@@ -444,7 +456,17 @@ function LiveView({
           )}
           <ResultPreview results={results} name={name} />
           <div className="row" style={{ marginTop: 14 }}>
-            <button className="btn primary" onClick={() => onSave(game)}>
+            <button
+              className="btn primary"
+              onClick={() => {
+                if (
+                  !check.ok &&
+                  !confirm('点数の合計が配給原点と一致していません。このまま保存しますか？')
+                )
+                  return
+                onSave(game)
+              }}
+            >
               この結果で保存
             </button>
             <button className="btn ghost" onClick={() => setFinishing(false)}>
@@ -647,8 +669,15 @@ function HandForm({
     })
   }
   function changeType(t: HandType) {
-    // 和了者・放銃者・点数はリセット（立直/テンパイは局全体の情報なので残す）。
-    onChange({ ...form, type: t, winners: [], loser: '', scores: {} })
+    // 和了者・放銃者・点数をリセットし、対象外の局種別のテンパイ情報を残さない。
+    onChange({
+      ...form,
+      type: t,
+      winners: [],
+      loser: '',
+      scores: {},
+      tenpai: t === 'draw' ? form.tenpai : [],
+    })
   }
   function toggleWinner(pid: string) {
     if (type === 'tsumo') {
@@ -803,26 +832,24 @@ function HandForm({
         </div>
       )}
 
-      {type !== 'abortive' && (
-        <div style={{ marginTop: 12 }}>
-          <div className="muted" style={{ marginBottom: 6 }}>
-            立直した人
-          </div>
-          <div className="pick-row">
-            {playerIds.map((pid) => (
-              <button
-                key={pid}
-                type="button"
-                className={`pill ${riichi.includes(pid) ? 'on' : ''}`}
-                aria-pressed={riichi.includes(pid)}
-                onClick={() => toggleField('riichi', pid)}
-              >
-                {name(pid)}
-              </button>
-            ))}
-          </div>
+      <div style={{ marginTop: 12 }}>
+        <div className="muted" style={{ marginBottom: 6 }}>
+          立直した人
         </div>
-      )}
+        <div className="pick-row">
+          {playerIds.map((pid) => (
+            <button
+              key={pid}
+              type="button"
+              className={`pill ${riichi.includes(pid) ? 'on' : ''}`}
+              aria-pressed={riichi.includes(pid)}
+              onClick={() => toggleField('riichi', pid)}
+            >
+              {name(pid)}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {editing ? (
         <div className="row" style={{ marginTop: 14 }}>

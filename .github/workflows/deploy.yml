@@ -61,3 +61,6 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           command: deploy
           wranglerVersion: '4.118.0'
+
+      - name: Smoke test health endpoint
+        run: curl --fail --retry 8 --retry-delay 5 --retry-connrefused https://maananaja.final0505.workers.dev/healthz
