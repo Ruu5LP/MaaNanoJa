@@ -1,5 +1,8 @@
 import RoomEntry, { type RoomEntryProps } from './RoomEntry'
 import AdSenseSlot from '../components/AdSenseSlot'
+import recordScreenshot from '../../docs/screenshots/record-view.svg'
+import statsScreenshot from '../../docs/screenshots/stats-view.svg'
+import boardScreenshot from '../../docs/screenshots/board-view.svg'
 
 export default function LandingView(props: RoomEntryProps) {
   return (
@@ -7,70 +10,52 @@ export default function LandingView(props: RoomEntryProps) {
       <section className="landing-hero" aria-labelledby="landing-title">
         <div className="landing-hero-copy">
           <h2 id="landing-title">麻雀トラッカー</h2>
-          <p className="landing-lead">対局の点数・局ログ・成績を記録できます。</p>
+          <p className="landing-lead">対局を記録して、あとから振り返る。</p>
         </div>
         <RoomEntry {...props} />
       </section>
 
       <AdSenseSlot />
 
-      <section className="landing-section" aria-labelledby="features-title">
+      <section className="landing-showcase" aria-labelledby="showcase-title">
         <div className="landing-section-heading">
-          <h2 id="features-title">できること</h2>
-          <p>記録したデータは、同じルームの中でいつでも確認できます。</p>
+          <h2 id="showcase-title">記録した内容は、こう見えます。</h2>
+          <p>点数の記録から成績の確認まで、同じルームで使えます。</p>
         </div>
-        <div className="feature-grid">
-          <article className="feature-card">
-            <span className="feature-number">01</span>
-            <h3>点数をかんたん記録</h3>
-            <p>終局時の持ち点だけでも、局ごとの点数移動でも記録できます。</p>
-          </article>
-          <article className="feature-card">
-            <span className="feature-number">02</span>
-            <h3>局ログを残す</h3>
-            <p>和了、放銃、立直、流局などを残して、あとから対局を振り返れます。</p>
-          </article>
-          <article className="feature-card">
-            <span className="feature-number">03</span>
-            <h3>成績を見える化</h3>
-            <p>合計スコア、平均順位、着順分布、和了率などを自動で集計します。</p>
-          </article>
-          <article className="feature-card">
-            <span className="feature-number">04</span>
-            <h3>モニターに表示</h3>
-            <p>別のPCやテレビにスコアボードを映して、卓上の順位を共有できます。</p>
-          </article>
-        </div>
-      </section>
-
-      <section className="landing-section landing-howto" aria-labelledby="howto-title">
-        <div className="landing-section-heading">
-          <h2 id="howto-title">使い方</h2>
-          <p>ログインなしで使うことも、共有ルームを作ってみんなで使うこともできます。</p>
-        </div>
-        <ol className="steps-list">
-          <li>
-            <span className="step-number">01</span>
-            <div>
-              <h3>ルームを作る</h3>
-              <p>新しいルームを作成し、表示されたURLをメンバーに共有します。</p>
-            </div>
-          </li>
-          <li>
-            <span className="step-number">02</span>
-            <div>
-              <h3>メンバーを登録する</h3>
-              <p>4人の名前とルールを設定したら、対局の準備は完了です。</p>
-            </div>
-          </li>
-          <li>
-            <span className="step-number">03</span>
-            <div>
-              <h3>対局を記録する</h3>
-              <p>スマホから入力しながら、全員で同じスコアと局ログを確認できます。</p>
-            </div>
-          </li>
-        </ol>
+        <article className="showcase-row">
+          <div className="showcase-copy">
+            <span className="showcase-kicker">記録</span>
+            <h3>点数を記録する</h3>
+            <p>半荘の結果だけでも、局ごとの点数移動でも記録できます。</p>
+          </div>
+          <figure className="showcase-media">
+            <img src={recordScreenshot} alt="局ログを入力している記録画面" loading="eager" />
+          </figure>
+        </article>
+        <article className="showcase-row reverse">
+          <div className="showcase-copy">
+            <span className="showcase-kicker">成績</span>
+            <h3>成績を振り返る</h3>
+            <p>合計スコアや順位、和了率などを自動で集計します。</p>
+          </div>
+          <figure className="showcase-media">
+            <img src={statsScreenshot} alt="成績を確認する画面" loading="lazy" />
+          </figure>
+        </article>
+        <article className="showcase-row">
+          <div className="showcase-copy">
+            <span className="showcase-kicker">モニター</span>
+            <h3>卓の横に表示する</h3>
+            <p>別のPCやテレビに、現在の順位を表示できます。</p>
+          </div>
+          <figure className="showcase-media">
+            <img
+              src={boardScreenshot}
+              alt="大画面に現在の順位を表示するモニター画面"
+              loading="lazy"
+            />
+          </figure>
+        </article>
       </section>
 
       <footer className="landing-footer">

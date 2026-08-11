@@ -261,16 +261,18 @@ export default function App() {
 
   return (
     <>
-      <header className="app-header">
-        <h1>麻雀トラッカー</h1>
-        {account?.user && <span className="account-badge">👤 {account.user.displayName}</span>}
-        {guestMode && <span className="sync-badge sync-guest">📝 一時保存中</span>}
-        {roomCode && (
-          <span className={`sync-badge sync-${syncStatus}`} role="status">
-            {syncStatusLabel(syncStatus, cloudMode)}
-          </span>
-        )}
-      </header>
+      {(roomCode || guestMode) && (
+        <header className="app-header">
+          <h1>麻雀トラッカー</h1>
+          {account?.user && <span className="account-badge">👤 {account.user.displayName}</span>}
+          {guestMode && <span className="sync-badge sync-guest">📝 一時保存中</span>}
+          {roomCode && (
+            <span className={`sync-badge sync-${syncStatus}`} role="status">
+              {syncStatusLabel(syncStatus, cloudMode)}
+            </span>
+          )}
+        </header>
+      )}
 
       {roomCode ? (
         <RoomView account={account} roomCode={roomCode} onLeave={leaveRoom} />
