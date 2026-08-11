@@ -1,6 +1,6 @@
 # 麻雀トラッカー（MaaNanoJa）
 
-月イチの家麻雀（4人打ち）のスコアと、放銃・和了・立直などの局データを記録して分析するWebアプリです。Cloudflare Workers + D1を本体とし、ルームURLを開いたPC・スマホで同じ対局を共有します。
+4人打ち麻雀のスコアと、放銃・和了・立直などの局データを記録して分析するWebアプリです。Cloudflare Workers + D1を本体とし、ルームURLを開いたPC・スマホで同じ対局を共有します。
 
 いつも使っている [namimori 氏の麻雀集計スプレッドシート](https://hirokuasaku-live.blogspot.com/2022/08/mahjong-spreadsheet-new.html) のスコア計算を再現したうえで、**局ごとの記録**を足して統計を出せるようにしています。通常のデータはブラウザや家庭内サーバーには保存せず、Cloudflare D1へルーム単位で保存します。
 

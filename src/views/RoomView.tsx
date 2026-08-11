@@ -136,7 +136,12 @@ export default function RoomView({
 
   return (
     <>
-      {account && (
+      {accountError && !account && (
+        <p className="error-text room-account-error" role="alert">
+          {accountError}
+        </p>
+      )}
+      {account && (account.user || account.loginEnabled || accountError) && (
         <div className="card account-card room-card">
           <div className="row wrap">
             <div>
@@ -182,56 +187,68 @@ export default function RoomView({
           )}
         </div>
       )}
-      <div className="card room-card">
-        <h2>みんなで使う</h2>
-        <p className="muted">ルームを作ると、PCのモニターとスマホを同じ対局に接続できます。</p>
-        <p className="muted room-privacy">
-          ルームURLを知っている人は、ログインなしで閲覧・入力できます。信頼できる相手にだけ共有してください。
+      <div className="card room-card room-hero">
+        <h2>麻雀の対局を、みんなで記録・共有</h2>
+        <p className="room-lead">
+          半荘の点数・局ログ・成績を、スマホとPCから同じルームで管理できます。
         </p>
         <div className="room-actions">
-          {legacyDB && legacyDB.games.length > 0 ? (
-            <div className="room-create-options">
-              <span className="muted">旧データの過去対局 {legacyDB.games.length}件</span>
+          <div className="room-create-block">
+            <h3 className="room-option-title">新しく始める</h3>
+            {legacyDB && legacyDB.games.length > 0 ? (
+              <div className="room-create-options">
+                <span className="muted">旧データの過去対局 {legacyDB.games.length}件</span>
+                <button
+                  className="btn primary"
+                  disabled={busy}
+                  onClick={() => void handleCreate(true)}
+                >
+                  {busy ? '作成中…' : '履歴を移行して作る'}
+                </button>
+                <button
+                  className="btn ghost"
+                  disabled={busy}
+                  onClick={() => void handleCreate(false)}
+                >
+                  空のルームを作る
+                </button>
+              </div>
+            ) : (
               <button
                 className="btn primary"
                 disabled={busy}
-                onClick={() => void handleCreate(true)}
-              >
-                {busy ? '作成中…' : '履歴を移行して作る'}
-              </button>
-              <button
-                className="btn ghost"
-                disabled={busy}
                 onClick={() => void handleCreate(false)}
               >
-                空のルームを作る
+                {busy ? '作成中…' : '新しいルームを作る'}
+              </button>
+            )}
+          </div>
+          <span className="muted room-or">または</span>
+          <div className="room-join-block">
+            <h3 className="room-option-title">招待されたルームに参加</h3>
+            <p className="muted">共有された8文字のルームコードを入力してください。</p>
+            <div className="row room-join-row">
+              <input
+                value={input}
+                maxLength={8}
+                placeholder="ルームコード"
+                aria-label="ルームコード"
+                onChange={(e) => setInput(e.target.value.toUpperCase())}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') void handleJoin()
+                }}
+              />
+              <button className="btn" disabled={busy} onClick={() => void handleJoin()}>
+                参加
               </button>
             </div>
-          ) : (
-            <button
-              className="btn primary"
-              disabled={busy}
-              onClick={() => void handleCreate(false)}
-            >
-              {busy ? '作成中…' : '新しいルームを作る'}
-            </button>
-          )}
-          <span className="muted">または</span>
-          <div className="row room-join-row">
-            <input
-              value={input}
-              maxLength={8}
-              placeholder="ルームコード"
-              aria-label="ルームコード"
-              onChange={(e) => setInput(e.target.value.toUpperCase())}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') void handleJoin()
-              }}
-            />
-            <button className="btn" disabled={busy} onClick={() => void handleJoin()}>
-              参加
-            </button>
           </div>
+        </div>
+        <div className="room-access-notice">
+          <strong>共有ルームの注意</strong>
+          <span>
+            ルームURLを知っている人は、ログインなしで閲覧・編集できます。信頼できる相手にだけ共有してください。
+          </span>
         </div>
         {error && <p className="error-text">{error}</p>}
       </div>
