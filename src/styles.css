@@ -422,6 +422,11 @@ button.pill {
   font-size: 11px;
   margin: 0 0 6px;
 }
+.chart-hint {
+  color: var(--ink-3);
+  font-size: 11px;
+  margin: -4px 0 8px;
+}
 table {
   border-collapse: collapse;
   width: 100%;
@@ -515,7 +520,7 @@ tbody tr:hover td:first-child {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 0;
   color: #0b1220;
   font-weight: 700;
   border-right: 2px solid var(--surface);
@@ -596,14 +601,40 @@ tbody tr:hover td:first-child {
 }
 .hbar {
   display: grid;
-  grid-template-columns: 84px 1fr 64px;
+  grid-template-columns: 34px minmax(60px, 84px) minmax(80px, 1fr) 78px;
   align-items: center;
   gap: 8px;
   font-size: 13px;
 }
+.hbar-rank {
+  color: var(--ink-3);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.hbar-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hbar-score {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.hbar-score strong {
+  font-size: 13px;
+}
+.hbar-score small {
+  color: var(--ink-3);
+  font-size: 10px;
+  margin-top: 2px;
+}
 .hbar .track {
   position: relative;
-  height: 14px;
+  height: 16px;
   background: var(--surface-2);
   border-radius: 4px;
 }
@@ -854,8 +885,9 @@ h3.sec {
   .stats-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    grid-auto-rows: 1fr;
+    grid-auto-rows: auto;
     gap: 14px;
+    align-items: start;
   }
   .stats-grid > .card {
     margin-bottom: 0;
@@ -1007,5 +1039,15 @@ h3.sec {
      （4人麻雀の "誰が今どこにいるか" を一望する用途なので、狭くても2×2を維持する）。 */
   .board-bar {
     flex-wrap: wrap;
+  }
+}
+@media (max-width: 480px) {
+  .hbar {
+    grid-template-columns: 30px minmax(48px, 0.8fr) minmax(72px, 1.2fr) 72px;
+    gap: 6px;
+    font-size: 12px;
+  }
+  .hbar-score strong {
+    font-size: 12px;
   }
 }
