@@ -64,6 +64,13 @@ jobs:
 
       - name: Smoke test health endpoint
         run: |
-          response="$(curl --fail --retry 8 --retry-delay 5 --retry-connrefused --silent https://maananaja.final0505.workers.dev/healthz)"
-          echo "$response" | grep -Eq '"ok"[[:space:]]*:[[:space:]]*true'
-          echo "$response" | grep -Eq '"service"[[:space:]]*:[[:space:]]*"maananaja"'
+          for attempt in 1 2 3 4 5 6 7 8; do
+            response="$(curl --fail --silent --show-error --max-time 20 https://maananaja.final0505.workers.dev/healthz || true)"
+            if echo "$response" | grep -Eq '"ok"[[:space:]]*:[[:space:]]*true' && \
+              echo "$response" | grep -Eq '"service"[[:space:]]*:[[:space:]]*"maananaja"'; then
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "Health endpoint did not return the expected JSON response."
+          exit 1
