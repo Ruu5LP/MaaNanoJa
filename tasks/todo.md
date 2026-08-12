@@ -240,3 +240,38 @@
   - Verify: `npm run check`, `npm run build`
   - Files: `README.md`, `SETUP.md`, `docs/guest-mode-spec.md`, `tasks/plan.md`, `tasks/todo.md`
   - Dependencies: Task 39
+
+## トップページの入口と保存範囲の明確化
+
+- [x] Task 41: トップページの入口構成とコピーを整理
+  - Acceptance: ゲスト、Googleログイン、共有ルームの役割と次の行動が一読で分かる。見出し階層が適切で、ゲストとGoogleログインが同じ階層で見える
+  - Verify: 初回表示と390px幅の手動確認、`npm run check`
+  - Files: `src/views/LandingView.tsx`, `src/views/RoomEntry.tsx`, `src/styles.css`
+  - Dependencies: Task 40
+
+- [x] Task 42: ゲスト状態と保存先の表示を統一
+  - Acceptance: 開始前、再開可能、利用中の各状態で一時保存とタブを閉じると消える条件が分かり、ログイン後の共有ルーム保存導線が目的付きで表示される
+  - Verify: ゲスト開始、更新、再開、ログイン、保存成功後の遷移を手動確認
+  - Files: `src/App.tsx`, `src/views/RoomEntry.tsx`, `src/views/SettingsView.tsx`, `src/styles.css`
+  - Dependencies: Task 41
+
+- [x] Task 43: 共有ルーム作成のログイン導線と状態を明確化
+  - Acceptance: 未ログイン時は新規ルーム作成がログイン必須と分かり、認証取得中/失敗時に作成ボタンを誤って有効化しない。ログイン済みなら所有ルームとして作成できる
+  - Verify: 未ログイン、ログイン済み、認証取得中、認証API失敗を手動確認。Worker契約テスト、`npm run check`
+  - Files: `src/App.tsx`, `src/views/RoomEntry.tsx`, `src/lib/account.ts`, `worker/index.ts`, `worker/contract.test.ts`
+  - Dependencies: Task 41
+
+- [x] Task 44: 仕様書・利用説明・公開前チェックを更新
+  - Acceptance: README/SETUP/ゲスト仕様とトップページの説明が一致し、Googleログイン必須の新規ルーム作成と招待コード参加が明記される
+  - Verify: ドキュメントレビュー、390px/デスクトップ手動確認、`npm run check`, `npm run build`
+  - Files: `README.md`, `SETUP.md`, `docs/guest-mode-spec.md`, `tasks/plan.md`, `tasks/todo.md`
+  - Dependencies: Task 42, Task 43
+
+### Checkpoint: Landing Entry Clarity Complete
+
+- [x] 3つの入口の役割と保存先が一目で分かる
+- [x] ゲスト利用中であることと、データが消える条件が分かる
+- [x] 未ログインから共有ルーム作成を始めるとGoogleログインへ誘導される
+- [x] `npm run check` と `npm run build` が成功する
+- [x] デスクトップ幅と390px幅で主要導線を確認する
+- [ ] Google OAuth設定済みの公開環境で、ログイン・ルーム作成・招待コード参加を確認する

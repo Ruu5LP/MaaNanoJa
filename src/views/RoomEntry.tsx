@@ -17,6 +17,30 @@ export interface RoomEntryProps {
   onLegacyMigrated?(): void
 }
 
+type SharedRoomAccess = 'checking' | 'login-required' | 'available' | 'error'
+
+function getSharedRoomAccess(
+  account: AccountState | null,
+  accountError: string | null,
+): SharedRoomAccess {
+  if (!account) return accountError ? 'error' : 'checking'
+  if (account.loginEnabled && !account.user) return 'login-required'
+  return 'available'
+}
+
+function sharedRoomAccessMessage(access: SharedRoomAccess): string {
+  switch (access) {
+    case 'checking':
+      return 'アカウント情報を確認中です。少し待ってからもう一度お試しください'
+    case 'login-required':
+      return '共有ルームを使うには、先にGoogleでログインしてください'
+    case 'error':
+      return 'アカウント情報を取得できないため、共有ルームを利用できません。再確認してください'
+    case 'available':
+      return ''
+  }
+}
+
 export default function RoomEntry({
   db,
   legacyDB = null,
@@ -38,13 +62,22 @@ export default function RoomEntry({
   }, [])
 
   const creationDB = legacyDB ?? db
-  const requiresLogin = Boolean(account?.loginEnabled && !account.user)
+  const sharedRoomAccess = getSharedRoomAccess(account, accountError)
+  const sharedRoomDisabled = sharedRoomAccess !== 'available'
+  const showAccountCard =
+    account === null ||
+    Boolean(accountError) ||
+    Boolean(account?.loginEnabled) ||
+    Boolean(account?.user)
+
+  function requireSharedRoomAccess(): boolean {
+    if (sharedRoomAccess === 'available') return true
+    setError(sharedRoomAccessMessage(sharedRoomAccess))
+    return false
+  }
 
   async function handleCreate(migrateGames: boolean) {
-    if (requiresLogin) {
-      setError('共有ルームを使うには、先にGoogleでログインしてください')
-      return
-    }
+    if (!requireSharedRoomAccess()) return
     setBusy(true)
     setError('')
     try {
@@ -60,10 +93,7 @@ export default function RoomEntry({
   }
 
   async function handleJoinCode(value: string) {
-    if (requiresLogin) {
-      setError('共有ルームを使うには、先にGoogleでログインしてください')
-      return
-    }
+    if (!requireSharedRoomAccess()) return
     const code = normalizeRoomCode(value)
     if (!code) {
       setError('8文字の招待コードを入力してください')
@@ -84,92 +114,118 @@ export default function RoomEntry({
 
   return (
     <div className="room-entry">
-      {accountError && !account && (
-        <p className="error-text room-account-error" role="alert">
-          {accountError}
-        </p>
-      )}
-      <div className="card guest-entry-card room-card">
-        <h2>{guestDB ? '前回の続き' : 'ログインなしで使う'}</h2>
-        <p className="muted">
-          {guestDB
-            ? `このタブに入力内容が残っています（対局記録 ${guestDB.games.length}件）。`
-            : 'ログインせずに、記録・成績機能を使えます。'}
-        </p>
-        <button className="btn primary" disabled={busy} onClick={() => onStartGuest?.()}>
-          {guestDB ? '続きを開く' : 'このまま使う'}
-        </button>
-        <p className="muted guest-entry-note">
-          ログインせずに入力した内容は、このタブを閉じると消えます。残すにはログインしてください。
-        </p>
-      </div>
-      {account && (account.user || account.loginEnabled || accountError) && (
-        <div className="card account-card room-card">
-          <div className="row wrap">
+      <div className="entry-options">
+        <div className="card entry-card guest-entry-card room-card">
+          <div>
+            <span className="entry-kicker">まず試す</span>
+            <h2>{guestDB ? 'このタブの続き' : 'ゲストとして始める'}</h2>
+            <p className="muted">
+              {guestDB
+                ? `このタブに一時保存された対局記録が${guestDB.games.length}件あります。`
+                : 'Googleログインなしで、記録・成績・履歴を試せます。'}
+            </p>
+            <ul className="entry-details">
+              <li>ページを更新しても続きから使えます</li>
+              <li>タブを閉じるとデータは消えます</li>
+            </ul>
+          </div>
+          <button className="btn primary" disabled={busy} onClick={() => onStartGuest?.()}>
+            {guestDB ? '続きから始める' : 'ゲストとして始める'}
+          </button>
+          <p className="muted guest-entry-note">
+            データを残したり共有したりするには、Googleログイン後に共有ルームへ保存してください。
+          </p>
+        </div>
+
+        {showAccountCard && (
+          <div className="card entry-card account-card room-card">
             <div>
-              <h2>アカウント</h2>
-              {account.user ? (
-                <p className="muted">{account.user.email} でログイン中</p>
-              ) : account.loginEnabled ? (
+              <span className="entry-kicker">保存・管理する</span>
+              <h2>Googleでログイン</h2>
+              {account?.user ? (
+                <p className="muted">{account.user.email} でログイン中です。</p>
+              ) : account?.loginEnabled ? (
                 <p className="muted">
-                  共有ルームを使うにはGoogleでログインしてください。ログイン後、この画面に戻ります。
+                  ログインすると、新しい共有ルームを作成して対局データを保存できます。
                 </p>
+              ) : accountError ? (
+                <p className="muted">ログイン状態を確認できません。</p>
+              ) : (
+                <p className="muted">ログイン状態を確認しています…</p>
+              )}
+              <ul className="entry-details">
+                <li>自分のルームをあとから開けます</li>
+                <li>参加者と同じ対局データを共有できます</li>
+              </ul>
+            </div>
+            <div className="entry-action-row">
+              {account?.user ? (
+                <a className="btn ghost auth-action" href={LOGOUT_PATH}>
+                  ログアウト
+                </a>
+              ) : account?.loginEnabled ? (
+                <a className="btn primary auth-action" href={loginUrl}>
+                  Googleでログイン
+                </a>
+              ) : accountError && !account ? (
+                <button className="btn ghost" onClick={() => onAccountChanged?.()}>
+                  もう一度確認
+                </button>
               ) : null}
             </div>
-            <span className="spacer" />
-            {account.user ? (
-              <a className="btn ghost auth-action" href={LOGOUT_PATH}>
-                ログアウト
-              </a>
-            ) : account.loginEnabled ? (
-              <a className="btn primary auth-action" href={loginUrl}>
-                Googleでログイン
-              </a>
-            ) : null}
+            {accountError && (
+              <p className="error-text" role="alert">
+                {accountError}
+              </p>
+            )}
+            {account?.user && accountRooms.length > 0 && (
+              <div className="account-rooms">
+                <h3>自分のルーム</h3>
+                {accountRooms.map((room) => (
+                  <button
+                    className="account-room"
+                    key={room.roomCode}
+                    disabled={busy}
+                    onClick={() => void handleJoinCode(room.roomCode)}
+                  >
+                    <code>{room.roomCode}</code>
+                    <span>{room.role === 'owner' ? '所有者' : '参加中'}</span>
+                    <span className="muted">対局 {room.gameCount}件</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          {accountError && (
-            <p className="error-text" role="alert">
-              {accountError}
-            </p>
-          )}
-          {account.user && accountRooms.length > 0 && (
-            <div className="account-rooms">
-              <h3>自分のルーム</h3>
-              {accountRooms.map((room) => (
-                <button
-                  className="account-room"
-                  key={room.roomCode}
-                  disabled={busy}
-                  onClick={() => void handleJoinCode(room.roomCode)}
-                >
-                  <code>{room.roomCode}</code>
-                  <span>{room.role === 'owner' ? '所有者' : '参加中'}</span>
-                  <span className="muted">対局 {room.gameCount}件</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      <div className="card room-card room-entry-card">
-        <h2>みんなで使う</h2>
-        <p className="muted">ルームを作るか、招待コードで参加してください。</p>
+        )}
+      </div>
+
+      <div className="card room-card room-entry-card shared-room-card">
+        <span className="entry-kicker">みんなで使う</span>
+        <h2>共有ルームを作る・参加する</h2>
+        <p className="muted">
+          共有ルームに対局データを保存すると、同じルームを開いた参加者みんなで記録と成績を共有できます。
+        </p>
         <div className="room-actions">
           <div className="room-create-block">
             <h3 className="room-option-title">新しいルームを作る</h3>
+            <p className="muted room-option-description">
+              {account?.loginEnabled === false
+                ? 'この環境ではログインなしでルームを作成できます。'
+                : '自分の保存データとして新しいルームを作成します。作成にはGoogleログインが必要です。'}
+            </p>
             {legacyDB && legacyDB.games.length > 0 ? (
               <div className="room-create-options">
                 <span className="muted">旧データの過去対局 {legacyDB.games.length}件</span>
                 <button
                   className="btn primary"
-                  disabled={busy || requiresLogin}
+                  disabled={busy || sharedRoomDisabled}
                   onClick={() => void handleCreate(true)}
                 >
                   {busy ? '作成中…' : '履歴を移行して作る'}
                 </button>
                 <button
                   className="btn ghost"
-                  disabled={busy || requiresLogin}
+                  disabled={busy || sharedRoomDisabled}
                   onClick={() => void handleCreate(false)}
                 >
                   空のルームを作る
@@ -178,7 +234,7 @@ export default function RoomEntry({
             ) : (
               <button
                 className="btn primary"
-                disabled={busy || requiresLogin}
+                disabled={busy || sharedRoomDisabled}
                 onClick={() => void handleCreate(false)}
               >
                 {busy ? '作成中…' : '新しいルームを作る'}
@@ -188,7 +244,9 @@ export default function RoomEntry({
           <span className="muted room-or">または</span>
           <div className="room-join-block">
             <h3 className="room-option-title">招待コードで参加</h3>
-            <p className="muted">共有された8文字の招待コードを入力してください。</p>
+            <p className="muted room-option-description">
+              共有された8文字のコードを入力して、既存のルームを開きます。
+            </p>
             <div className="row room-join-row">
               <input
                 value={input}
@@ -198,7 +256,7 @@ export default function RoomEntry({
                 autoCapitalize="characters"
                 autoComplete="off"
                 spellCheck={false}
-                disabled={busy || requiresLogin}
+                disabled={busy || sharedRoomDisabled}
                 onChange={(e) => setInput(e.target.value.toUpperCase())}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') void handleJoinCode(input)
@@ -206,7 +264,7 @@ export default function RoomEntry({
               />
               <button
                 className="btn"
-                disabled={busy || requiresLogin}
+                disabled={busy || sharedRoomDisabled}
                 onClick={() => void handleJoinCode(input)}
               >
                 参加
@@ -215,13 +273,19 @@ export default function RoomEntry({
           </div>
         </div>
         <div className="room-access-notice">
-          <strong>共有について</strong>
+          <strong>
+            {sharedRoomAccess === 'available' ? '共有ルームについて' : 'Googleログインが必要です'}
+          </strong>
           <span>
-            {account === null
-              ? '認証設定を確認中です。ルームURLは信頼できる相手にだけ共有してください。'
-              : account.loginEnabled
-                ? 'ログインしたユーザーは、共有URLからこのルームを開いて編集できます。URLは参加者だけに共有してください。'
-                : 'ルームURLを知っている人は閲覧・編集できます。URLは参加者だけに共有してください。'}
+            {sharedRoomAccess === 'checking'
+              ? 'ログイン状態を確認中です。確認が終わるまで共有ルームの操作はできません。'
+              : sharedRoomAccess === 'error'
+                ? 'アカウント情報を確認できないため、共有ルームの操作を一時停止しています。上の「もう一度確認」をお試しください。'
+                : sharedRoomAccess === 'login-required'
+                  ? '新しいルームの作成・招待コードでの参加にはGoogleログインが必要です。'
+                  : account?.user
+                    ? 'ログイン中のアカウントで作成したルームは、自分のルームとしてあとから開けます。'
+                    : 'ルームURLを知っている人は閲覧・編集できます。URLは参加者だけに共有してください。'}
           </span>
         </div>
         {error && (

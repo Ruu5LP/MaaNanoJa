@@ -143,4 +143,23 @@ describe('Worker request boundaries', () => {
     expect(response.status).toBe(429)
     expect(fake.updates()).toBe(0)
   })
+
+  it('requires Google authentication before creating a room when auth is enabled', async () => {
+    const fake = fakeEnv()
+    fake.env.GOOGLE_CLIENT_ID = 'client-id'
+    fake.env.GOOGLE_CLIENT_SECRET = 'client-secret'
+
+    const response = await worker.fetch(
+      new Request('https://app.example/api/rooms', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      }) as never,
+      fake.env as never,
+    )
+
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({ error: 'Googleでログインしてください' })
+    expect(fake.updates()).toBe(0)
+  })
 })

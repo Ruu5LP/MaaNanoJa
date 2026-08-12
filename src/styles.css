@@ -63,7 +63,7 @@ body {
   min-width: 0;
   margin-bottom: 32px;
 }
-.landing-hero h2 {
+.landing-hero h1 {
   color: var(--ink);
   font-size: clamp(28px, 4vw, 42px);
   letter-spacing: -0.02em;
@@ -89,6 +89,50 @@ body {
 .landing-hero .room-account-error {
   margin: 0 0 12px;
 }
+.entry-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.entry-options .room-card {
+  margin: 0;
+}
+.entry-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  justify-content: space-between;
+  min-width: 0;
+}
+.entry-card h2 {
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1.45;
+  margin-bottom: 8px;
+}
+.entry-kicker {
+  color: var(--accent);
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+.entry-details {
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 12px 0 0;
+  padding-left: 1.2em;
+}
+.entry-details li + li {
+  margin-top: 3px;
+}
+.entry-action-row {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+}
 .ad-slot {
   margin: 0 auto;
   max-width: 728px;
@@ -111,14 +155,26 @@ body {
   font-size: 18px;
 }
 .guest-entry-card {
-  border-color: #755b25;
+  border-color: var(--border);
 }
 .guest-entry-card .btn {
-  margin-top: 6px;
+  align-self: flex-start;
 }
 .guest-entry-note {
   font-size: 11px;
   margin: 10px 0 0;
+}
+.shared-room-card {
+  margin-top: 12px !important;
+}
+.shared-room-card > .muted {
+  line-height: 1.75;
+  margin: 0;
+  max-width: 60em;
+}
+.room-option-description {
+  line-height: 1.65;
+  margin: 0;
 }
 .landing-showcase {
   max-width: 1120px;
@@ -1373,6 +1429,9 @@ h3.sec {
   color: var(--danger);
 }
 @media (max-width: 720px) {
+  .entry-options {
+    grid-template-columns: 1fr;
+  }
   .landing-hero {
     padding-top: 42px;
   }

@@ -9,8 +9,12 @@ export default function LandingView(props: RoomEntryProps) {
     <main className="landing-page">
       <section className="landing-hero" aria-labelledby="landing-title">
         <div className="landing-hero-copy">
-          <h2 id="landing-title">麻雀トラッカー</h2>
-          <p className="landing-lead">対局を記録して、あとから振り返る。</p>
+          <h1 id="landing-title">麻雀トラッカー</h1>
+          <p className="landing-lead">
+            4人打ち麻雀の対局を、局ごとに記録・共有。
+            <br />
+            点数計算から成績の振り返りまで、これひとつで。
+          </p>
         </div>
         <RoomEntry {...props} />
       </section>

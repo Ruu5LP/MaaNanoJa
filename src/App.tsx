@@ -265,7 +265,7 @@ export default function App() {
         <header className="app-header">
           <h1>麻雀トラッカー</h1>
           {account?.user && <span className="account-badge">👤 {account.user.displayName}</span>}
-          {guestMode && <span className="sync-badge sync-guest">📝 一時保存中</span>}
+          {guestMode && <span className="sync-badge sync-guest">📝 ゲストモード</span>}
           {roomCode && (
             <span className={`sync-badge sync-${syncStatus}`} role="status">
               {syncStatusLabel(syncStatus, cloudMode)}
@@ -278,9 +278,9 @@ export default function App() {
         <RoomView account={account} roomCode={roomCode} onLeave={leaveRoom} />
       ) : guestMode ? (
         <div className="guest-strip">
-          <span className="room-label">一時保存中</span>
+          <span className="room-label">ゲストモード</span>
           <span className="guest-strip-message">
-            ログインせずに入力した内容です。このタブを閉じると消えます。
+            このタブに一時保存中です。タブを閉じると消えます。Googleログインで共有ルームへ保存できます。
           </span>
           <span className="spacer" />
           {account?.user ? (
@@ -289,11 +289,11 @@ export default function App() {
               disabled={guestSaveBusy}
               onClick={() => void saveGuestToCloud()}
             >
-              {guestSaveBusy ? '保存中…' : 'このデータを保存する'}
+              {guestSaveBusy ? '保存中…' : '共有ルームに保存'}
             </button>
           ) : account?.loginEnabled ? (
             <a className="btn sm primary auth-action" href={guestLoginUrl}>
-              Googleでログイン
+              Googleログインして保存
             </a>
           ) : (
             <span className="muted guest-login-unavailable">
