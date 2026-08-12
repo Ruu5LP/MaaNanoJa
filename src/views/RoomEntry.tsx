@@ -117,7 +117,7 @@ export default function RoomEntry({
       <div className="entry-options">
         <div className="card entry-card guest-entry-card room-card">
           <div>
-            <span className="entry-kicker">まず試す</span>
+            <span className="entry-kicker">ゲストモード</span>
             <h2>{guestDB ? 'このタブの続き' : 'ゲストとして始める'}</h2>
             <p className="muted">
               {guestDB
@@ -140,7 +140,7 @@ export default function RoomEntry({
         {showAccountCard && (
           <div className="card entry-card account-card room-card">
             <div>
-              <span className="entry-kicker">保存・管理する</span>
+              <span className="entry-kicker">Googleアカウント</span>
               <h2>Googleでログイン</h2>
               {account?.user ? (
                 <p className="muted">{account.user.email} でログイン中です。</p>
@@ -200,7 +200,7 @@ export default function RoomEntry({
       </div>
 
       <div className="card room-card room-entry-card shared-room-card">
-        <span className="entry-kicker">みんなで使う</span>
+        <span className="entry-kicker">共有ルーム</span>
         <h2>共有ルームを作る・参加する</h2>
         <p className="muted">
           共有ルームに対局データを保存すると、同じルームを開いた参加者みんなで記録と成績を共有できます。

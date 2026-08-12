@@ -210,6 +210,9 @@ body {
 .showcase-row.reverse .showcase-copy {
   order: 2;
 }
+.showcase-row.reverse {
+  grid-template-columns: minmax(0, 1.35fr) minmax(180px, 0.65fr);
+}
 .showcase-row.reverse .showcase-media {
   order: 1;
 }

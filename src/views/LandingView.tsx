@@ -11,9 +11,9 @@ export default function LandingView(props: RoomEntryProps) {
         <div className="landing-hero-copy">
           <h1 id="landing-title">麻雀トラッカー</h1>
           <p className="landing-lead">
-            4人打ち麻雀の対局を、局ごとに記録・共有。
+            日本式リーチ麻雀の対局データを記録するWebアプリです。
             <br />
-            点数計算から成績の振り返りまで、これひとつで。
+            局ごとの点数移動や対局後の成績を、同じルームで管理できます。
           </p>
         </div>
         <RoomEntry {...props} />
@@ -23,8 +23,8 @@ export default function LandingView(props: RoomEntryProps) {
 
       <section className="landing-showcase" aria-labelledby="showcase-title">
         <div className="landing-section-heading">
-          <h2 id="showcase-title">記録した内容は、こう見えます。</h2>
-          <p>点数の記録から成績の確認まで、同じルームで使えます。</p>
+          <h2 id="showcase-title">対局データの記録と確認</h2>
+          <p>局ログの入力、成績の集計、現在順位の表示に対応しています。</p>
         </div>
         <article className="showcase-row">
           <div className="showcase-copy">
