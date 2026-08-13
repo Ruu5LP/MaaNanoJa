@@ -11,8 +11,6 @@ export default function LandingView(props: RoomEntryProps) {
         <div className="landing-hero-copy">
           <h1 id="landing-title">麻雀トラッカー</h1>
           <p className="landing-lead">
-            日本式リーチ麻雀の対局データを記録するWebアプリです。
-            <br />
             局ごとの点数移動や対局後の成績を、同じルームで管理できます。
           </p>
         </div>
