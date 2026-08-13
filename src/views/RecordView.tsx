@@ -492,23 +492,38 @@ function LiveView({
             {state.pot > 0 && <span className="pill">供託 {state.pot}</span>}
           </div>
           <div className="row" style={{ marginTop: 8 }}>
-            <span className="muted">積み棒を修正</span>
-            <span className="spacer" />
-            <button
-              className="btn sm ghost"
-              disabled={effectiveHonba <= 0}
-              onClick={() => setHonbaAdjust(honbaAdjust - 1)}
-            >
-              −1
-            </button>
-            <button className="btn sm ghost" onClick={() => setHonbaAdjust(honbaAdjust + 1)}>
-              +1
-            </button>
-            {honbaAdjust !== 0 && (
-              <button className="btn sm ghost" onClick={() => setHonbaAdjust(0)}>
-                元に戻す
-              </button>
-            )}
+            <div className="honba-panel">
+              <div className="honba-visual">
+                <img
+                  className="honba-illustration"
+                  src="./images/honba-sticks.png"
+                  alt="100点の積み棒1本のイラスト"
+                />
+                <div className="honba-copy">
+                  <span className="honba-kicker">本場の数</span>
+                  <strong>{effectiveHonba}本</strong>
+                  <span className="honba-note">−1 / +1で増減 · 1本=100点</span>
+                </div>
+              </div>
+              <div className="honba-actions">
+                <span className="muted">本場の数を修正</span>
+                <button
+                  className="btn sm ghost"
+                  disabled={effectiveHonba <= 0}
+                  onClick={() => setHonbaAdjust(honbaAdjust - 1)}
+                >
+                  −1
+                </button>
+                <button className="btn sm ghost" onClick={() => setHonbaAdjust(honbaAdjust + 1)}>
+                  +1
+                </button>
+                {honbaAdjust !== 0 && (
+                  <button className="btn sm ghost" onClick={() => setHonbaAdjust(0)}>
+                    元に戻す
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
           <div className="row" style={{ marginTop: 8 }}>
             <span className="muted">点数を修正</span>
@@ -543,7 +558,10 @@ function LiveView({
           )}
           <div className="scoreboard" style={{ marginTop: 10 }}>
             {draft.playerIds.map((pid, i) => (
-              <div className={`p ${pid === dealerId ? 'dealer' : ''}`} key={pid}>
+              <div
+                className={`p ${pid === dealerId ? 'dealer' : ''} ${form.riichi.includes(pid) ? 'riichi' : ''}`}
+                key={pid}
+              >
                 <div className="nm">
                   {WINDS[i]} {name(pid)}
                 </div>
@@ -561,6 +579,7 @@ function LiveView({
                   </div>
                 )}
                 {pid === dealerId && <div className="badge">親</div>}
+                {form.riichi.includes(pid) && <div className="badge riichi-badge">立直</div>}
               </div>
             ))}
           </div>
@@ -756,6 +775,26 @@ function HandForm({
         ))}
       </div>
 
+      <div className="riichi-picker">
+        <div className="picker-heading">
+          <span className="muted">立直した人</span>
+          <span className="picker-hint">1人につき1,000点を供託</span>
+        </div>
+        <div className="pick-row">
+          {playerIds.map((pid) => (
+            <button
+              key={pid}
+              type="button"
+              className={`pill ${riichi.includes(pid) ? 'on' : ''}`}
+              aria-pressed={riichi.includes(pid)}
+              onClick={() => toggleField('riichi', pid)}
+            >
+              {name(pid)}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {needScore && (
         <div className="stack">
           <div>
@@ -831,25 +870,6 @@ function HandForm({
           </div>
         </div>
       )}
-
-      <div style={{ marginTop: 12 }}>
-        <div className="muted" style={{ marginBottom: 6 }}>
-          立直した人
-        </div>
-        <div className="pick-row">
-          {playerIds.map((pid) => (
-            <button
-              key={pid}
-              type="button"
-              className={`pill ${riichi.includes(pid) ? 'on' : ''}`}
-              aria-pressed={riichi.includes(pid)}
-              onClick={() => toggleField('riichi', pid)}
-            >
-              {name(pid)}
-            </button>
-          ))}
-        </div>
-      </div>
 
       {editing ? (
         <div className="row" style={{ marginTop: 14 }}>
@@ -1026,6 +1046,21 @@ function HandLog({
             </span>
             {handTag(s.hand)}
           </div>
+          {game.playerIds.filter((pid) => s.hand.riichi.includes(pid)).length > 0 && (
+            <div className="hand-riichi">
+              <span className="hand-riichi-label">立直</span>
+              {game.playerIds
+                .filter((pid) => s.hand.riichi.includes(pid))
+                .map((pid) => (
+                  <span className="hand-riichi-player" key={pid}>
+                    {name(pid)}
+                  </span>
+                ))}
+              <span className="hand-riichi-note">
+                供託 {(s.hand.riichi.length * 1000).toLocaleString()}点
+              </span>
+            </div>
+          )}
           <DeltaChips playerIds={game.playerIds} name={name} delta={s.delta} />
         </button>
       ))}
