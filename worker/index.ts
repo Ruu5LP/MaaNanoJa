@@ -616,8 +616,16 @@ async function getAuthorizedRoom(
   auth: AuthContext,
 ): Promise<RoomRow | null> {
   const room = await getRoom(env, code)
-  if (room && auth.enabled) await ensureRoomMember(env, room, requireUser(auth))
-  return room
+  if (!room || !auth.enabled) return room
+  const user = requireUser(auth)
+  if (room.owner_user_id === user.id) return room
+  const membership = await env.DB.prepare(
+    `SELECT 1 AS present FROM room_members
+     WHERE room_code = ? AND user_id = ? AND role = 'member'`,
+  )
+    .bind(code, user.id)
+    .first<{ present: number }>()
+  return membership ? room : null
 }
 
 async function getRoom(env: Env, code: string): Promise<RoomRow | null> {

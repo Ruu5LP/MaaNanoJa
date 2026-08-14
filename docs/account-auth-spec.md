@@ -32,7 +32,8 @@ Googleアカウントでログインし、ログインした人が作成した�
 - `DELETE /api/rooms/:code`: ルーム所有者だけがルーム、対局、進行中データ、メンバー紐付けを削除できる。非所有者には404を返す。
 - `DELETE /api/rooms/:code/membership`: memberだけが自分の参加紐付けを削除できる。ownerや未参加ユーザーには404を返す。
 - `POST /api/rooms`: Googleログイン有効環境では認証済みユーザーだけが実行でき、作成者をownerとして保存する。Secret未登録の移行期間は既存room-code運用を維持する。
-- `GET /api/rooms/:code`: 認証済みならルームコードを招待キーとしてmember登録する。
+- `POST /api/rooms/:code/join`: 認証済みユーザーをルームのmemberとして登録する。
+- `GET /api/rooms/:code`: 認証済みユーザーがownerまたはmemberとして登録済みの場合だけルームを返す。
 - 状態・ゲーム更新: Googleログイン設定済みのときはセッションとmember判定を通す。
 
 ## Google Cloudの設定

@@ -4,6 +4,7 @@ import {
   CloudRoomError,
   deleteRoomGame,
   fetchRoom,
+  joinRoom,
   updateRoomGame,
   updateRoomState,
 } from './lib/cloud-room-api'
@@ -127,6 +128,8 @@ export function useRoomSync(roomCode: string | null, setDB: (next: DB) => void):
 
     void (async () => {
       try {
+        await joinRoom(code)
+        if (!isCurrent()) return
         const snapshot = await fetchRoom(code)
         if (!snapshot || !isCurrent()) return
         const nextDB = snapshotDB(snapshot)

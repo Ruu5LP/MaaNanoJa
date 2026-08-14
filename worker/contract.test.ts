@@ -264,6 +264,31 @@ describe('Worker request boundaries', () => {
     expect(fake.batches()).toHaveLength(0)
   })
 
+  it('requires explicit joining before an authenticated member can read a room', async () => {
+    const fake = fakeEnv({ sessionUserId: 'usr-member', membershipRole: null })
+    fake.env.GOOGLE_CLIENT_ID = 'client-id'
+    fake.env.GOOGLE_CLIENT_SECRET = 'client-secret'
+
+    const readResponse = await worker.fetch(
+      new Request('https://app.example/api/rooms/ABCD2345', {
+        headers: { Cookie: 'maananaja_session=test-session' },
+      }) as never,
+      fake.env as never,
+    )
+    expect(readResponse.status).toBe(404)
+    expect(fake.updates()).toBe(0)
+
+    const joinResponse = await worker.fetch(
+      new Request('https://app.example/api/rooms/ABCD2345/join', {
+        method: 'POST',
+        headers: { Cookie: 'maananaja_session=test-session' },
+      }) as never,
+      fake.env as never,
+    )
+    expect(joinResponse.status).toBe(200)
+    expect(fake.updates()).toBe(1)
+  })
+
   it('does not let an owner or non-member leave a room', async () => {
     const owner = fakeEnv({ sessionUserId: 'usr-owner', membershipRole: 'owner' })
     owner.env.GOOGLE_CLIENT_ID = 'client-id'

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { createRoom, fetchRoom, CloudRoomError } from '../lib/cloud-room-api'
+import { CloudRoomError, createRoom, joinRoom } from '../lib/cloud-room-api'
 import { normalizeRoomCode } from '../lib/cloud-room'
 import type { DB } from '../lib/domain'
 import type { AccountRoom, AccountState } from '../lib/account'
@@ -107,7 +107,7 @@ export default function RoomEntry({
     setBusy(true)
     setError('')
     try {
-      await fetchRoom(code)
+      await joinRoom(code)
       onJoined(code)
       onAccountChanged?.()
     } catch (e) {

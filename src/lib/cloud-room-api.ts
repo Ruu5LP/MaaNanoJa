@@ -127,6 +127,15 @@ export async function fetchRoom(
   }
 }
 
+export async function joinRoom(roomCode: string): Promise<void> {
+  const payload = await request(`/api/rooms/${encodeURIComponent(roomCode)}/join`, {
+    method: 'POST',
+  })
+  if (!isRecord(payload) || payload.roomCode !== roomCode) {
+    throw new CloudRoomError('ルーム参加の応答が不正です', 502)
+  }
+}
+
 export async function deleteRoom(roomCode: string): Promise<void> {
   const payload = await request(`/api/rooms/${encodeURIComponent(roomCode)}`, {
     method: 'DELETE',
