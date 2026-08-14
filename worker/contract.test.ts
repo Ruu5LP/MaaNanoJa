@@ -122,6 +122,22 @@ describe('Worker request boundaries', () => {
     await expect(readJson(request)).rejects.toThrow('大きすぎます')
   })
 
+  it('keeps legal pages and room URLs out of search indexes', async () => {
+    const legal = fakeEnv()
+    const legalResponse = await worker.fetch(
+      new Request('https://app.example/privacy') as never,
+      legal.env as never,
+    )
+    expect(legalResponse.headers.get('X-Robots-Tag')).toBe('noindex, nofollow')
+
+    const room = fakeEnv()
+    const roomResponse = await worker.fetch(
+      new Request('https://app.example/?room=ABCD2345') as never,
+      room.env as never,
+    )
+    expect(roomResponse.headers.get('X-Robots-Tag')).toBe('noindex, nofollow')
+  })
+
   it('rejects malformed state at the Worker API boundary', async () => {
     const { env } = fakeEnv()
     const response = await worker.fetch(

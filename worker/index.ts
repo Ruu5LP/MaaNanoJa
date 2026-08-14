@@ -110,10 +110,19 @@ const SECURITY_HEADERS: Record<string, string> = {
   'X-Frame-Options': 'DENY',
 }
 
-function withSecurityHeaders(response: Response, requestId: string): Response {
+function withSecurityHeaders(response: Response, requestId: string, request: Request): Response {
   const headers = new Headers(response.headers)
   for (const [name, value] of Object.entries(SECURITY_HEADERS)) headers.set(name, value)
   headers.set('X-Request-ID', requestId)
+  const url = new URL(request.url)
+  if (
+    url.pathname === '/privacy' ||
+    url.pathname === '/terms' ||
+    url.searchParams.has('room') ||
+    url.searchParams.get('board') === '1'
+  ) {
+    headers.set('X-Robots-Tag', 'noindex, nofollow')
+  }
   return new Response(response.body, {
     status: response.status,
     statusText: response.statusText,
@@ -1132,7 +1141,7 @@ export default {
         path: url.pathname,
         status: response.status,
       })
-      return withSecurityHeaders(response, requestId)
+      return withSecurityHeaders(response, requestId, request)
     } catch (error) {
       const response =
         error instanceof RequestError
@@ -1144,7 +1153,7 @@ export default {
         path: url.pathname,
         message: String(error),
       })
-      return withSecurityHeaders(response, requestId)
+      return withSecurityHeaders(response, requestId, request)
     }
   },
 } satisfies ExportedHandler<AuthEnv>

@@ -4,6 +4,7 @@ import App from './App'
 import BoardApp from './BoardApp'
 import LegalView from './views/LegalView'
 import AppErrorBoundary from './components/AppErrorBoundary'
+import { setPageMetadata } from './seo'
 import './styles.css'
 
 const rootEl = document.getElementById('root')
@@ -18,6 +19,10 @@ const legalPage =
     : window.location.pathname === '/terms'
       ? 'terms'
       : null
+const hasRoomQuery = new URLSearchParams(window.location.search).has('room')
+const isPrivateView = hasRoomQuery || isBoard
+
+setPageMetadata(isPrivateView ? 'private' : (legalPage ?? 'home'))
 
 createRoot(rootEl).render(
   <React.StrictMode>

@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /api/
+Disallow: /auth/
+Disallow: /healthz
+
+Sitemap: https://maananaja.final0505.workers.dev/sitemap.xml
