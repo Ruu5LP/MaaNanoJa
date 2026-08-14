@@ -1,5 +1,12 @@
 import { test, expect } from 'vitest'
-import { computeResults, handValue, handDeltas, round2, type ResultEntry } from './scoring'
+import {
+  computeResults,
+  handValue,
+  handDeltas,
+  round2,
+  winningPointBreakdown,
+  type ResultEntry,
+} from './scoring'
 import type { Hand, Rules } from './domain'
 
 const RULES: Rules = {
@@ -82,6 +89,12 @@ test('局の点数移動: 子のロン（本場・供託あり）', () => {
   expect(potAfter).toBe(0)
   // 前局の供託1000が場に残っていた分、この局はテーブル全体で+1000（正常）
   expect(delta['A']! + delta['B']! + delta['C']! + delta['D']!).toBe(1000)
+  expect(winningPointBreakdown(seats, 0, hand, 2, 1000)).toEqual({
+    base: 5200,
+    honba: 600,
+    pot: 2000,
+    total: 7800,
+  })
 })
 
 test('局の点数移動: ダブロン（本場・供託は最初の和了者が総取り）', () => {
@@ -116,6 +129,12 @@ test('局の点数移動: 親のツモ（満貫 4000オール）', () => {
   expect(delta['B']).toBe(-4000)
   expect(delta['C']).toBe(-4000)
   expect(delta['D']).toBe(-4000)
+  expect(winningPointBreakdown(seats, 0, hand, 1, 1000)).toEqual({
+    base: 12000,
+    honba: 300,
+    pot: 1000,
+    total: 13300,
+  })
 })
 
 test('流局: テンパイ2人ノーテン2人', () => {

@@ -61,6 +61,44 @@ export function agariTotal(
   return v.tsumoNonDealer * 2 + v.tsumoDealer
 }
 
+export interface WinningPointBreakdown {
+  /** 和了そのものの点数（ロンは和了者の合計） */
+  base: number
+  /** 本場による加算点 */
+  honba: number
+  /** この局で和了者が受け取る供託 */
+  pot: number
+  /** 和了者が受け取る合計点 */
+  total: number
+}
+
+/** 入力結果に表示する、和了点・本場・供託の内訳を返す。 */
+export function winningPointBreakdown(
+  seats: string[],
+  dealerIndex: number,
+  hand: Hand,
+  honba: number,
+  potBefore = 0,
+): WinningPointBreakdown | null {
+  if (hand.type !== 'ron' && hand.type !== 'tsumo') return null
+
+  const dealerId = seats[dealerIndex]
+  const pot = potBefore + hand.riichi.length * 1000
+
+  if (hand.type === 'ron') {
+    const base = hand.wins.reduce(
+      (sum, win) => sum + agariTotal(win.han, win.fu, win.winner === dealerId, false),
+      0,
+    )
+    const honbaPoints = hand.wins.length * honba * 300
+    return { base, honba: honbaPoints, pot, total: base + honbaPoints + pot }
+  }
+
+  const base = agariTotal(hand.han, hand.fu, hand.winner === dealerId, true)
+  const honbaPoints = Math.max(0, seats.length - 1) * honba * 100
+  return { base, honba: honbaPoints, pot, total: base + honbaPoints + pot }
+}
+
 export interface HandDeltas {
   /** playerId -> この局の点数増減 */
   delta: Record<string, number>

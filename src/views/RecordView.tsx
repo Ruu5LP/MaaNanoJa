@@ -11,11 +11,11 @@ import {
 } from '../lib/game'
 import { uid } from '../lib/store'
 import {
-  agariTotal,
   handDeltas,
   scoreTable,
   manganRow,
   hanLabel,
+  winningPointBreakdown,
   type GameResult,
 } from '../lib/scoring'
 import type {
@@ -1122,15 +1122,7 @@ function HandPreview({
 }) {
   const dealerIndex = Math.max(0, playerIds.indexOf(dealerId))
   const { delta } = handDeltas(playerIds, dealerIndex, hand, honba, potBefore)
-  const total =
-    hand.type === 'ron'
-      ? hand.wins.reduce(
-          (sum, win) => sum + agariTotal(win.han, win.fu, win.winner === dealerId, false),
-          0,
-        )
-      : hand.type === 'tsumo'
-        ? agariTotal(hand.han, hand.fu, hand.winner === dealerId, true)
-        : null
+  const pointBreakdown = winningPointBreakdown(playerIds, dealerIndex, hand, honba, potBefore)
   const summary =
     hand.type === 'ron'
       ? `和了: ${hand.wins.map((win) => name(win.winner)).join('・')} / 放銃: ${name(hand.loser)}`
@@ -1156,10 +1148,18 @@ function HandPreview({
         <span>{summary}</span>
         {scoreLabel && <span>{scoreLabel}</span>}
       </div>
-      {total !== null && (
+      {pointBreakdown && (
         <div className="hand-preview-total">
           <span>合計点</span>
-          <strong>{total.toLocaleString()}点</strong>
+          <strong>
+            {[pointBreakdown.base, pointBreakdown.honba, pointBreakdown.pot]
+              .filter((part, index) => index === 0 || part > 0)
+              .map((part) => part.toLocaleString())
+              .join(' ＋ ')}
+            {pointBreakdown.honba > 0 || pointBreakdown.pot > 0
+              ? ` ＝ ${pointBreakdown.total.toLocaleString()}点`
+              : '点'}
+          </strong>
         </div>
       )}
       {hand.type === 'abortive' ? (
