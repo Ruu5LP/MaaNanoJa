@@ -149,7 +149,7 @@ export default function App() {
   }, [])
 
   const saveGuestToCloud = useCallback(async () => {
-    if (!guestMode) return
+    if (!guestDB) return
     if (!account?.user) {
       setGuestSaveError('保存するにはGoogleでログインしてください')
       return
@@ -158,7 +158,8 @@ export default function App() {
     setGuestSaveBusy(true)
     setGuestSaveError(null)
     try {
-      const created = await createRoom(db, { migrateGames: true })
+      // ゲスト画面を離れた後も、移行元は現在の空DBではなく保存済みのguestDBを使う。
+      const created = await createRoom(guestDB, { migrateGames: true })
       clearGuestSessionDB()
       setGuestDB(null)
       setGuestMode(false)
@@ -171,7 +172,7 @@ export default function App() {
     } finally {
       setGuestSaveBusy(false)
     }
-  }, [account?.user, db, guestMode, joinRoom, refreshAccount])
+  }, [account?.user, guestDB, joinRoom, refreshAccount])
 
   const restoreDB = useCallback(
     async (imported: DB) => {
@@ -315,11 +316,13 @@ export default function App() {
           db={db}
           legacyDB={legacyDB}
           guestDB={guestDB}
+          guestMigrationBusy={guestSaveBusy}
           account={account}
           accountRooms={accountRooms}
           accountError={accountError}
           onJoined={joinRoom}
           onStartGuest={startGuest}
+          onMigrateGuest={() => void saveGuestToCloud()}
           onAccountChanged={() => void refreshAccount()}
           onLegacyMigrated={() => {
             clearLegacyLocalDB()
@@ -341,7 +344,7 @@ export default function App() {
         </p>
       )}
 
-      {guestSaveError && guestMode && (
+      {guestSaveError && (guestMode || guestDB) && (
         <p className="error-text guest-save-error" role="alert">
           {guestSaveError}
         </p>

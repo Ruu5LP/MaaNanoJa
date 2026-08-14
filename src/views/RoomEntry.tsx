@@ -11,8 +11,10 @@ export interface RoomEntryProps {
   account?: AccountState | null
   accountRooms?: AccountRoom[]
   accountError?: string | null
+  guestMigrationBusy?: boolean
   onJoined(roomCode: string): void
   onStartGuest?(): void
+  onMigrateGuest?(): void
   onAccountChanged?(): void
   onLegacyMigrated?(): void
 }
@@ -48,8 +50,10 @@ export default function RoomEntry({
   account = null,
   accountRooms = [],
   accountError = null,
+  guestMigrationBusy = false,
   onJoined,
   onStartGuest,
+  onMigrateGuest,
   onAccountChanged,
   onLegacyMigrated,
 }: RoomEntryProps) {
@@ -69,6 +73,12 @@ export default function RoomEntry({
     Boolean(accountError) ||
     Boolean(account?.loginEnabled) ||
     Boolean(account?.user)
+  const guestHasData = Boolean(guestDB && (guestDB.draft || guestDB.games.length > 0))
+  const shouldMigrateGuest = Boolean(account?.user && guestHasData)
+  const showGuestCard = !account?.user || shouldMigrateGuest
+  const guestDataSummary = guestDB?.draft
+    ? `進行中の半荘と過去対局${guestDB.games.length}件を保存できます。`
+    : `過去対局${guestDB?.games.length ?? 0}件を保存できます。`
 
   function requireSharedRoomAccess(): boolean {
     if (sharedRoomAccess === 'available') return true
@@ -114,34 +124,67 @@ export default function RoomEntry({
 
   return (
     <div className="room-entry">
-      <div className="entry-options">
-        <div className="card entry-card guest-entry-card room-card">
-          <div>
-            <span className="entry-kicker">ゲストモード</span>
-            <h2>{guestDB ? 'このタブの続き' : 'ゲストとして始める'}</h2>
-            <p className="muted">
-              {guestDB
-                ? `このタブに一時保存された対局記録が${guestDB.games.length}件あります。`
-                : 'Googleログインなしで、記録・成績・履歴を試せます。'}
+      {showGuestCard && !account?.user && (
+        <p className="entry-choice-note">
+          一人で試すならゲスト、対局を残して共有するなら共有ルームを選んでください。
+        </p>
+      )}
+      <div
+        className={`entry-options${showAccountCard && showGuestCard ? ' has-account-card' : ''}`}
+      >
+        {showGuestCard && (
+          <div className="card entry-card guest-entry-card room-card">
+            {shouldMigrateGuest ? (
+              <>
+                <div>
+                  <span className="entry-kicker">アカウントへ移行</span>
+                  <h2>ゲストデータを保存する</h2>
+                  <p className="muted">{guestDataSummary}</p>
+                  <p className="muted guest-migration-note">
+                    ログイン中のアカウントで新しい共有ルームを作成し、ゲストデータを移行します。
+                  </p>
+                </div>
+                <button
+                  className="btn primary"
+                  disabled={busy || guestMigrationBusy}
+                  onClick={() => onMigrateGuest?.()}
+                >
+                  {guestMigrationBusy ? '移行中…' : 'アカウントへ移行する'}
+                </button>
+              </>
+            ) : (
+              <>
+                <div>
+                  <span className="entry-kicker">個人で始める</span>
+                  <h2>{guestHasData ? 'このタブの続き' : 'ゲストとして始める'}</h2>
+                  <p className="muted">
+                    {guestHasData
+                      ? guestDataSummary
+                      : 'Googleログインなしで、このタブに記録を始めます。'}
+                  </p>
+                  <ul className="entry-details">
+                    <li>ページを更新しても続きから使えます</li>
+                    <li>タブを閉じるとデータは消えます</li>
+                  </ul>
+                </div>
+                <button className="btn primary" disabled={busy} onClick={() => onStartGuest?.()}>
+                  {guestHasData ? '続きから始める' : 'ゲストで記録を始める'}
+                </button>
+              </>
+            )}
+            <p className="muted guest-entry-note">
+              {shouldMigrateGuest
+                ? '移行後はこのゲストデータをアカウントの共有ルームで管理できます。'
+                : '後からGoogleログインすると、データを共有ルームへ移行できます。'}
             </p>
-            <ul className="entry-details">
-              <li>ページを更新しても続きから使えます</li>
-              <li>タブを閉じるとデータは消えます</li>
-            </ul>
           </div>
-          <button className="btn primary" disabled={busy} onClick={() => onStartGuest?.()}>
-            {guestDB ? '続きから始める' : 'ゲストとして始める'}
-          </button>
-          <p className="muted guest-entry-note">
-            データを残したり共有したりするには、Googleログイン後に共有ルームへ保存してください。
-          </p>
-        </div>
+        )}
 
         {showAccountCard && (
           <div className="card entry-card account-card room-card">
             <div>
               <span className="entry-kicker">Googleアカウント</span>
-              <h2>Googleでログイン</h2>
+              <h2>{account?.user ? 'アカウント' : 'Googleでログイン'}</h2>
               {account?.user ? (
                 <p className="muted">{account.user.email} でログイン中です。</p>
               ) : account?.loginEnabled ? (
@@ -200,14 +243,14 @@ export default function RoomEntry({
       </div>
 
       <div className="card room-card room-entry-card shared-room-card">
-        <span className="entry-kicker">共有ルーム</span>
+        <span className="entry-kicker">複数人で共有する</span>
         <h2>共有ルームを作る・参加する</h2>
         <p className="muted">
-          共有ルームに対局データを保存すると、同じルームを開いた参加者みんなで記録と成績を共有できます。
+          対局データをルームに保存すると、同じルームを開いた参加者みんなで記録と成績を共有できます。
         </p>
         <div className="room-actions">
           <div className="room-create-block">
-            <h3 className="room-option-title">新しいルームを作る</h3>
+            <h3 className="room-option-title">新しい共有ルームを作る</h3>
             <p className="muted room-option-description">
               {account?.loginEnabled === false
                 ? 'この環境ではログインなしでルームを作成できます。'
@@ -237,7 +280,7 @@ export default function RoomEntry({
                 disabled={busy || sharedRoomDisabled}
                 onClick={() => void handleCreate(false)}
               >
-                {busy ? '作成中…' : '新しいルームを作る'}
+                {busy ? '作成中…' : '共有ルームを作る'}
               </button>
             )}
           </div>

@@ -91,11 +91,32 @@ body {
 }
 .entry-options {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 12px;
+}
+.entry-options.has-account-card {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.entry-options:not(.has-account-card) .guest-entry-card {
+  align-items: start;
+  column-gap: 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+.entry-options:not(.has-account-card) .guest-entry-card > .btn {
+  align-self: center;
+}
+.entry-options:not(.has-account-card) .guest-entry-card > .guest-entry-note {
+  grid-column: 1 / -1;
 }
 .entry-options .room-card {
   margin: 0;
+}
+.entry-choice-note {
+  color: var(--ink-2);
+  font-size: 12px;
+  line-height: 1.7;
+  margin: 0 16px 12px;
 }
 .entry-card {
   display: flex;
@@ -164,8 +185,12 @@ body {
   font-size: 11px;
   margin: 10px 0 0;
 }
+.guest-migration-note {
+  line-height: 1.7;
+  margin: 10px 0 0;
+}
 .shared-room-card {
-  margin-top: 12px !important;
+  margin-top: 22px !important;
 }
 .shared-room-card > .muted {
   line-height: 1.75;
@@ -715,6 +740,9 @@ select:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 2px;
 }
+button {
+  font: inherit;
+}
 
 /* .btn は <button> だけでなく <a>（新しいタブを開くリンク等）にも同じ見た目を与える。 */
 .btn {
@@ -762,20 +790,24 @@ button.btn:disabled {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+  color: var(--ink);
   padding: 4px 10px;
   font-size: 13px;
+  font-family: inherit;
+  font-weight: 600;
 }
 .pill.on {
   background: var(--accent);
   color: var(--accent-ink);
   border-color: var(--accent);
-  font-weight: 700;
+  font-weight: 600;
 }
 button.pill {
   min-height: 44px;
   cursor: pointer;
 }
 .pill:disabled {
+  color: var(--ink-3);
   opacity: 0.35;
   cursor: not-allowed;
 }
@@ -786,6 +818,17 @@ button.pill {
 .score-table td {
   padding: 3px;
   border-bottom: none;
+}
+.score-table {
+  table-layout: fixed;
+  min-width: 822px;
+}
+.score-table th:first-child {
+  width: 52px;
+}
+.score-table th:not(:first-child),
+.score-table td {
+  width: 70px;
 }
 /* 符の見出し（20符・30符…）は、汎用の右寄せではなく列の中央に揃える。 */
 .score-table thead th {
@@ -803,16 +846,19 @@ button.pill {
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
+  color: var(--ink);
   padding: 12px 14px;
   font-size: 15px;
   text-align: center;
+  font-family: inherit;
+  font-weight: 500;
   cursor: pointer;
 }
 .score-cell.on {
   background: var(--accent);
   color: var(--accent-ink);
   border-color: var(--accent);
-  font-weight: 700;
+  font-weight: 500;
 }
 
 /* ---- テーブル ---- */
@@ -824,6 +870,10 @@ button.pill {
   color: var(--ink-3);
   font-size: 11px;
   margin: 0 0 6px;
+}
+.score-table-hint {
+  color: var(--ink-2);
+  text-align: right;
 }
 .chart-hint {
   color: var(--ink-3);
@@ -1170,6 +1220,66 @@ tbody tr:hover td:first-child {
   color: var(--warn);
 }
 
+.live-status-bar {
+  background: var(--surface);
+  box-shadow: 0 8px 18px rgba(4, 10, 7, 0.28);
+  margin-bottom: 14px;
+  position: sticky;
+  top: 0;
+  z-index: 15;
+}
+.live-status-head {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+.live-status-head h2 {
+  color: var(--ink);
+  font-size: 16px;
+  margin: 0;
+}
+.live-status-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-left: auto;
+}
+.live-status-meta span {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--ink-2);
+  font-size: 11px;
+  padding: 4px 8px;
+  white-space: nowrap;
+}
+.live-status-meta strong {
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+.live-status-scoreboard {
+  margin: 10px 0 0;
+}
+.live-status-scoreboard .p {
+  min-height: 72px;
+  padding: 6px;
+}
+.live-status-scoreboard .p .pt {
+  font-size: 16px;
+}
+.live-status-scoreboard .p .pt-input {
+  font-size: 14px;
+  padding: 5px 4px;
+}
+.live-status-scoreboard .badge-row {
+  display: flex;
+  flex-direction: column;
+  min-height: 22px;
+}
+.live-status-scoreboard .badge.is-empty {
+  visibility: hidden;
+}
+
 /* ---- 積み棒・立直の状態表示 ---- */
 .honba-panel {
   align-items: center;
@@ -1223,6 +1333,27 @@ tbody tr:hover td:first-child {
   flex-wrap: wrap;
   gap: 6px;
   justify-content: flex-end;
+  min-height: 44px;
+}
+.honba-reset-slot {
+  display: inline-flex;
+  flex: 0 0 72px;
+  height: 44px;
+  min-height: 44px;
+}
+.honba-reset-slot.is-empty {
+  visibility: hidden;
+}
+.honba-reset-slot .btn {
+  width: 100%;
+}
+.points-edit-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  min-height: 44px;
+  min-width: 132px;
 }
 .honba-actions .muted {
   margin-right: 2px;
@@ -1277,6 +1408,56 @@ tbody tr:hover td:first-child {
   white-space: nowrap;
 }
 
+.hand-preview {
+  background: var(--surface-2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  margin-top: 14px;
+  padding: 10px;
+}
+.hand-preview-head {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+.hand-preview-head strong {
+  color: var(--accent);
+  font-size: 14px;
+}
+.hand-preview-summary {
+  color: var(--ink-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  font-size: 12px;
+  margin-top: 6px;
+}
+.hand-preview-total {
+  align-items: baseline;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  margin-top: 9px;
+  padding-top: 8px;
+}
+.hand-preview-total span {
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.hand-preview-total strong {
+  color: var(--accent);
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+.hand-preview .delta-chips {
+  margin-top: 9px;
+}
+.hand-preview-note {
+  color: var(--ink-2);
+  font-size: 12px;
+  margin: 9px 0 0;
+}
+
 .seg-control {
   display: flex;
   background: var(--surface-2);
@@ -1291,13 +1472,14 @@ tbody tr:hover td:first-child {
   color: var(--ink-2);
   padding: 9px 6px;
   font-size: 13px;
+  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
 }
 .seg-control button.active {
   background: var(--accent);
   color: var(--accent-ink);
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .pick-row {
@@ -1433,6 +1615,13 @@ h3.sec {
     margin-bottom: 0;
     max-height: calc(100vh - 120px);
     overflow-y: auto;
+  }
+}
+
+/* スマホでは「半荘を終了／破棄」と局ログが縦に続くため、操作エリアを分けて見せる。 */
+@media (max-width: 1023px) {
+  .play-log {
+    margin-top: 14px;
   }
 }
 

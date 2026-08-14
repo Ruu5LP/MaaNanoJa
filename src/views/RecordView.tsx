@@ -7,9 +7,17 @@ import {
   pointsCheck,
   rotateToDealer,
   handToFormState,
+  type GameState,
 } from '../lib/game'
 import { uid } from '../lib/store'
-import { scoreTable, manganRow, hanLabel, type GameResult } from '../lib/scoring'
+import {
+  agariTotal,
+  handDeltas,
+  scoreTable,
+  manganRow,
+  hanLabel,
+  type GameResult,
+} from '../lib/scoring'
 import type {
   AdjustHand,
   DB,
@@ -438,6 +446,12 @@ function LiveView({
   const selectedHand = editingIndex != null ? draft.hands[editingIndex] : undefined
 
   const dealerId = draft.playerIds[state.dealerIndex] ?? ''
+  const inputState = useMemo(() => {
+    const handsBefore = editingIndex == null ? draft.hands : draft.hands.slice(0, editingIndex)
+    return replay({ ...draft, id: 'draft', hands: handsBefore }, rules).state
+  }, [draft, editingIndex, rules])
+  const inputHonba =
+    editingIndex != null ? (selectedHand?.honbaOverride ?? inputState.honba) : effectiveHonba
 
   if (finishing) {
     const game = draftToGame(draft, draft.hands, { ...state.points }, rules)
@@ -482,15 +496,17 @@ function LiveView({
   return (
     <div className="view view-wide play-grid">
       <div className="play-main">
+        <LiveStatusBar
+          playerIds={draft.playerIds}
+          state={state}
+          effectiveHonba={effectiveHonba}
+          dealerId={dealerId}
+          form={form}
+          name={name}
+          pointsEdit={pointsEdit}
+          setPointsEditValue={setPointsEditValue}
+        />
         <div className="card">
-          <div className="row">
-            <h2 style={{ margin: 0 }}>
-              {WINDS[state.roundWind] ?? '?'}
-              {state.roundNum}局{effectiveHonba ? ` ${effectiveHonba}本場` : ''}
-            </h2>
-            <span className="spacer" />
-            {state.pot > 0 && <span className="pill">供託 {state.pot}</span>}
-          </div>
           <div className="row" style={{ marginTop: 8 }}>
             <div className="honba-panel">
               <div className="honba-visual">
@@ -517,31 +533,35 @@ function LiveView({
                 <button className="btn sm ghost" onClick={() => setHonbaAdjust(honbaAdjust + 1)}>
                   +1
                 </button>
-                {honbaAdjust !== 0 && (
-                  <button className="btn sm ghost" onClick={() => setHonbaAdjust(0)}>
-                    元に戻す
-                  </button>
-                )}
+                <span className={`honba-reset-slot ${honbaAdjust === 0 ? 'is-empty' : ''}`}>
+                  {honbaAdjust !== 0 && (
+                    <button className="btn sm ghost" onClick={() => setHonbaAdjust(0)}>
+                      元に戻す
+                    </button>
+                  )}
+                </span>
               </div>
             </div>
           </div>
-          <div className="row" style={{ marginTop: 8 }}>
+          <div className="row points-edit-row" style={{ marginTop: 8 }}>
             <span className="muted">点数を修正</span>
             <span className="spacer" />
-            {pointsEdit ? (
-              <>
-                <button className="btn sm ghost" onClick={closePointsEdit}>
-                  キャンセル
+            <div className="points-edit-actions">
+              {pointsEdit ? (
+                <>
+                  <button className="btn sm ghost" onClick={closePointsEdit}>
+                    キャンセル
+                  </button>
+                  <button className="btn sm primary" onClick={applyPointsEdit}>
+                    反映
+                  </button>
+                </>
+              ) : (
+                <button className="btn sm ghost" onClick={openPointsEdit}>
+                  修正
                 </button>
-                <button className="btn sm primary" onClick={applyPointsEdit}>
-                  反映
-                </button>
-              </>
-            ) : (
-              <button className="btn sm ghost" onClick={openPointsEdit}>
-                修正
-              </button>
-            )}
+              )}
+            </div>
           </div>
           {pointsEdit && (
             <div
@@ -556,34 +576,6 @@ function LiveView({
                   }${pointsEditSum - pointsEditExpected}`}
             </div>
           )}
-          <div className="scoreboard" style={{ marginTop: 10 }}>
-            {draft.playerIds.map((pid, i) => (
-              <div
-                className={`p ${pid === dealerId ? 'dealer' : ''} ${form.riichi.includes(pid) ? 'riichi' : ''}`}
-                key={pid}
-              >
-                <div className="nm">
-                  {WINDS[i]} {name(pid)}
-                </div>
-                {pointsEdit ? (
-                  <input
-                    className="pt-input"
-                    type="number"
-                    inputMode="numeric"
-                    value={pointsEdit[pid] ?? ''}
-                    onChange={(e) => setPointsEditValue(pid, e.target.value)}
-                  />
-                ) : (
-                  <div className={`pt ${(state.points[pid] ?? 0) < 0 ? 'neg' : ''}`}>
-                    {(state.points[pid] ?? 0).toLocaleString()}
-                  </div>
-                )}
-                {pid === dealerId && <div className="badge">親</div>}
-                {form.riichi.includes(pid) && <div className="badge riichi-badge">立直</div>}
-              </div>
-            ))}
-          </div>
-
           {selectedHand?.type === 'adjust' ? (
             <AdjustHandEditor
               hand={selectedHand}
@@ -602,6 +594,8 @@ function LiveView({
               onSubmit={submitHand}
               onCancelEdit={cancelEdit}
               onDelete={editingIndex != null ? deleteSelected : undefined}
+              honba={inputHonba}
+              potBefore={inputState.pot}
             />
           )}
         </div>
@@ -651,6 +645,84 @@ function LiveView({
   )
 }
 
+function LiveStatusBar({
+  playerIds,
+  state,
+  effectiveHonba,
+  dealerId,
+  form,
+  name,
+  pointsEdit,
+  setPointsEditValue,
+}: {
+  playerIds: string[]
+  state: GameState
+  effectiveHonba: number
+  dealerId: string
+  form: HandFormState
+  name: NameFn
+  pointsEdit?: Record<string, string>
+  setPointsEditValue: (pid: string, value: string) => void
+}) {
+  return (
+    <div className="card live-status-bar">
+      <div className="live-status-head">
+        <h2>
+          {WINDS[state.roundWind] ?? '?'}
+          {state.roundNum}局
+        </h2>
+        <div className="live-status-meta">
+          <span>
+            本場 <strong>{effectiveHonba}</strong>
+          </span>
+          <span>
+            供託 <strong>{state.pot.toLocaleString()}</strong>点
+          </span>
+        </div>
+      </div>
+      <div className="scoreboard live-status-scoreboard">
+        {playerIds.map((pid, i) => (
+          <div
+            className={`p ${pid === dealerId ? 'dealer' : ''} ${form.riichi.includes(pid) ? 'riichi' : ''}`}
+            key={pid}
+          >
+            <div className="nm">
+              {WINDS[i]} {name(pid)}
+            </div>
+            {pointsEdit ? (
+              <input
+                className="pt-input"
+                type="number"
+                inputMode="numeric"
+                value={pointsEdit[pid] ?? ''}
+                onChange={(e) => setPointsEditValue(pid, e.target.value)}
+              />
+            ) : (
+              <div className={`pt ${(state.points[pid] ?? 0) < 0 ? 'neg' : ''}`}>
+                {(state.points[pid] ?? 0).toLocaleString()}
+              </div>
+            )}
+            <div className="badge-row">
+              <div
+                className={`badge ${pid === dealerId ? '' : 'is-empty'}`}
+                aria-hidden={pid !== dealerId}
+              >
+                親
+              </div>
+              <div
+                className={`badge riichi-badge ${form.riichi.includes(pid) ? '' : 'is-empty'}`}
+                aria-hidden={!form.riichi.includes(pid)}
+              >
+                立直
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function HandForm({
   db,
   playerIds,
@@ -661,6 +733,8 @@ function HandForm({
   onSubmit,
   onCancelEdit,
   onDelete,
+  honba,
+  potBefore,
 }: {
   db: DB
   playerIds: string[]
@@ -676,6 +750,10 @@ function HandForm({
   onCancelEdit: () => void
   /** 編集中の局を削除する（編集中のみ）。 */
   onDelete?: () => void
+  /** 入力中の局を点数移動へ変換するための本場。 */
+  honba: number
+  /** 入力中の局を点数移動へ変換するための開始時供託。 */
+  potBefore: number
 }) {
   const { type, winners, loser, scores, riichi, tenpai } = form
   const name: NameFn = (pid) => db.players.find((p) => p.id === pid)?.name ?? '?'
@@ -722,35 +800,35 @@ function HandForm({
   function setScore(pid: string, han: number, fu: number) {
     onChange({ ...form, scores: { ...scores, [pid]: { han, fu } } })
   }
-  function submit() {
-    const id = uid()
+  function handFromForm(id: string): Hand | null {
     if (type === 'ron') {
-      if (!winners.length || !loser) return
+      if (!winners.length || !loser) return null
       const wins = winners.map((w) => ({
         winner: w,
         han: scores[w]?.han ?? 3,
         fu: scores[w]?.fu ?? 30,
       }))
-      onSubmit({ id, type, wins, loser, riichi })
-    } else if (type === 'tsumo') {
-      const w = winners[0]
-      if (!w) return
-      const { han, fu } = scores[w] ?? { han: 3, fu: 30 }
-      onSubmit({ id, type, winner: w, han, fu, riichi })
-    } else if (type === 'draw') {
-      onSubmit({ id, type, tenpai, riichi })
-    } else {
-      onSubmit({ id, type: 'abortive', riichi })
+      return { id, type, wins, loser, riichi }
     }
+    if (type === 'tsumo') {
+      const w = winners[0]
+      if (!w) return null
+      const { han, fu } = scores[w] ?? { han: 3, fu: 30 }
+      return { id, type, winner: w, han, fu, riichi }
+    }
+    if (type === 'draw') return { id, type, tenpai, riichi }
+    return { id, type: 'abortive', riichi }
+  }
+
+  function submit() {
+    const hand = handFromForm(uid())
+    if (hand) onSubmit(hand)
     // 追加後の form クリアは呼び出し側（draft.form=null）で行う。
   }
 
   const needScore = type === 'ron' || type === 'tsumo'
-  const canSubmit =
-    (type === 'ron' && winners.length > 0 && !!loser) ||
-    (type === 'tsumo' && winners.length === 1) ||
-    type === 'draw' ||
-    type === 'abortive'
+  const previewHand = handFromForm('preview')
+  const canSubmit = previewHand !== null
 
   const TYPE_LABELS: [HandType, string][] = [
     ['ron', 'ロン'],
@@ -871,6 +949,17 @@ function HandForm({
         </div>
       )}
 
+      {previewHand && (
+        <HandPreview
+          hand={previewHand}
+          playerIds={playerIds}
+          dealerId={dealerId}
+          name={name}
+          honba={honba}
+          potBefore={potBefore}
+        />
+      )}
+
       {editing ? (
         <div className="row" style={{ marginTop: 14 }}>
           <button
@@ -964,7 +1053,8 @@ function ScorePicker({
       <div className="muted" style={{ marginBottom: 6 }}>
         {label}（翻×符の早見表から選ぶ）
       </div>
-      <div className="table-wrap">
+      <p className="table-hint score-table-hint">左右にスクロールして符を選択できます</p>
+      <div className="table-wrap score-table-wrap">
         <table className="score-table">
           <thead>
             <tr>
@@ -1011,6 +1101,72 @@ function ScorePicker({
           </button>
         ))}
       </div>
+    </div>
+  )
+}
+
+function HandPreview({
+  hand,
+  playerIds,
+  dealerId,
+  name,
+  honba,
+  potBefore,
+}: {
+  hand: Hand
+  playerIds: string[]
+  dealerId: string
+  name: NameFn
+  honba: number
+  potBefore: number
+}) {
+  const dealerIndex = Math.max(0, playerIds.indexOf(dealerId))
+  const { delta } = handDeltas(playerIds, dealerIndex, hand, honba, potBefore)
+  const total =
+    hand.type === 'ron'
+      ? hand.wins.reduce(
+          (sum, win) => sum + agariTotal(win.han, win.fu, win.winner === dealerId, false),
+          0,
+        )
+      : hand.type === 'tsumo'
+        ? agariTotal(hand.han, hand.fu, hand.winner === dealerId, true)
+        : null
+  const summary =
+    hand.type === 'ron'
+      ? `和了: ${hand.wins.map((win) => name(win.winner)).join('・')} / 放銃: ${name(hand.loser)}`
+      : hand.type === 'tsumo'
+        ? `和了: ${name(hand.winner)}`
+        : hand.type === 'draw'
+          ? `テンパイ: ${hand.tenpai.length ? hand.tenpai.map(name).join('・') : 'なし'}`
+          : '点数移動なし'
+  const scoreLabel =
+    hand.type === 'ron'
+      ? hand.wins.map((win) => `${win.han}翻${win.fu}符`).join('・')
+      : hand.type === 'tsumo'
+        ? `${hand.han}翻${hand.fu}符`
+        : null
+
+  return (
+    <div className="hand-preview" aria-live="polite">
+      <div className="hand-preview-head">
+        <strong>入力結果</strong>
+        {handTag(hand)}
+      </div>
+      <div className="hand-preview-summary">
+        <span>{summary}</span>
+        {scoreLabel && <span>{scoreLabel}</span>}
+      </div>
+      {total !== null && (
+        <div className="hand-preview-total">
+          <span>合計点</span>
+          <strong>{total.toLocaleString()}点</strong>
+        </div>
+      )}
+      {hand.type === 'abortive' ? (
+        <p className="hand-preview-note">この局では点数は動きません。</p>
+      ) : (
+        <DeltaChips playerIds={playerIds} name={name} delta={delta} />
+      )}
     </div>
   )
 }
