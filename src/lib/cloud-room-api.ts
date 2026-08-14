@@ -136,6 +136,15 @@ export async function deleteRoom(roomCode: string): Promise<void> {
   }
 }
 
+export async function leaveRoom(roomCode: string): Promise<void> {
+  const payload = await request(`/api/rooms/${encodeURIComponent(roomCode)}/membership`, {
+    method: 'DELETE',
+  })
+  if (!isRecord(payload) || payload.roomCode !== roomCode) {
+    throw new CloudRoomError('ルーム退出の応答が不正です', 502)
+  }
+}
+
 export async function updateRoomState(
   roomCode: string,
   payload: RoomStatePayload,

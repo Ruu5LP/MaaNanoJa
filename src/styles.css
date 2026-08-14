@@ -576,6 +576,11 @@ body {
 .danger-zone .sec {
   color: var(--danger);
 }
+.room-leave-zone {
+  border-top: 1px solid var(--border);
+  margin-top: 18px;
+  padding-top: 14px;
+}
 .guest-save-error {
   margin: 8px 16px;
 }

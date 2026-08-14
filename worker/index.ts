@@ -894,6 +894,19 @@ async function deleteRoom(env: Env, code: string, auth: AuthContext): Promise<Re
   return json({ roomCode: code })
 }
 
+async function leaveRoom(env: Env, code: string, auth: AuthContext): Promise<Response> {
+  if (!auth.enabled) return errorResponse(404, 'ルームが見つかりません')
+  const user = requireUser(auth)
+  const result = await env.DB.prepare(
+    `DELETE FROM room_members
+     WHERE room_code = ? AND user_id = ? AND role = 'member'`,
+  )
+    .bind(code, user.id)
+    .run()
+  if ((result.meta.changes ?? 0) !== 1) return errorResponse(404, 'ルームが見つかりません')
+  return json({ roomCode: code })
+}
+
 async function updateGame(
   request: Request,
   env: Env,
@@ -1062,6 +1075,9 @@ async function handleApi(request: Request, env: AuthEnv): Promise<Response> {
   }
   if (parts.length === 4 && parts[3] === 'join' && request.method === 'POST') {
     return joinRoom(request, env, code, auth)
+  }
+  if (parts.length === 4 && parts[3] === 'membership' && request.method === 'DELETE') {
+    return leaveRoom(env, code, auth)
   }
   if (parts.length === 4 && parts[3] === 'state' && request.method === 'PUT') {
     return updateState(request, env, code, auth)

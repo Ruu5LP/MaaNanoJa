@@ -292,3 +292,20 @@
   - Acceptance: 破壊的操作の説明とAPI/UIの挙動が一致し、全チェックが成功する
   - Verify: `npm run check`, `npm run build`
   - Files: `README.md`, `SETUP.md`, `docs/account-auth-spec.md`, `src/views/LegalView.tsx`, `tasks/plan.md`, `tasks/todo.md`
+
+## 共有ルーム参加解除
+
+- [x] Task 48: 参加者自身の `DELETE /api/rooms/:code/membership` を追加する
+  - Acceptance: memberだけが自分の紐付けを削除でき、owner・未認証・未参加ユーザーは404/401になる。ルームデータは残る
+  - Verify: Worker契約テスト、`npm run check`
+  - Files: `worker/index.ts`, `worker/contract.test.ts`, `docs/room-membership-spec.md`
+
+- [x] Task 49: 設定画面に確認付きの参加解除導線を追加する
+  - Acceptance: memberだけに表示し、データを削除しないことを説明してから現在のルームを離れる
+  - Verify: UI手動確認、`npm run build`
+  - Files: `src/App.tsx`, `src/lib/cloud-room-api.ts`, `src/views/SettingsView.tsx`, `src/styles.css`
+
+- [x] Task 50: 参加解除の仕様・契約テスト・全体検証を完了する
+  - Acceptance: API/UI/説明文が一致し、全チェックが成功する
+  - Verify: `npm run check`, `npm run build`
+  - Files: `README.md`, `SETUP.md`, `docs/account-auth-spec.md`, `tasks/plan.md`, `tasks/todo.md`

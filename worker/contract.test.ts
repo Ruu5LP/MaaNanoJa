@@ -19,6 +19,7 @@ function fakeEnv(
   options: {
     ownerUserId?: string | null
     sessionUserId?: string | null
+    membershipRole?: 'owner' | 'member' | null
   } = {},
 ): {
   env: Record<string, unknown>
@@ -68,6 +69,9 @@ function fakeEnv(
             },
             async run() {
               updateCount += 1
+              if (sql.includes("role = 'member'")) {
+                return { meta: { changes: options.membershipRole === 'member' ? 1 : 0 } }
+              }
               return { meta: { changes: 1 } }
             },
           }
@@ -240,5 +244,60 @@ describe('Worker request boundaries', () => {
     )
     expect(unauthenticatedResponse.status).toBe(401)
     expect(unauthenticated.batches()).toHaveLength(0)
+  })
+
+  it('lets a member leave without deleting the room', async () => {
+    const fake = fakeEnv({ sessionUserId: 'usr-member', membershipRole: 'member' })
+    fake.env.GOOGLE_CLIENT_ID = 'client-id'
+    fake.env.GOOGLE_CLIENT_SECRET = 'client-secret'
+
+    const response = await worker.fetch(
+      new Request('https://app.example/api/rooms/ABCD2345/membership', {
+        method: 'DELETE',
+        headers: { Cookie: 'maananaja_session=test-session' },
+      }) as never,
+      fake.env as never,
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ roomCode: 'ABCD2345' })
+    expect(fake.batches()).toHaveLength(0)
+  })
+
+  it('does not let an owner or non-member leave a room', async () => {
+    const owner = fakeEnv({ sessionUserId: 'usr-owner', membershipRole: 'owner' })
+    owner.env.GOOGLE_CLIENT_ID = 'client-id'
+    owner.env.GOOGLE_CLIENT_SECRET = 'client-secret'
+    const ownerResponse = await worker.fetch(
+      new Request('https://app.example/api/rooms/ABCD2345/membership', {
+        method: 'DELETE',
+        headers: { Cookie: 'maananaja_session=test-session' },
+      }) as never,
+      owner.env as never,
+    )
+    expect(ownerResponse.status).toBe(404)
+
+    const nonMember = fakeEnv({ sessionUserId: 'usr-other', membershipRole: null })
+    nonMember.env.GOOGLE_CLIENT_ID = 'client-id'
+    nonMember.env.GOOGLE_CLIENT_SECRET = 'client-secret'
+    const nonMemberResponse = await worker.fetch(
+      new Request('https://app.example/api/rooms/ABCD2345/membership', {
+        method: 'DELETE',
+        headers: { Cookie: 'maananaja_session=test-session' },
+      }) as never,
+      nonMember.env as never,
+    )
+    expect(nonMemberResponse.status).toBe(404)
+
+    const unauthenticated = fakeEnv()
+    unauthenticated.env.GOOGLE_CLIENT_ID = 'client-id'
+    unauthenticated.env.GOOGLE_CLIENT_SECRET = 'client-secret'
+    const unauthenticatedResponse = await worker.fetch(
+      new Request('https://app.example/api/rooms/ABCD2345/membership', {
+        method: 'DELETE',
+      }) as never,
+      unauthenticated.env as never,
+    )
+    expect(unauthenticatedResponse.status).toBe(401)
   })
 })

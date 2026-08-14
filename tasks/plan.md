@@ -561,3 +561,19 @@ Googleログイン前でも記録・成績機能を試せるようにする。�
 - [x] rooms削除によりgamesとroom_membersも削除される
 - [x] 削除後はルーム選択画面へ戻り、ルーム一覧から消える
 - [x] `npm run check` と `npm run build` が成功する
+
+## Phase 15: 共有ルーム参加解除
+
+参加者が自分のメンバー紐付けだけを解除し、データを残したままルーム選択へ戻れるようにする。所有者は参加解除できず、既存のルーム削除を使う。
+
+- [x] Task 48: 参加者自身のメンバー離脱APIを追加する
+- [x] Task 49: 設定画面から参加解除を実行できるようにする
+- [x] Task 50: 参加解除の仕様・契約テスト・全体検証を完了する
+
+### Checkpoint: Room Membership Leave Complete
+
+- [x] memberだけが自分のroom_members行を削除できる
+- [x] owner、未認証、未参加ユーザーは解除できない
+- [x] room・games・draft・他メンバーは残る
+- [x] 解除後はルーム選択画面へ戻り、一覧から消える
+- [x] `npm run check` と `npm run build` が成功する

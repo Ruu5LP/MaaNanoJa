@@ -3,7 +3,12 @@ import { emptyDB, uid } from './lib/store'
 import { clearLegacyLocalDB, readLegacyLocalDB } from './lib/legacy-local-data'
 import type { DB, Draft, Game } from './lib/domain'
 import { fetchAccount, fetchMyRooms } from './lib/account-api'
-import { CloudRoomError, createRoom, deleteRoom as deleteCloudRoom } from './lib/cloud-room-api'
+import {
+  CloudRoomError,
+  createRoom,
+  deleteRoom as deleteCloudRoom,
+  leaveRoom as leaveCloudRoom,
+} from './lib/cloud-room-api'
 import { GOOGLE_LOGIN_PATH, type AccountRoom, type AccountState } from './lib/account'
 import { clearGuestSessionDB, readGuestSessionDB, writeGuestSessionDB } from './lib/guest-session'
 import { SYNC_LABEL, type SyncStatus, useRoomSync } from './useRoomSync'
@@ -203,8 +208,16 @@ export default function App() {
     await refreshAccount()
   }, [goHome, refreshAccount, roomCode])
 
+  const leaveCurrentRoom = useCallback(async () => {
+    if (!roomCode) throw new Error('退出するルームが選択されていません')
+    await leaveCloudRoom(roomCode)
+    goHome()
+    await refreshAccount()
+  }, [goHome, refreshAccount, roomCode])
+
   const currentRoom = roomCode ? accountRooms.find((room) => room.roomCode === roomCode) : undefined
   const canDeleteRoom = currentRoom?.role === 'owner'
+  const canLeaveRoom = currentRoom?.role === 'member'
 
   const api = useMemo<Api>(
     () => ({
@@ -383,6 +396,8 @@ export default function App() {
               guestMode={guestMode}
               canDeleteRoom={canDeleteRoom}
               onDeleteRoom={deleteCurrentRoom}
+              canLeaveRoom={canLeaveRoom}
+              onLeaveRoom={leaveCurrentRoom}
             />
           )}
 

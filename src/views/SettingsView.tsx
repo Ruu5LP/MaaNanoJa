@@ -11,6 +11,8 @@ interface SettingsViewProps {
   guestMode?: boolean
   canDeleteRoom?: boolean
   onDeleteRoom?(): Promise<void>
+  canLeaveRoom?: boolean
+  onLeaveRoom?(): Promise<void>
 }
 
 interface RuleForm {
@@ -34,6 +36,8 @@ export default function SettingsView({
   guestMode = false,
   canDeleteRoom = false,
   onDeleteRoom,
+  canLeaveRoom = false,
+  onLeaveRoom,
 }: SettingsViewProps) {
   const [newName, setNewName] = useState('')
   const [nameError, setNameError] = useState('')
@@ -44,6 +48,8 @@ export default function SettingsView({
   const [restoreBusy, setRestoreBusy] = useState(false)
   const [deleteRoomError, setDeleteRoomError] = useState('')
   const [deleteRoomBusy, setDeleteRoomBusy] = useState(false)
+  const [leaveRoomError, setLeaveRoomError] = useState('')
+  const [leaveRoomBusy, setLeaveRoomBusy] = useState(false)
 
   useEffect(() => {
     setRuleForm(formFromRules(db.rules))
@@ -175,6 +181,22 @@ export default function SettingsView({
       setDeleteRoomError(error instanceof Error ? error.message : 'ルームを削除できませんでした')
     } finally {
       setDeleteRoomBusy(false)
+    }
+  }
+
+  async function leaveRoom(): Promise<void> {
+    if (!canLeaveRoom || !onLeaveRoom) return
+    if (!confirm('このルームを抜けますか？対局データは削除されず、招待URLから再参加できます。'))
+      return
+
+    setLeaveRoomBusy(true)
+    setLeaveRoomError('')
+    try {
+      await onLeaveRoom()
+    } catch (error) {
+      setLeaveRoomError(error instanceof Error ? error.message : 'ルームを抜けられませんでした')
+    } finally {
+      setLeaveRoomBusy(false)
     }
   }
 
@@ -342,6 +364,22 @@ export default function SettingsView({
             {deleteRoomError && (
               <p className="error-text" role="alert">
                 {deleteRoomError}
+              </p>
+            )}
+          </div>
+        )}
+        {canLeaveRoom && onLeaveRoom && (
+          <div className="room-leave-zone">
+            <h3 className="sec">ルームから抜ける</h3>
+            <p className="muted">
+              自分の参加状態だけを解除します。ルームや対局データは削除されません。
+            </p>
+            <button className="btn ghost" disabled={leaveRoomBusy} onClick={() => void leaveRoom()}>
+              {leaveRoomBusy ? '退出中…' : 'このルームを抜ける'}
+            </button>
+            {leaveRoomError && (
+              <p className="error-text" role="alert">
+                {leaveRoomError}
               </p>
             )}
           </div>
