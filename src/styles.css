@@ -175,6 +175,39 @@ body {
   color: var(--ink);
   font-size: 18px;
 }
+.room-access-view {
+  display: flex;
+  justify-content: center;
+  padding-top: 48px;
+}
+.room-access-card {
+  max-width: 560px;
+  width: 100%;
+}
+.room-access-card h2 {
+  color: var(--ink);
+  font-size: 20px;
+  line-height: 1.45;
+  margin: 0;
+}
+.room-access-code {
+  color: var(--ink-2);
+  font-size: 13px;
+  margin: 0;
+}
+.room-access-code code {
+  color: var(--ink);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-left: 6px;
+}
+.room-access-actions {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
 .guest-entry-card {
   border-color: var(--border);
 }
@@ -200,6 +233,30 @@ body {
 .room-option-description {
   line-height: 1.65;
   margin: 0;
+}
+.room-join-confirm {
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  margin: 18px 0 4px;
+  padding: 16px;
+}
+.room-join-confirm h3 {
+  color: var(--ink);
+  font-size: 17px;
+  line-height: 1.45;
+  margin: 0;
+}
+.room-join-confirm p {
+  line-height: 1.7;
+  margin: 8px 0 0;
+}
+.room-join-confirm-code {
+  color: var(--ink);
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  margin-top: 10px;
 }
 .landing-showcase {
   max-width: 1120px;

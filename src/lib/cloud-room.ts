@@ -1,4 +1,5 @@
 import type { DB, Draft, Game, Player, Rules } from './domain'
+import { prepareInitialPlayers } from './initial-players'
 
 export const ROOM_QUERY_KEY = 'room'
 export const ROOM_CODE_LENGTH = 8
@@ -36,21 +37,6 @@ export interface RoomGamePayload {
   game: Game
 }
 
-const DEFAULT_ROOM_PLAYER_NAMES = ['ユーザー1', 'ユーザー2', 'ユーザー3', 'ユーザー4']
-
-/** 新規ルームだけに、あとから名前を変更できる4人分の仮メンバーを用意する。 */
-export function prepareRoomForCreation(db: DB): DB {
-  if (db.players.length > 0 || db.games.length > 0 || db.draft !== null) return db
-
-  return {
-    ...db,
-    players: DEFAULT_ROOM_PLAYER_NAMES.map((name, index) => ({
-      id: `p-${index + 1}`,
-      name,
-    })),
-  }
-}
-
 /** URL入力やAPI境界のroom codeを、保存・照合用の形へ正規化する。 */
 export function normalizeRoomCode(value: unknown): string | null {
   if (typeof value !== 'string') return null
@@ -72,7 +58,7 @@ export function toRoomState(db: DB): RoomState {
 }
 
 export function toRoomCreationPayload(db: DB, options: RoomCreationOptions): RoomCreationPayload {
-  const prepared = prepareRoomForCreation(db)
+  const prepared = prepareInitialPlayers(db)
   return {
     state: toRoomState(prepared),
     games: options.migrateGames ? prepared.games : [],

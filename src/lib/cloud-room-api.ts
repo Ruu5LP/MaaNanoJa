@@ -14,6 +14,12 @@ interface UnchangedRoomResponse {
   unchanged: true
 }
 
+export interface RoomPreview {
+  roomCode: string
+  ownerDisplayName: string
+  isMember: boolean
+}
+
 export class CloudRoomError extends Error {
   constructor(
     message: string,
@@ -53,6 +59,15 @@ function isUnchangedRoomResponse(value: unknown): value is UnchangedRoomResponse
     Number.isSafeInteger(value.revision) &&
     value.revision >= 0 &&
     value.unchanged === true
+  )
+}
+
+function isRoomPreview(value: unknown): value is RoomPreview {
+  return (
+    isRecord(value) &&
+    typeof value.roomCode === 'string' &&
+    typeof value.ownerDisplayName === 'string' &&
+    typeof value.isMember === 'boolean'
   )
 }
 
@@ -125,6 +140,14 @@ export async function fetchRoom(
   } catch {
     throw new CloudRoomError('ルーム取得の応答が不正です', 502)
   }
+}
+
+export async function fetchRoomPreview(roomCode: string): Promise<RoomPreview> {
+  const payload = await request(`/api/rooms/${encodeURIComponent(roomCode)}/preview`)
+  if (!isRoomPreview(payload)) {
+    throw new CloudRoomError('ルーム確認の応答が不正です', 502)
+  }
+  return payload
 }
 
 export async function joinRoom(roomCode: string): Promise<void> {

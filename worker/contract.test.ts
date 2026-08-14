@@ -60,6 +60,10 @@ function fakeEnv(
                     }
                   : null
               }
+              if (sql.includes('FROM users WHERE id')) return { display_name: 'Owner' }
+              if (sql.includes('FROM room_members')) {
+                return options.membershipRole ? { present: 1 } : null
+              }
               if (sql.includes('FROM rooms')) return room
               if (sql.includes('SELECT 1 AS present FROM games')) return null
               return null
@@ -211,6 +215,44 @@ describe('Worker request boundaries', () => {
     expect(response.status).toBe(401)
     expect(await response.json()).toEqual({ error: 'Googleでログインしてください' })
     expect(fake.updates()).toBe(0)
+  })
+
+  it('returns only room creator and membership status in the preview', async () => {
+    const fake = fakeEnv({
+      ownerUserId: 'usr-owner',
+      sessionUserId: 'usr-member',
+      membershipRole: null,
+    })
+    fake.env.GOOGLE_CLIENT_ID = 'client-id'
+    fake.env.GOOGLE_CLIENT_SECRET = 'client-secret'
+
+    const response = await worker.fetch(
+      new Request('https://app.example/api/rooms/ABCD2345/preview', {
+        headers: { Cookie: 'maananaja_session=test-session' },
+      }) as never,
+      fake.env as never,
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      roomCode: 'ABCD2345',
+      ownerDisplayName: 'Owner',
+      isMember: false,
+    })
+  })
+
+  it('requires Google authentication before returning a room preview', async () => {
+    const fake = fakeEnv({ ownerUserId: 'usr-owner' })
+    fake.env.GOOGLE_CLIENT_ID = 'client-id'
+    fake.env.GOOGLE_CLIENT_SECRET = 'client-secret'
+
+    const response = await worker.fetch(
+      new Request('https://app.example/api/rooms/ABCD2345/preview') as never,
+      fake.env as never,
+    )
+
+    expect(response.status).toBe(401)
+    expect(await response.json()).toEqual({ error: 'Googleでログインしてください' })
   })
 
   it('deletes a room and its related data only for the owner', async () => {

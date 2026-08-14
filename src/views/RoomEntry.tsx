@@ -1,5 +1,11 @@
 import { useState } from 'react'
-import { CloudRoomError, createRoom, joinRoom } from '../lib/cloud-room-api'
+import {
+  CloudRoomError,
+  createRoom,
+  fetchRoomPreview,
+  joinRoom,
+  type RoomPreview,
+} from '../lib/cloud-room-api'
 import { normalizeRoomCode } from '../lib/cloud-room'
 import type { DB } from '../lib/domain'
 import type { AccountRoom, AccountState } from '../lib/account'
@@ -60,6 +66,7 @@ export default function RoomEntry({
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [pendingJoin, setPendingJoin] = useState<RoomPreview | null>(null)
   const creationDB = legacyDB ?? db
   const sharedRoomAccess = getSharedRoomAccess(account, accountError)
   const sharedRoomDisabled = sharedRoomAccess !== 'available'
@@ -106,9 +113,29 @@ export default function RoomEntry({
     }
     setBusy(true)
     setError('')
+    setPendingJoin(null)
     try {
-      await joinRoom(code)
-      onJoined(code)
+      const preview = await fetchRoomPreview(code)
+      if (preview.isMember) {
+        onJoined(code)
+        onAccountChanged?.()
+      } else {
+        setPendingJoin(preview)
+      }
+    } catch (e) {
+      setError(e instanceof CloudRoomError ? e.message : 'ルームに参加できませんでした')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function confirmPendingJoin() {
+    if (!pendingJoin) return
+    setBusy(true)
+    setError('')
+    try {
+      await joinRoom(pendingJoin.roomCode)
+      onJoined(pendingJoin.roomCode)
       onAccountChanged?.()
     } catch (e) {
       setError(e instanceof CloudRoomError ? e.message : 'ルームに参加できませんでした')
@@ -246,6 +273,39 @@ export default function RoomEntry({
         <p className="muted">
           対局データをルームに保存すると、同じルームを開いた参加者みんなで記録と成績を共有できます。
         </p>
+        {pendingJoin && (
+          <div
+            className="room-join-confirm"
+            role="dialog"
+            aria-labelledby="room-join-confirm-title"
+          >
+            <span className="entry-kicker">参加確認</span>
+            <h3 id="room-join-confirm-title">
+              {pendingJoin.ownerDisplayName}さんのルームに参加しますか？
+            </h3>
+            <p className="muted">参加すると、このルームの対局データを閲覧・編集できます。</p>
+            <code className="room-join-confirm-code">{pendingJoin.roomCode}</code>
+            <div className="room-access-actions">
+              <button
+                className="btn primary"
+                disabled={busy}
+                onClick={() => void confirmPendingJoin()}
+              >
+                {busy ? '参加中…' : 'このルームに参加する'}
+              </button>
+              <button
+                className="btn ghost"
+                disabled={busy}
+                onClick={() => {
+                  setPendingJoin(null)
+                  setError('')
+                }}
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        )}
         <div className="room-actions">
           <div className="room-create-block">
             <h3 className="room-option-title">新しい共有ルームを作る</h3>
@@ -259,14 +319,14 @@ export default function RoomEntry({
                 <span className="muted">旧データの過去対局 {legacyDB.games.length}件</span>
                 <button
                   className="btn primary"
-                  disabled={busy || sharedRoomDisabled}
+                  disabled={busy || sharedRoomDisabled || pendingJoin !== null}
                   onClick={() => void handleCreate(true)}
                 >
                   {busy ? '作成中…' : '履歴を移行して作る'}
                 </button>
                 <button
                   className="btn ghost"
-                  disabled={busy || sharedRoomDisabled}
+                  disabled={busy || sharedRoomDisabled || pendingJoin !== null}
                   onClick={() => void handleCreate(false)}
                 >
                   空のルームを作る
@@ -275,7 +335,7 @@ export default function RoomEntry({
             ) : (
               <button
                 className="btn primary"
-                disabled={busy || sharedRoomDisabled}
+                disabled={busy || sharedRoomDisabled || pendingJoin !== null}
                 onClick={() => void handleCreate(false)}
               >
                 {busy ? '作成中…' : '共有ルームを作る'}
@@ -297,7 +357,7 @@ export default function RoomEntry({
                 autoCapitalize="characters"
                 autoComplete="off"
                 spellCheck={false}
-                disabled={busy || sharedRoomDisabled}
+                disabled={busy || sharedRoomDisabled || pendingJoin !== null}
                 onChange={(e) => setInput(e.target.value.toUpperCase())}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') void handleJoinCode(input)
@@ -305,7 +365,7 @@ export default function RoomEntry({
               />
               <button
                 className="btn"
-                disabled={busy || sharedRoomDisabled}
+                disabled={busy || sharedRoomDisabled || pendingJoin !== null}
                 onClick={() => void handleJoinCode(input)}
               >
                 参加

@@ -646,6 +646,42 @@ async function getRoom(env: Env, code: string): Promise<RoomRow | null> {
     .first<RoomRow>()
 }
 
+async function roomPreview(env: Env, code: string, auth: AuthContext): Promise<Response> {
+  const room = await getRoom(env, code)
+  if (!room) return errorResponse(404, 'ルームが見つかりません')
+  if (!auth.enabled) {
+    return json({
+      roomCode: code,
+      ownerDisplayName: 'ルーム作成者',
+      isMember: true,
+    })
+  }
+
+  const user = requireUser(auth)
+  const owner = room.owner_user_id
+    ? await env.DB.prepare('SELECT display_name FROM users WHERE id = ?')
+        .bind(room.owner_user_id)
+        .first<Pick<UserRow, 'display_name'>>()
+    : null
+  const isOwner = room.owner_user_id === user.id
+  const membership = isOwner
+    ? true
+    : Boolean(
+        await env.DB.prepare(
+          `SELECT 1 AS present FROM room_members
+           WHERE room_code = ? AND user_id = ? AND role IN ('owner', 'member')`,
+        )
+          .bind(code, user.id)
+          .first<{ present: number }>(),
+      )
+
+  return json({
+    roomCode: code,
+    ownerDisplayName: owner?.display_name || 'ルーム作成者',
+    isMember: membership,
+  })
+}
+
 async function roomSnapshot(env: Env, room: RoomRow): Promise<RoomSnapshotResponse> {
   const gamesResult = await env.DB.prepare(
     `SELECT id, room_code, date, game_json, created_at
@@ -1089,6 +1125,9 @@ async function handleApi(request: Request, env: AuthEnv): Promise<Response> {
         return json({ roomCode: code, revision: room.revision, unchanged: true })
     }
     return json(await roomSnapshot(env, room))
+  }
+  if (parts.length === 4 && parts[3] === 'preview' && request.method === 'GET') {
+    return roomPreview(env, code, auth)
   }
   if (parts.length === 4 && parts[3] === 'join' && request.method === 'POST') {
     return joinRoom(request, env, code, auth)

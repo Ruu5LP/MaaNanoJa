@@ -7,10 +7,13 @@ import {
   CloudRoomError,
   createRoom,
   deleteRoom as deleteCloudRoom,
+  fetchRoomPreview,
+  joinRoom as joinCloudRoom,
   leaveRoom as leaveCloudRoom,
 } from './lib/cloud-room-api'
 import { GOOGLE_LOGIN_PATH, type AccountRoom, type AccountState } from './lib/account'
 import { clearGuestSessionDB, readGuestSessionDB, writeGuestSessionDB } from './lib/guest-session'
+import { prepareInitialPlayers } from './lib/initial-players'
 import { SYNC_LABEL, type SyncStatus, useRoomSync } from './useRoomSync'
 import RecordView from './views/RecordView'
 import HistoryView from './views/HistoryView'
@@ -18,6 +21,9 @@ import StatsView from './views/StatsView'
 import SettingsView from './views/SettingsView'
 import RoomView from './views/RoomView'
 import LandingView from './views/LandingView'
+import RoomAccessView, {
+  type RoomAccessStatus as RoomAccessViewStatus,
+} from './views/RoomAccessView'
 import { normalizeRoomCode, ROOM_QUERY_KEY } from './lib/cloud-room'
 import AppHeader from './components/AppHeader'
 
@@ -37,6 +43,12 @@ export interface Api {
 }
 
 type TabId = 'record' | 'stats' | 'history' | 'settings'
+
+interface RoomAccessState {
+  status: RoomAccessViewStatus | 'ready'
+  ownerDisplayName?: string
+  error?: string
+}
 
 function syncStatusLabel(status: SyncStatus, mode: 'idle' | 'connecting' | 'cloud'): string {
   if (status === 'saving') return '☁️ 保存中…'
@@ -74,9 +86,15 @@ export default function App() {
   const [accountRooms, setAccountRooms] = useState<AccountRoom[]>([])
   const [accountError, setAccountError] = useState<string | null>(null)
   const [tab, setTab] = useState<TabId>('record')
-  const [roomCode, setRoomCode] = useState<string | null>(() =>
-    normalizeRoomCode(new URLSearchParams(window.location.search).get(ROOM_QUERY_KEY)),
+  const initialRoomCode = normalizeRoomCode(
+    new URLSearchParams(window.location.search).get(ROOM_QUERY_KEY),
   )
+  const [roomCode, setRoomCode] = useState<string | null>(initialRoomCode)
+  const [roomAccess, setRoomAccess] = useState<RoomAccessState>({
+    status: initialRoomCode ? 'checking' : 'ready',
+  })
+  const [roomAccessRetry, setRoomAccessRetry] = useState(0)
+  const roomReady = roomCode !== null && roomAccess.status === 'ready'
 
   const setAppDB = useCallback(
     (next: DB) => {
@@ -100,7 +118,7 @@ export default function App() {
     saveGame,
     updateGame,
     deleteGame,
-  } = useRoomSync(roomCode, setAppDB)
+  } = useRoomSync(roomReady ? roomCode : null, setAppDB)
 
   const refreshAccount = useCallback(async () => {
     try {
@@ -127,6 +145,7 @@ export default function App() {
     window.history.replaceState({}, '', url)
     setGuestMode(false)
     setGuestSaveError(null)
+    setRoomAccess({ status: 'checking' })
     setRoomCode(code)
   }, [])
 
@@ -140,11 +159,70 @@ export default function App() {
     setGuestMode(false)
     setGuestSaveError(null)
     setRoomCode(null)
+    setRoomAccess({ status: 'ready' })
     setTab('record')
   }, [])
 
+  useEffect(() => {
+    let cancelled = false
+    if (!roomCode) return
+    if (accountError) {
+      setRoomAccess({ status: 'error', error: accountError })
+      return
+    }
+    if (!account) {
+      setRoomAccess({ status: 'checking' })
+      return
+    }
+    if (account.loginEnabled && !account.user) {
+      setRoomAccess({ status: 'login-required' })
+      return
+    }
+    if (!account.loginEnabled) {
+      setRoomAccess({ status: 'ready' })
+      return
+    }
+
+    setRoomAccess({ status: 'checking' })
+    void fetchRoomPreview(roomCode)
+      .then((preview) => {
+        if (cancelled) return
+        setRoomAccess(
+          preview.isMember
+            ? { status: 'ready' }
+            : { status: 'confirm', ownerDisplayName: preview.ownerDisplayName },
+        )
+      })
+      .catch((error) => {
+        if (cancelled) return
+        setRoomAccess({
+          status: 'error',
+          error: error instanceof CloudRoomError ? error.message : 'ルームを確認できませんでした',
+        })
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [account, accountError, roomAccessRetry, roomCode])
+
+  const joinPendingRoom = useCallback(async () => {
+    if (!roomCode || roomAccess.status !== 'confirm') return
+    const ownerDisplayName = roomAccess.ownerDisplayName
+    setRoomAccess({ status: 'joining', ownerDisplayName })
+    try {
+      await joinCloudRoom(roomCode)
+      setRoomAccess({ status: 'ready' })
+    } catch (error) {
+      setRoomAccess({
+        status: 'error',
+        error: error instanceof CloudRoomError ? error.message : 'ルームに参加できませんでした',
+      })
+    }
+  }, [roomAccess, roomCode])
+
   const startGuest = useCallback(() => {
-    const next = guestDB ?? emptyDB()
+    const next = prepareInitialPlayers(guestDB ?? emptyDB())
     setDB(next)
     writeGuestSessionDB(next)
     setGuestDB(next)
@@ -153,7 +231,7 @@ export default function App() {
     setTab('record')
   }, [guestDB])
 
-  const guestLoginUrl = useMemo(() => {
+  const loginUrl = useMemo(() => {
     const current = `${window.location.pathname}${window.location.search}`
     return `${GOOGLE_LOGIN_PATH}?returnTo=${encodeURIComponent(current)}`
   }, [])
@@ -294,14 +372,28 @@ export default function App() {
         account={account}
         accountError={accountError}
         guestMode={guestMode}
-        roomCode={roomCode}
-        syncStatus={roomCode ? syncStatus : null}
-        syncLabel={roomCode ? syncStatusLabel(syncStatus, cloudMode) : undefined}
+        roomCode={roomReady ? roomCode : null}
+        syncStatus={roomReady ? syncStatus : null}
+        syncLabel={roomReady ? syncStatusLabel(syncStatus, cloudMode) : undefined}
         onHome={goHome}
         onRetryAccount={() => void refreshAccount()}
       />
 
-      {roomCode ? (
+      {roomCode && roomAccess.status !== 'ready' ? (
+        <RoomAccessView
+          roomCode={roomCode}
+          status={roomAccess.status}
+          ownerDisplayName={roomAccess.ownerDisplayName}
+          loginUrl={loginUrl}
+          error={roomAccess.error}
+          onJoin={() => void joinPendingRoom()}
+          onBack={goHome}
+          onRetry={() => {
+            setRoomAccessRetry((count) => count + 1)
+            void refreshAccount()
+          }}
+        />
+      ) : roomCode ? (
         <RoomView roomCode={roomCode} onLeave={goHome} />
       ) : guestMode ? (
         <div className="guest-strip">
@@ -319,7 +411,7 @@ export default function App() {
               {guestSaveBusy ? '保存中…' : '共有ルームに保存'}
             </button>
           ) : account?.loginEnabled ? (
-            <a className="btn sm primary auth-action" href={guestLoginUrl}>
+            <a className="btn sm primary auth-action" href={loginUrl}>
               Googleログインして保存
             </a>
           ) : (
@@ -356,7 +448,7 @@ export default function App() {
           }}
         />
       )}
-      {cloudError && roomCode && (
+      {cloudError && roomReady && (
         <div className="sync-error-row" role="alert">
           <span>{cloudError}</span>
           <button className="btn sm ghost" onClick={retrySync}>
@@ -364,7 +456,7 @@ export default function App() {
           </button>
         </div>
       )}
-      {syncNotice && roomCode && (
+      {syncNotice && roomReady && (
         <p className="sync-notice" role="status">
           {syncNoticeLabel(syncNotice, lastSyncedAt)}
         </p>
@@ -376,7 +468,7 @@ export default function App() {
         </p>
       )}
 
-      {!roomCode && !guestMode ? null : guestMode || cloudMode === 'cloud' ? (
+      {guestMode || roomReady ? (
         <>
           {tab === 'record' && (
             <RecordView
@@ -415,13 +507,7 @@ export default function App() {
             ))}
           </nav>
         </>
-      ) : (
-        <div className="view">
-          <div className="card">
-            <p className="muted">共有ルームを読み込んでいます…</p>
-          </div>
-        </div>
-      )}
+      ) : null}
     </>
   )
 }
