@@ -59,7 +59,7 @@ printf '%s' '<client-id>' | npx wrangler secret put GOOGLE_CLIENT_ID
 printf '%s' '<client-secret>' | npx wrangler secret put GOOGLE_CLIENT_SECRET
 ```
 
-ログインすると初回アクセス時にMaaNanoJaアカウントが自動作成され、作成したルームの所有者になります。共有されたルームコードで参加したルームは、そのアカウントの「自分のルーム」に表示されます。詳細は[アカウント・Googleログイン仕様](docs/account-auth-spec.md)を参照してください。
+ログインすると初回アクセス時にMaaNanoJaアカウントが自動作成され、作成したルームの所有者になります。共有されたルームコードで参加したルームは、そのアカウントの「自分のルーム」に表示されます。ルーム所有者は設定画面から、対局履歴・進行中データを含むルーム全体を削除できます。詳細は[アカウント・Googleログイン仕様](docs/account-auth-spec.md)を参照してください。
 
 ログイン前でも、対局の記録・成績・JSON書き出しを利用できます。入力内容は`sessionStorage`に保存され、タブを閉じると破棄されます。共有ルームの作成・参加、JSONから共有ルームを作る操作にはログインが必要です。詳しい境界は[未ログイン利用の仕様](docs/guest-mode-spec.md)を参照してください。
 

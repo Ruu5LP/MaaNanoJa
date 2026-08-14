@@ -876,6 +876,24 @@ async function deleteGame(
   return json({ revision: nextRevision })
 }
 
+async function deleteRoom(env: Env, code: string, auth: AuthContext): Promise<Response> {
+  if (!auth.enabled) return errorResponse(404, 'ルームが見つかりません')
+  const user = requireUser(auth)
+  const room = await getRoom(env, code)
+  if (!room || room.owner_user_id !== user.id) {
+    return errorResponse(404, 'ルームが見つかりません')
+  }
+
+  const results = await env.DB.batch([
+    env.DB.prepare('DELETE FROM games WHERE room_code = ?').bind(code),
+    env.DB.prepare('DELETE FROM room_members WHERE room_code = ?').bind(code),
+    env.DB.prepare('DELETE FROM rooms WHERE code = ? AND owner_user_id = ?').bind(code, user.id),
+  ])
+  const deleted = Number(results[2]?.meta.changes ?? 0)
+  if (deleted !== 1) return errorResponse(404, 'ルームが見つかりません')
+  return json({ roomCode: code })
+}
+
 async function updateGame(
   request: Request,
   env: Env,
@@ -1027,6 +1045,9 @@ async function handleApi(request: Request, env: AuthEnv): Promise<Response> {
   const code = parts[2]
   if (!isRoomCode(code)) return errorResponse(400, 'ルームコードが不正です')
 
+  if (parts.length === 3 && request.method === 'DELETE') {
+    return deleteRoom(env, code, auth)
+  }
   if (parts.length === 3 && request.method === 'GET') {
     const room = await getAuthorizedRoom(env, code, auth)
     if (!room) return errorResponse(404, 'ルームが見つかりません')

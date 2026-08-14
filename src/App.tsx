@@ -3,7 +3,7 @@ import { emptyDB, uid } from './lib/store'
 import { clearLegacyLocalDB, readLegacyLocalDB } from './lib/legacy-local-data'
 import type { DB, Draft, Game } from './lib/domain'
 import { fetchAccount, fetchMyRooms } from './lib/account-api'
-import { CloudRoomError, createRoom } from './lib/cloud-room-api'
+import { CloudRoomError, createRoom, deleteRoom as deleteCloudRoom } from './lib/cloud-room-api'
 import { GOOGLE_LOGIN_PATH, type AccountRoom, type AccountState } from './lib/account'
 import { clearGuestSessionDB, readGuestSessionDB, writeGuestSessionDB } from './lib/guest-session'
 import { SYNC_LABEL, type SyncStatus, useRoomSync } from './useRoomSync'
@@ -196,6 +196,16 @@ export default function App() {
     [account?.user, guestMode, joinRoom, refreshAccount],
   )
 
+  const deleteCurrentRoom = useCallback(async () => {
+    if (!roomCode) throw new Error('削除するルームが選択されていません')
+    await deleteCloudRoom(roomCode)
+    goHome()
+    await refreshAccount()
+  }, [goHome, refreshAccount, roomCode])
+
+  const currentRoom = roomCode ? accountRooms.find((room) => room.roomCode === roomCode) : undefined
+  const canDeleteRoom = currentRoom?.role === 'owner'
+
   const api = useMemo<Api>(
     () => ({
       addPlayer(name) {
@@ -366,7 +376,14 @@ export default function App() {
           {tab === 'stats' && <StatsView db={db} />}
           {tab === 'history' && <HistoryView db={db} api={api} />}
           {tab === 'settings' && (
-            <SettingsView db={db} api={api} onRestore={restoreDB} guestMode={guestMode} />
+            <SettingsView
+              db={db}
+              api={api}
+              onRestore={restoreDB}
+              guestMode={guestMode}
+              canDeleteRoom={canDeleteRoom}
+              onDeleteRoom={deleteCurrentRoom}
+            />
           )}
 
           <nav className="tabbar">

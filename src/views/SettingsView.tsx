@@ -9,6 +9,8 @@ interface SettingsViewProps {
   api: Api
   onRestore?(db: DB): Promise<void>
   guestMode?: boolean
+  canDeleteRoom?: boolean
+  onDeleteRoom?(): Promise<void>
 }
 
 interface RuleForm {
@@ -25,7 +27,14 @@ function formFromRules(rules: DB['rules']): RuleForm {
   }
 }
 
-export default function SettingsView({ db, api, onRestore, guestMode = false }: SettingsViewProps) {
+export default function SettingsView({
+  db,
+  api,
+  onRestore,
+  guestMode = false,
+  canDeleteRoom = false,
+  onDeleteRoom,
+}: SettingsViewProps) {
   const [newName, setNewName] = useState('')
   const [nameError, setNameError] = useState('')
   const [ruleForm, setRuleForm] = useState<RuleForm>(() => formFromRules(db.rules))
@@ -33,6 +42,8 @@ export default function SettingsView({ db, api, onRestore, guestMode = false }: 
   const [rulesDirty, setRulesDirty] = useState(false)
   const [restoreError, setRestoreError] = useState('')
   const [restoreBusy, setRestoreBusy] = useState(false)
+  const [deleteRoomError, setDeleteRoomError] = useState('')
+  const [deleteRoomBusy, setDeleteRoomBusy] = useState(false)
 
   useEffect(() => {
     setRuleForm(formFromRules(db.rules))
@@ -144,6 +155,26 @@ export default function SettingsView({ db, api, onRestore, guestMode = false }: 
       setRestoreError(error instanceof Error ? error.message : 'JSONを復元できませんでした')
     } finally {
       setRestoreBusy(false)
+    }
+  }
+
+  async function removeRoom(): Promise<void> {
+    if (!canDeleteRoom || !onDeleteRoom) return
+    if (
+      !confirm(
+        'このルームを削除しますか？対局履歴・進行中の半荘・メンバー情報を含めて、元に戻せません。',
+      )
+    )
+      return
+
+    setDeleteRoomBusy(true)
+    setDeleteRoomError('')
+    try {
+      await onDeleteRoom()
+    } catch (error) {
+      setDeleteRoomError(error instanceof Error ? error.message : 'ルームを削除できませんでした')
+    } finally {
+      setDeleteRoomBusy(false)
     }
   }
 
@@ -295,6 +326,26 @@ export default function SettingsView({ db, api, onRestore, guestMode = false }: 
             ? 'ゲストで入力した内容は、このタブに一時保存されています。JSONの書き出しはできます。Googleログイン後に、共有ルームとして保存できます。'
             : '対局データは共有ルームに保存されます。JSONはバックアップとして書き出せます。復元すると、現在のルームを変更せずにJSONの内容で新しい共有ルームを作成します。'}
         </p>
+        {canDeleteRoom && onDeleteRoom && (
+          <div className="danger-zone">
+            <h3 className="sec">ルームを削除</h3>
+            <p className="muted">
+              この操作はルーム自体と、対局履歴・進行中の半荘をすべて削除します。削除後は元に戻せません。
+            </p>
+            <button
+              className="btn danger"
+              disabled={deleteRoomBusy}
+              onClick={() => void removeRoom()}
+            >
+              {deleteRoomBusy ? '削除中…' : 'このルームを削除'}
+            </button>
+            {deleteRoomError && (
+              <p className="error-text" role="alert">
+                {deleteRoomError}
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <p className="muted" style={{ textAlign: 'center', marginTop: 8 }}>

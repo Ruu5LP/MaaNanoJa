@@ -29,6 +29,7 @@ Googleアカウントでログインし、ログインした人が作成した�
 - `GET /auth/logout`: セッションを削除してログアウトする。
 - `GET /api/me`: Googleログイン設定とMaaNanoJaアカウントを返す。
 - `GET /api/my/rooms`: ログインユーザーが所有・参加しているルーム一覧を返す。
+- `DELETE /api/rooms/:code`: ルーム所有者だけがルーム、対局、進行中データ、メンバー紐付けを削除できる。非所有者には404を返す。
 - `POST /api/rooms`: Googleログイン有効環境では認証済みユーザーだけが実行でき、作成者をownerとして保存する。Secret未登録の移行期間は既存room-code運用を維持する。
 - `GET /api/rooms/:code`: 認証済みならルームコードを招待キーとしてmember登録する。
 - 状態・ゲーム更新: Googleログイン設定済みのときはセッションとmember判定を通す。

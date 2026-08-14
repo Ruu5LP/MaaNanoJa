@@ -15,10 +15,19 @@ const rules = {
   tiebreak: 'shimocha' as const,
 }
 
-function fakeEnv(): { env: Record<string, unknown>; updates: () => number } {
+function fakeEnv(
+  options: {
+    ownerUserId?: string | null
+    sessionUserId?: string | null
+  } = {},
+): {
+  env: Record<string, unknown>
+  updates: () => number
+  batches: () => string[][]
+} {
   const room = {
     code: 'ABCD2345',
-    owner_user_id: null,
+    owner_user_id: options.ownerUserId ?? null,
     players_json: JSON.stringify(players),
     rules_json: JSON.stringify(rules),
     draft_json: null,
@@ -28,12 +37,28 @@ function fakeEnv(): { env: Record<string, unknown>; updates: () => number } {
     updated_at: 0,
   }
   let updateCount = 0
+  const batchQueries: string[][] = []
   const db = {
     prepare(sql: string) {
       const statement = {
+        sql,
         bind(..._args: unknown[]) {
           return {
+            sql,
             async first() {
+              if (sql.includes('FROM auth_sessions')) {
+                return options.sessionUserId
+                  ? {
+                      id: options.sessionUserId,
+                      provider: 'google',
+                      provider_subject: 'google:subject',
+                      email: 'owner@example.com',
+                      display_name: 'Owner',
+                      created_at: 0,
+                      updated_at: 0,
+                    }
+                  : null
+              }
               if (sql.includes('FROM rooms')) return room
               if (sql.includes('SELECT 1 AS present FROM games')) return null
               return null
@@ -50,10 +75,15 @@ function fakeEnv(): { env: Record<string, unknown>; updates: () => number } {
       }
       return statement
     },
+    async batch(statements: Array<{ sql: string }>) {
+      batchQueries.push(statements.map((statement) => statement.sql))
+      return statements.map(() => ({ meta: { changes: 1 } }))
+    },
   }
   return {
     env: { DB: db, ASSETS: { fetch: async () => new Response('') } },
     updates: () => updateCount,
+    batches: () => batchQueries,
   }
 }
 
@@ -161,5 +191,54 @@ describe('Worker request boundaries', () => {
     expect(response.status).toBe(401)
     expect(await response.json()).toEqual({ error: 'Googleでログインしてください' })
     expect(fake.updates()).toBe(0)
+  })
+
+  it('deletes a room and its related data only for the owner', async () => {
+    const fake = fakeEnv({ ownerUserId: 'usr-owner', sessionUserId: 'usr-owner' })
+    fake.env.GOOGLE_CLIENT_ID = 'client-id'
+    fake.env.GOOGLE_CLIENT_SECRET = 'client-secret'
+
+    const response = await worker.fetch(
+      new Request('https://app.example/api/rooms/ABCD2345', {
+        method: 'DELETE',
+        headers: { Cookie: 'maananaja_session=test-session' },
+      }) as never,
+      fake.env as never,
+    )
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ roomCode: 'ABCD2345' })
+    expect(fake.batches()).toEqual([
+      [
+        'DELETE FROM games WHERE room_code = ?',
+        'DELETE FROM room_members WHERE room_code = ?',
+        'DELETE FROM rooms WHERE code = ? AND owner_user_id = ?',
+      ],
+    ])
+  })
+
+  it('hides a room from non-owners and unauthenticated users during deletion', async () => {
+    const nonOwner = fakeEnv({ ownerUserId: 'usr-owner', sessionUserId: 'usr-member' })
+    nonOwner.env.GOOGLE_CLIENT_ID = 'client-id'
+    nonOwner.env.GOOGLE_CLIENT_SECRET = 'client-secret'
+    const nonOwnerResponse = await worker.fetch(
+      new Request('https://app.example/api/rooms/ABCD2345', {
+        method: 'DELETE',
+        headers: { Cookie: 'maananaja_session=test-session' },
+      }) as never,
+      nonOwner.env as never,
+    )
+    expect(nonOwnerResponse.status).toBe(404)
+    expect(nonOwner.batches()).toHaveLength(0)
+
+    const unauthenticated = fakeEnv({ ownerUserId: 'usr-owner' })
+    unauthenticated.env.GOOGLE_CLIENT_ID = 'client-id'
+    unauthenticated.env.GOOGLE_CLIENT_SECRET = 'client-secret'
+    const unauthenticatedResponse = await worker.fetch(
+      new Request('https://app.example/api/rooms/ABCD2345', { method: 'DELETE' }) as never,
+      unauthenticated.env as never,
+    )
+    expect(unauthenticatedResponse.status).toBe(401)
+    expect(unauthenticated.batches()).toHaveLength(0)
   })
 })

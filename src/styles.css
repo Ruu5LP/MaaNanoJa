@@ -568,6 +568,14 @@ body {
   font-size: 13px;
   margin: 10px 0 0;
 }
+.danger-zone {
+  border-top: 1px solid var(--border);
+  margin-top: 18px;
+  padding-top: 14px;
+}
+.danger-zone .sec {
+  color: var(--danger);
+}
 .guest-save-error {
   margin: 8px 16px;
 }

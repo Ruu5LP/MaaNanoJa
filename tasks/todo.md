@@ -275,3 +275,20 @@
 - [x] `npm run check` と `npm run build` が成功する
 - [x] デスクトップ幅と390px幅で主要導線を確認する
 - [ ] Google OAuth設定済みの公開環境で、ログイン・ルーム作成・招待コード参加を確認する
+
+## 共有ルーム削除
+
+- [x] Task 45: 所有者限定の `DELETE /api/rooms/:code` を追加する
+  - Acceptance: 所有者だけがルーム・games・room_membersを一括削除でき、未認証・非所有者は404になる
+  - Verify: Worker契約テスト、`npm run check`
+  - Files: `worker/index.ts`, `worker/contract.test.ts`, `docs/room-deletion-spec.md`
+
+- [x] Task 46: 設定画面に確認付きのルーム削除導線を追加する
+  - Acceptance: 所有者だけに表示し、削除中・失敗時・成功後の遷移が分かる
+  - Verify: UI手動確認、`npm run build`
+  - Files: `src/App.tsx`, `src/lib/cloud-room-api.ts`, `src/views/SettingsView.tsx`, `src/styles.css`
+
+- [x] Task 47: ルーム削除の仕様・契約テスト・全体検証を完了する
+  - Acceptance: 破壊的操作の説明とAPI/UIの挙動が一致し、全チェックが成功する
+  - Verify: `npm run check`, `npm run build`
+  - Files: `README.md`, `SETUP.md`, `docs/account-auth-spec.md`, `src/views/LegalView.tsx`, `tasks/plan.md`, `tasks/todo.md`

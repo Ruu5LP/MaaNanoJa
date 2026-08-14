@@ -127,6 +127,15 @@ export async function fetchRoom(
   }
 }
 
+export async function deleteRoom(roomCode: string): Promise<void> {
+  const payload = await request(`/api/rooms/${encodeURIComponent(roomCode)}`, {
+    method: 'DELETE',
+  })
+  if (!isRecord(payload) || payload.roomCode !== roomCode) {
+    throw new CloudRoomError('ルーム削除の応答が不正です', 502)
+  }
+}
+
 export async function updateRoomState(
   roomCode: string,
   payload: RoomStatePayload,
