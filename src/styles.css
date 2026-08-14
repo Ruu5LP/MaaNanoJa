@@ -632,10 +632,24 @@ body {
 .account-room:hover {
   border-color: var(--accent);
 }
+.account-room-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
 .account-room code {
   color: var(--accent);
   font-weight: 700;
   letter-spacing: 0.1em;
+}
+.account-room-players {
+  color: var(--ink-2);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .account-room .muted {
   margin-left: auto;

@@ -23,6 +23,7 @@ describe('account helpers', () => {
         createdAt: 1,
         updatedAt: 2,
         gameCount: 3,
+        playerNames: ['ユーザー1', 'ユーザー2'],
       }),
     ).toBe(true)
     expect(
@@ -32,6 +33,7 @@ describe('account helpers', () => {
         createdAt: 1,
         updatedAt: 2,
         gameCount: 3,
+        playerNames: ['ユーザー1'],
       }),
     ).toBe(false)
   })

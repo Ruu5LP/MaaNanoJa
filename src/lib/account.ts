@@ -13,6 +13,7 @@ export interface AccountRoom {
   createdAt: number
   updatedAt: number
   gameCount: number
+  playerNames: string[]
 }
 
 export interface AccountState {
@@ -49,6 +50,8 @@ export function isAccountRoom(value: unknown): value is AccountRoom {
     (record.role === 'owner' || record.role === 'member') &&
     typeof record.createdAt === 'number' &&
     typeof record.updatedAt === 'number' &&
-    typeof record.gameCount === 'number'
+    typeof record.gameCount === 'number' &&
+    Array.isArray(record.playerNames) &&
+    record.playerNames.every((name) => typeof name === 'string')
   )
 }

@@ -186,6 +186,18 @@ function storedRoomState(room: RoomRow): RoomStateInput {
   )
 }
 
+function storedRoomPlayerNames(playersJson: string): string[] {
+  const players = parseStoredJson(playersJson, 'players')
+  if (!Array.isArray(players)) throw new RequestError('players の保存データが不正です', 500)
+
+  return players.map((player, index) => {
+    if (!isRecord(player) || typeof player.name !== 'string') {
+      throw new RequestError(`players[${index}] の保存データが不正です`, 500)
+    }
+    return player.name
+  })
+}
+
 function assertGameReferencesPlayers(game: ParsedGame, state: RoomStateInput): void {
   const playerIds = new Set(state.players.map((player) => player.id))
   if (game.value.playerIds.some((playerId) => !playerIds.has(playerId))) {
@@ -924,12 +936,12 @@ async function getMyRooms(env: Env, auth: AuthContext): Promise<Response> {
   const user = requireUser(auth)
   const result = await env.DB.prepare(
     `SELECT r.code AS room_code, rm.role, r.created_at, r.updated_at,
-            COUNT(g.id) AS game_count
+            COUNT(g.id) AS game_count, r.players_json
      FROM room_members rm
      JOIN rooms r ON r.code = rm.room_code
      LEFT JOIN games g ON g.room_code = r.code
      WHERE rm.user_id = ?
-     GROUP BY r.code, rm.role, r.created_at, r.updated_at
+     GROUP BY r.code, rm.role, r.created_at, r.updated_at, r.players_json
      ORDER BY r.updated_at DESC, r.code ASC`,
   )
     .bind(user.id)
@@ -939,6 +951,7 @@ async function getMyRooms(env: Env, auth: AuthContext): Promise<Response> {
       created_at: number
       updated_at: number
       game_count: number
+      players_json: string
     }>()
 
   return json({
@@ -948,6 +961,7 @@ async function getMyRooms(env: Env, auth: AuthContext): Promise<Response> {
       createdAt: room.created_at,
       updatedAt: room.updated_at,
       gameCount: Number(room.game_count),
+      playerNames: storedRoomPlayerNames(room.players_json),
     })),
   })
 }

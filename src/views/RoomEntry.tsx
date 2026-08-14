@@ -222,7 +222,14 @@ export default function RoomEntry({
                     disabled={busy}
                     onClick={() => void handleJoinCode(room.roomCode)}
                   >
-                    <code>{room.roomCode}</code>
+                    <span className="account-room-main">
+                      <code>{room.roomCode}</code>
+                      <span className="account-room-players">
+                        {room.playerNames.length > 0
+                          ? room.playerNames.join(' / ')
+                          : 'メンバー未登録'}
+                      </span>
+                    </span>
                     <span>{room.role === 'owner' ? '所有者' : '参加中'}</span>
                     <span className="muted">対局 {room.gameCount}件</span>
                   </button>
