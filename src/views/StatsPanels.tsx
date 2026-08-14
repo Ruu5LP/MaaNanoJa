@@ -213,7 +213,7 @@ export function ScoreTrendPanel({
     <div className="card">
       <h2>スコア推移</h2>
       <p className="chart-hint">
-        半荘ごとのスコアを加算した累計。0を基準に、表示中の期間だけを描画しています。
+        点は各半荘の終了時点、線は累計スコアの推移です。0を基準に、表示中の期間だけを描画しています。
       </p>
       <div className="trend-chart-layout">
         <div className="trend-scale" aria-hidden="true">
@@ -273,6 +273,16 @@ export function ScoreTrendPanel({
             {stat.name}
           </span>
         ))}
+      </div>
+      <div className="trend-meaning" aria-label="グラフの見方">
+        <span>
+          <i className="trend-meaning-dot" />
+          点：半荘終了時の累計
+        </span>
+        <span>
+          <i className="trend-meaning-line" />
+          線：累計スコアの推移
+        </span>
       </div>
       <p className="table-hint">グラフの値は下表でも確認できます。</p>
       <div className="table-wrap trend-table-wrap">
