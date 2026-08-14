@@ -221,47 +221,50 @@ export function ScoreTrendPanel({
           <span>0</span>
           <span>{signed(lower, 0)}</span>
         </div>
-        <svg
-          className="score-trend-chart"
-          viewBox="0 0 100 100"
-          preserveAspectRatio="none"
-          role="img"
-          aria-label={`半荘ごとの累計スコア推移。${stats.map((stat) => stat.name).join('、')}`}
-        >
-          <line className="trend-grid-line" x1="8" x2="96" y1={y(0)} y2={y(0)} />
-          {stats.map((stat, playerIndex) => {
-            const points = trend
-              .map((point, index) => `${x(index)},${y(point.cumulativeScores[stat.playerId] ?? 0)}`)
-              .join(' ')
-            return (
-              <polyline
-                key={stat.playerId}
-                className="trend-line"
-                points={points}
-                style={{ stroke: SERIES_COLORS[playerIndex % SERIES_COLORS.length] }}
-              />
-            )
-          })}
+        <div className="trend-chart-frame">
+          <svg
+            className="score-trend-chart"
+            viewBox="0 0 100 100"
+            preserveAspectRatio="none"
+            role="img"
+            aria-label={`半荘ごとの累計スコア推移。${stats.map((stat) => stat.name).join('、')}`}
+          >
+            <line className="trend-grid-line" x1="8" x2="96" y1={y(0)} y2={y(0)} />
+            {stats.map((stat, playerIndex) => {
+              const points = trend
+                .map(
+                  (point, index) => `${x(index)},${y(point.cumulativeScores[stat.playerId] ?? 0)}`,
+                )
+                .join(' ')
+              return (
+                <polyline
+                  key={stat.playerId}
+                  className="trend-line"
+                  points={points}
+                  style={{ stroke: SERIES_COLORS[playerIndex % SERIES_COLORS.length] }}
+                />
+              )
+            })}
+          </svg>
           {stats.flatMap((stat, playerIndex) =>
             trend.map((point, index) => {
               const value = point.cumulativeScores[stat.playerId] ?? 0
               return (
-                <circle
+                <span
                   key={`${stat.playerId}-${point.gameId}`}
                   className="trend-point"
-                  cx={x(index)}
-                  cy={y(value)}
-                  r="1.7"
-                  style={{ fill: SERIES_COLORS[playerIndex % SERIES_COLORS.length] }}
-                >
-                  <title>
-                    {`第${point.gameNumber}半荘 ${point.date || '日付なし'}、${stat.name} 累計${signed(value)}`}
-                  </title>
-                </circle>
+                  aria-hidden="true"
+                  title={`第${point.gameNumber}半荘 ${point.date || '日付なし'}、${stat.name} 累計${signed(value)}`}
+                  style={{
+                    left: `${x(index)}%`,
+                    top: `${y(value)}%`,
+                    background: SERIES_COLORS[playerIndex % SERIES_COLORS.length],
+                  }}
+                />
               )
             }),
           )}
-        </svg>
+        </div>
       </div>
       <div className="legend trend-legend">
         {stats.map((stat, index) => (

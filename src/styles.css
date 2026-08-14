@@ -1236,6 +1236,10 @@ tbody tr:hover td:first-child {
   align-items: stretch;
   height: 220px;
 }
+.trend-chart-frame {
+  position: relative;
+  min-width: 0;
+}
 .trend-scale {
   display: flex;
   flex-direction: column;
@@ -1269,9 +1273,13 @@ tbody tr:hover td:first-child {
   vector-effect: non-scaling-stroke;
 }
 .trend-point {
-  stroke: var(--surface);
-  stroke-width: 1;
-  vector-effect: non-scaling-stroke;
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
 }
 .trend-legend {
   margin-top: 8px;
