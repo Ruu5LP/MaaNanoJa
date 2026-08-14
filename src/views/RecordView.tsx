@@ -34,6 +34,7 @@ import { todayStr } from '../lib/date'
 type NameFn = (pid: string) => string
 type SaveFn = (game: Omit<Game, 'id'>) => void
 type Mode = Draft['mode']
+const RIICHI_STICK_SRC = './images/riichi-stick.png'
 
 /** 入力中の1局の初期値（何も選んでいない状態）。 */
 function emptyForm(): HandFormState {
@@ -676,7 +677,12 @@ function LiveStatusBar({
             本場 <strong>{effectiveHonba}</strong>
           </span>
           <span>
-            供託 <strong>{state.pot.toLocaleString()}</strong>点
+            <img
+              className="riichi-stick-image live-status-pot-stick"
+              src={RIICHI_STICK_SRC}
+              alt="供託"
+            />{' '}
+            <strong>{state.pot.toLocaleString()}</strong>点
           </span>
         </div>
       </div>
@@ -713,7 +719,7 @@ function LiveStatusBar({
                 className={`badge riichi-badge ${form.riichi.includes(pid) ? '' : 'is-empty'}`}
                 aria-hidden={!form.riichi.includes(pid)}
               >
-                立直
+                <img className="riichi-stick-image" src={RIICHI_STICK_SRC} alt="立直" />
               </div>
             </div>
           </div>

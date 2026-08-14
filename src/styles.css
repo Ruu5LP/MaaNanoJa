@@ -1264,6 +1264,27 @@ tbody tr:hover td:first-child {
 .scoreboard .p .riichi-badge {
   color: var(--warn);
 }
+.riichi-stick-image {
+  display: block;
+  height: auto;
+  object-fit: contain;
+  width: 58px;
+}
+.live-status-pot-stick {
+  display: inline-block;
+  margin-right: 3px;
+  vertical-align: -2px;
+  width: 42px;
+}
+.scoreboard .p .riichi-badge {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 12px;
+}
+.scoreboard .p .riichi-badge .riichi-stick-image {
+  width: 58px;
+}
 
 .live-status-bar {
   background: var(--surface);
