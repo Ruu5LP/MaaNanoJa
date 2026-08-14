@@ -409,19 +409,67 @@ body {
 
 /* ---- ヘッダ ---- */
 .app-header {
-  padding: 16px 16px 8px;
+  align-items: center;
+  border-bottom: 1px solid var(--border);
   display: flex;
-  align-items: baseline;
-  gap: 10px;
+  gap: 16px;
+  justify-content: space-between;
+  padding: 12px 16px;
 }
-.app-header h1 {
-  font-size: 18px;
-  margin: 0;
+.app-brand {
+  align-items: center;
+  color: var(--ink);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 17px;
+  font-weight: 700;
+  gap: 7px;
   letter-spacing: 0.02em;
+  min-height: 44px;
+  text-decoration: none;
+}
+.app-brand:hover {
+  color: var(--accent);
+}
+.app-brand-mark {
+  font-size: 18px;
+  line-height: 1;
+}
+.app-header-meta {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  min-width: 0;
+}
+.app-header-context {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+}
+.app-account {
+  align-items: center;
+  border-left: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  min-width: 0;
+  padding-left: 10px;
+}
+.header-account-user,
+.header-account-status {
+  color: var(--ink-2);
+  font-size: 12px;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.header-auth-action {
+  white-space: nowrap;
 }
 /* 同期状態バッジ（ヘッダ右端）。色だけに頼らず文言も併記する。 */
 .sync-badge {
-  margin-left: auto;
   font-size: 11px;
   padding: 3px 8px;
   border-radius: 999px;
@@ -449,19 +497,6 @@ body {
   color: var(--warn);
   border-color: var(--warn);
 }
-.account-badge {
-  color: var(--ink-2);
-  font-size: 11px;
-  margin-left: auto;
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.account-badge + .sync-badge {
-  margin-left: 0;
-}
-
 /* ---- タブ（下部固定） ---- */
 .tabbar {
   position: fixed;
@@ -697,10 +732,6 @@ body {
 }
 .guest-login-unavailable {
   font-size: 11px;
-}
-.room-strip .auth-action {
-  margin-left: auto;
-  white-space: nowrap;
 }
 .room-label {
   color: var(--ink-3);
@@ -1751,6 +1782,13 @@ h3.sec {
   .entry-options {
     grid-template-columns: 1fr;
   }
+  .entry-options:not(.has-account-card) .guest-entry-card {
+    display: flex;
+    gap: 14px;
+  }
+  .entry-options:not(.has-account-card) .guest-entry-card > .btn {
+    align-self: flex-start;
+  }
   .landing-hero {
     padding-top: 42px;
   }
@@ -1779,11 +1817,19 @@ h3.sec {
     flex-direction: column;
   }
   .app-header {
-    align-items: center;
     flex-wrap: wrap;
   }
-  .app-header .sync-badge {
+  .app-header-meta {
+    flex: 1 1 100%;
+    justify-content: space-between;
+    order: 2;
+  }
+  .app-header-context {
     margin-left: auto;
+  }
+  .app-account {
+    border-left: 0;
+    padding-left: 0;
   }
   .room-strip {
     flex-wrap: wrap;
@@ -1806,9 +1852,6 @@ h3.sec {
   }
   .room-strip .btn {
     flex: 1 1 auto;
-  }
-  .room-strip .auth-action {
-    margin-left: 0;
   }
   /* スマホでモニター用URLを直接開いた場合も一応崩れないよう、2×2は保ったまま1列に畳まない
      （4人麻雀の "誰が今どこにいるか" を一望する用途なので、狭くても2×2を維持する）。 */

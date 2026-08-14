@@ -60,4 +60,31 @@ describe('cloud room helpers', () => {
     expect(toRoomCreationPayload(db, { migrateGames: false }).games).toEqual([])
     expect(toRoomCreationPayload(db, { migrateGames: true }).games).toEqual(db.games)
   })
+
+  it('prepares four placeholder players for a new room', () => {
+    expect(toRoomCreationPayload(emptyDB(), { migrateGames: false }).state.players).toEqual([
+      { id: 'p-1', name: 'ユーザー1' },
+      { id: 'p-2', name: 'ユーザー2' },
+      { id: 'p-3', name: 'ユーザー3' },
+      { id: 'p-4', name: 'ユーザー4' },
+    ])
+  })
+
+  it('keeps existing room members and data unchanged', () => {
+    const db = emptyDB()
+    db.players = [{ id: 'p-1', name: 'Ruu' }]
+    db.games = [
+      {
+        id: 'g-1',
+        date: '2026-08-10',
+        note: '',
+        playerIds: ['p-1'],
+        hands: [],
+        finalPoints: {},
+      },
+    ]
+
+    expect(toRoomCreationPayload(db, { migrateGames: true }).state.players).toEqual(db.players)
+    expect(toRoomCreationPayload(db, { migrateGames: true }).games).toEqual(db.games)
+  })
 })

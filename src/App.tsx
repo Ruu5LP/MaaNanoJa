@@ -14,6 +14,7 @@ import SettingsView from './views/SettingsView'
 import RoomView from './views/RoomView'
 import LandingView from './views/LandingView'
 import { normalizeRoomCode, ROOM_QUERY_KEY } from './lib/cloud-room'
+import AppHeader from './components/AppHeader'
 
 /** 画面から呼ぶ、DBを更新するアクション群。状態更新はここに集約する。 */
 export interface Api {
@@ -124,14 +125,18 @@ export default function App() {
     setRoomCode(code)
   }, [])
 
-  function leaveRoom() {
+  const goHome = useCallback(() => {
     const url = new URL(window.location.href)
+    url.pathname = '/'
     url.searchParams.delete(ROOM_QUERY_KEY)
+    url.searchParams.delete('board')
     window.history.replaceState({}, '', url)
     setDB(emptyDB())
     setGuestMode(false)
+    setGuestSaveError(null)
     setRoomCode(null)
-  }
+    setTab('record')
+  }, [])
 
   const startGuest = useCallback(() => {
     const next = guestDB ?? emptyDB()
@@ -262,21 +267,19 @@ export default function App() {
 
   return (
     <>
-      {(roomCode || guestMode) && (
-        <header className="app-header">
-          <h1>麻雀トラッカー</h1>
-          {account?.user && <span className="account-badge">👤 {account.user.displayName}</span>}
-          {guestMode && <span className="sync-badge sync-guest">📝 ゲストモード</span>}
-          {roomCode && (
-            <span className={`sync-badge sync-${syncStatus}`} role="status">
-              {syncStatusLabel(syncStatus, cloudMode)}
-            </span>
-          )}
-        </header>
-      )}
+      <AppHeader
+        account={account}
+        accountError={accountError}
+        guestMode={guestMode}
+        roomCode={roomCode}
+        syncStatus={roomCode ? syncStatus : null}
+        syncLabel={roomCode ? syncStatusLabel(syncStatus, cloudMode) : undefined}
+        onHome={goHome}
+        onRetryAccount={() => void refreshAccount()}
+      />
 
       {roomCode ? (
-        <RoomView account={account} roomCode={roomCode} onLeave={leaveRoom} />
+        <RoomView roomCode={roomCode} onLeave={goHome} />
       ) : guestMode ? (
         <div className="guest-strip">
           <span className="room-label">ゲストモード</span>

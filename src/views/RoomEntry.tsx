@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { createRoom, fetchRoom, CloudRoomError } from '../lib/cloud-room-api'
 import { normalizeRoomCode } from '../lib/cloud-room'
 import type { DB } from '../lib/domain'
-import { GOOGLE_LOGIN_PATH, LOGOUT_PATH, type AccountRoom, type AccountState } from '../lib/account'
+import type { AccountRoom, AccountState } from '../lib/account'
 
 export interface RoomEntryProps {
   db: DB
@@ -60,11 +60,6 @@ export default function RoomEntry({
   const [input, setInput] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const loginUrl = useMemo(() => {
-    const current = `${window.location.pathname}${window.location.search}`
-    return `${GOOGLE_LOGIN_PATH}?returnTo=${encodeURIComponent(current)}`
-  }, [])
-
   const creationDB = legacyDB ?? db
   const sharedRoomAccess = getSharedRoomAccess(account, accountError)
   const sharedRoomDisabled = sharedRoomAccess !== 'available'
@@ -186,13 +181,17 @@ export default function RoomEntry({
               <span className="entry-kicker">Googleアカウント</span>
               <h2>{account?.user ? 'アカウント' : 'Googleでログイン'}</h2>
               {account?.user ? (
-                <p className="muted">{account.user.email} でログイン中です。</p>
+                <p className="muted">
+                  {account.user.email} でログイン中です。ログアウトはヘッダーから行えます。
+                </p>
               ) : account?.loginEnabled ? (
                 <p className="muted">
-                  ログインすると、新しい共有ルームを作成して対局データを保存できます。
+                  ログインすると、新しい共有ルームを作成して対局データを保存できます。ログインはヘッダーから行えます。
                 </p>
               ) : accountError ? (
                 <p className="muted">ログイン状態を確認できません。</p>
+              ) : account ? (
+                <p className="muted">この環境ではGoogleログインを利用できません。</p>
               ) : (
                 <p className="muted">ログイン状態を確認しています…</p>
               )}
@@ -201,21 +200,13 @@ export default function RoomEntry({
                 <li>参加者と同じ対局データを共有できます</li>
               </ul>
             </div>
-            <div className="entry-action-row">
-              {account?.user ? (
-                <a className="btn ghost auth-action" href={LOGOUT_PATH}>
-                  ログアウト
-                </a>
-              ) : account?.loginEnabled ? (
-                <a className="btn primary auth-action" href={loginUrl}>
-                  Googleでログイン
-                </a>
-              ) : accountError && !account ? (
+            {accountError && !account && (
+              <div className="entry-action-row">
                 <button className="btn ghost" onClick={() => onAccountChanged?.()}>
                   もう一度確認
                 </button>
-              ) : null}
-            </div>
+              </div>
+            )}
             {accountError && (
               <p className="error-text" role="alert">
                 {accountError}
