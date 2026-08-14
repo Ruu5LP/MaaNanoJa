@@ -525,6 +525,9 @@ body {
 .header-auth-action {
   white-space: nowrap;
 }
+.header-auth-label-compact {
+  display: none;
+}
 /* 同期状態バッジ（ヘッダ右端）。色だけに頼らず文言も併記する。 */
 .sync-badge {
   font-size: 11px;
@@ -1979,19 +1982,46 @@ h3.sec {
     flex-direction: column;
   }
   .app-header {
-    flex-wrap: wrap;
+    gap: 8px;
+    flex-wrap: nowrap;
+    padding: 8px 12px;
+  }
+  .app-brand {
+    flex: 1 1 auto;
+    font-size: 16px;
+    gap: 5px;
+    min-width: 0;
+  }
+  .app-brand > span:last-child {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .app-header-meta {
-    flex: 1 1 100%;
-    justify-content: space-between;
-    order: 2;
+    flex: 0 0 auto;
+    gap: 6px;
+    order: initial;
   }
   .app-header-context {
-    margin-left: auto;
+    display: none;
   }
   .app-account {
     border-left: 0;
+    gap: 6px;
     padding-left: 0;
+  }
+  .header-account-user {
+    display: none;
+  }
+  .header-auth-action {
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+  .header-auth-label-wide {
+    display: none;
+  }
+  .header-auth-label-compact {
+    display: inline;
   }
   .room-strip {
     flex-wrap: wrap;

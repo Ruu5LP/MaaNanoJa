@@ -71,7 +71,8 @@ export default function AppHeader({
             </button>
           ) : account ? (
             <a className="btn sm primary header-auth-action" href={loginUrl}>
-              Googleでログイン
+              <span className="header-auth-label-wide">Googleでログイン</span>
+              <span className="header-auth-label-compact">ログイン</span>
             </a>
           ) : (
             <span className="header-account-status">ログイン状態を確認中…</span>
