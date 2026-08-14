@@ -1,8 +1,18 @@
 import { useMemo, useState } from 'react'
-import { computeStats, filterGamesByPeriod, type StatsPeriod } from '../lib/stats'
+import {
+  computeScoreTrend,
+  computeStats,
+  filterGamesByPeriod,
+  type StatsPeriod,
+} from '../lib/stats'
 import { todayStr } from '../lib/date'
 import type { DB } from '../lib/domain'
-import { TotalScorePanel, RankDistPanel } from './StatsPanels'
+import {
+  DetailedAnalysisPanel,
+  RankDistPanel,
+  ScoreTrendPanel,
+  TotalScorePanel,
+} from './StatsPanels'
 
 function pct(x: number | null): string {
   return x == null ? '—' : `${(x * 100).toFixed(1)}%`
@@ -18,11 +28,13 @@ export default function StatsView({ db }: { db: DB }) {
   const boardUrl = new URL(window.location.href)
   boardUrl.searchParams.set('board', '1')
 
-  // 今日だけのときは、今日の日付の対局に絞ってから集計する（集計ロジックはそのまま流用）。
-  const stats = useMemo(() => {
-    const games = filterGamesByPeriod(db.games, period, today)
-    return computeStats({ ...db, games })
-  }, [db, period, today])
+  // 今日だけのときは、今日の日付の対局に絞ってから全ての成績表示へ渡す。
+  const filteredDb = useMemo(
+    () => ({ ...db, games: filterGamesByPeriod(db.games, period, today) }),
+    [db, period, today],
+  )
+  const stats = useMemo(() => computeStats(filteredDb), [filteredDb])
+  const scoreTrend = useMemo(() => computeScoreTrend(filteredDb), [filteredDb])
 
   // 期間切り替えタブ＋モニター表示への導線。空のときも常に出す（今日→全期間に戻せるように）。
   // タブの並びは「今日／全期間」で統一する（BoardView側と同じ順）。
@@ -71,7 +83,7 @@ export default function StatsView({ db }: { db: DB }) {
 
   const hasHandData = stats.some((s) => s.handsPlayed > 0)
 
-  // PC幅（≥1024px）では view-wide + stats-grid で4カードを2×2に並べる（CSS側）。
+  // PC幅（≥1024px）では view-wide + stats-grid で分析カードを2列に並べる（CSS側）。
   // スマホでは従来どおり1カラムで縦に積む。
   return (
     <div className="view view-wide">
@@ -176,6 +188,12 @@ export default function StatsView({ db }: { db: DB }) {
             率はいずれも「参加した局数」に対する割合。テンパイ率は流局時のテンパイ割合。
           </p>
         </div>
+
+        {/* 局ログの詳細分析 */}
+        <DetailedAnalysisPanel stats={stats} hasHandData={hasHandData} />
+
+        {/* 半荘ごとのスコア推移 */}
+        <ScoreTrendPanel stats={stats} trend={scoreTrend} />
       </div>
     </div>
   )

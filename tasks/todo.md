@@ -309,3 +309,22 @@
   - Acceptance: API/UI/説明文が一致し、全チェックが成功する
   - Verify: `npm run check`, `npm run build`
   - Files: `README.md`, `SETUP.md`, `docs/account-auth-spec.md`, `tasks/plan.md`, `tasks/todo.md`
+
+## 成績タブ詳細分析
+
+- [x] Task 51: 詳細分析の集計インターフェースを追加
+  - Acceptance: ロン／ツモ、平均翻・符、立直和了、親和了、スコア推移が純粋関数で算出され、adjustと局ログなし対局の扱いが仕様どおりになる
+  - Verify: `npm run test -- src/lib/stats.test.ts`
+  - Files: `docs/stats-analysis-spec.md`, `src/lib/stats.ts`, `src/lib/stats.test.ts`
+  - Dependencies: None
+
+- [x] Task 52: 成績タブに詳細分析表とスコア推移グラフを追加
+  - Acceptance: 今日／全期間フィルターに連動し、局ログなし・スマホ幅でも意味が伝わる。色だけに依存しない
+  - Verify: `npm run check`, `npm run build`, デスクトップ/390px幅の手動確認
+  - Files: `src/views/StatsView.tsx`, `src/views/StatsPanels.tsx`, `src/styles.css`
+  - Dependencies: Task 51
+
+### Checkpoint: Stats Detailed Analysis Complete
+
+- [x] 詳細分析の受け入れ条件を満たす
+- [x] `npm run check` と `npm run build` が成功する

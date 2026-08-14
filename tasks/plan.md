@@ -577,3 +577,29 @@ Googleログイン前でも記録・成績機能を試せるようにする。�
 - [x] room・games・draft・他メンバーは残る
 - [x] 解除後はルーム選択画面へ戻り、一覧から消える
 - [x] `npm run check` と `npm run build` が成功する
+
+## Phase 16: 成績タブ詳細分析
+
+局ログに保存されている和了・放銃・翻符・立直・テンパイ・親の情報を、既存の期間フィルターに連動した比較表とスコア推移グラフとして可視化する。保存形式・Worker API・依存関係は変更しない。
+
+### Task 51: 詳細分析の仕様と集計インターフェースを追加 [x]
+
+- [x] `docs/stats-analysis-spec.md` に指標の分母、ダブロン、adjust、後方互換の扱いを固定する
+- [x] `PlayerStats` にロン回数、翻符平均、立直和了、親和了などの派生値を追加する
+- [x] 半荘ごとの累計スコア推移を返す純粋関数を追加する
+
+**Verification:** `npm run test -- src/lib/stats.test.ts`
+
+### Task 52: 成績タブの詳細分析UIを追加 [x]
+
+- [x] 詳細分析表で和了・放銃・立直・親の指標を比較できる
+- [x] 半荘ごとの累計スコアを折れ線グラフと数値ラベルで確認できる
+- [x] 今日／全期間、局ログなし、スマホ幅、アクセシビリティの表示を維持する
+
+**Verification:** `npm run check`、`npm run build`、デスクトップ/390px幅の手動確認
+
+### Checkpoint: Stats Detailed Analysis Complete
+
+- [x] `docs/stats-analysis-spec.md` の成功条件を満たす
+- [x] 既存の順位・基本局データ表示が変わらない
+- [x] `npm run check` と `npm run build` が成功する

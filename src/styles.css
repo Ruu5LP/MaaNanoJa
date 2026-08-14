@@ -1223,6 +1223,70 @@ tbody tr:hover td:first-child {
   background: var(--ink-3);
 }
 
+/* ---- 成績の詳細分析・スコア推移 ---- */
+.stats-analysis-table th,
+.stats-analysis-table td {
+  padding-left: 9px;
+  padding-right: 9px;
+}
+.trend-chart-layout {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 6px;
+  align-items: stretch;
+  height: 220px;
+}
+.trend-scale {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-end;
+  color: var(--ink-3);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  padding: 4px 0 4px;
+}
+.score-trend-chart {
+  width: 100%;
+  height: 220px;
+  display: block;
+  overflow: visible;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+.trend-grid-line {
+  stroke: var(--ink-3);
+  stroke-dasharray: 2 2;
+  stroke-width: 0.6;
+  vector-effect: non-scaling-stroke;
+}
+.trend-line {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+  vector-effect: non-scaling-stroke;
+}
+.trend-point {
+  stroke: var(--surface);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+.trend-legend {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+.trend-table-wrap {
+  max-height: 260px;
+  overflow: auto;
+}
+.trend-table th,
+.trend-table td {
+  padding-top: 7px;
+  padding-bottom: 7px;
+}
+
 /* ---- 局ログ ---- */
 .hand-list {
   display: flex;
