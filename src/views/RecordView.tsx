@@ -508,6 +508,17 @@ function LiveView({
           setPointsEditValue={setPointsEditValue}
         />
         <div className="card">
+          {editingIndex != null && (
+            <div className="edit-mode-banner" role="status">
+              <div className="edit-mode-copy">
+                <strong>局ログを編集中</strong>
+                <span>内容を変更したら「この局を更新」で確定します。</span>
+              </div>
+              <button className="btn sm ghost" onClick={cancelEdit}>
+                編集をやめる
+              </button>
+            </div>
+          )}
           <div className="row" style={{ marginTop: 8 }}>
             <div className="honba-panel">
               <div className="honba-visual">
@@ -628,8 +639,8 @@ function LiveView({
             <p className="muted">まだ局がありません。入力フォームから追加してください。</p>
           ) : (
             <>
-              <p className="muted" style={{ marginTop: -4, marginBottom: 8 }}>
-                局をタップすると内容を編集できます。
+              <p className="muted hand-log-help">
+                編集したい局の「編集」ボタンを押すと、入力フォームが編集モードになります。変更後は「この局を更新」で確定します。
               </p>
               <HandLog
                 game={gameForReplay}
@@ -1187,26 +1198,34 @@ function HandLog({
   game: Game
   rules: Rules
   name: NameFn
-  /** 局ログから選んで編集中の局のインデックス（選んでいなければ null）。 */
+  /** 局ログから編集対象にした局のインデックス（選んでいなければ null）。 */
   selectedIndex: number | null
-  /** 局を選んだら呼ぶ（編集フォームを開く）。 */
+  /** 局ログの「編集」ボタンを押したら呼ぶ（編集フォームを開く）。 */
   onSelect: (i: number) => void
 }) {
   const { steps } = replay(game, rules)
   return (
     <div className="hand-list">
       {steps.map((s, i) => (
-        <button
-          type="button"
-          className={`hand-row ${selectedIndex === i ? 'selected' : ''}`}
-          key={s.hand.id || i}
-          onClick={() => onSelect(i)}
-        >
+        <div className={`hand-row ${selectedIndex === i ? 'selected' : ''}`} key={s.hand.id || i}>
           <div className="hand-row-head">
-            <span className="muted" style={{ minWidth: 62 }}>
-              {s.label}
+            <span className="hand-row-title">
+              <span className="muted" style={{ minWidth: 62 }}>
+                {s.label}
+              </span>
+              {handTag(s.hand)}
             </span>
-            {handTag(s.hand)}
+            <span className="hand-row-actions">
+              {selectedIndex === i && <span className="hand-row-action">編集中</span>}
+              <button
+                type="button"
+                className="btn sm ghost hand-row-edit"
+                aria-label={`${s.label}の内容を編集`}
+                onClick={() => onSelect(i)}
+              >
+                編集
+              </button>
+            </span>
           </div>
           {game.playerIds.filter((pid) => s.hand.riichi.includes(pid)).length > 0 && (
             <div className="hand-riichi">
@@ -1224,7 +1243,7 @@ function HandLog({
             </div>
           )}
           <DeltaChips playerIds={game.playerIds} name={name} delta={s.delta} />
-        </button>
+        </div>
       ))}
     </div>
   )

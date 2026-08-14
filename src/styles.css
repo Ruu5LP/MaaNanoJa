@@ -1156,6 +1156,31 @@ tbody tr:hover td:first-child {
   flex-direction: column;
   gap: 6px;
 }
+.edit-mode-banner {
+  align-items: center;
+  background: color-mix(in srgb, var(--accent) 12%, var(--surface-2));
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+}
+.edit-mode-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.edit-mode-copy strong {
+  color: var(--accent);
+  font-size: 14px;
+}
+.edit-mode-copy span {
+  color: var(--ink-2);
+  font-size: 12px;
+}
 .hand-row {
   display: flex;
   flex-direction: column;
@@ -1168,11 +1193,10 @@ tbody tr:hover td:first-child {
   width: 100%;
   text-align: left;
   font-family: inherit;
-  cursor: pointer;
   color: inherit;
 }
 .hand-row:hover {
-  border-color: var(--ink-3);
+  border-color: var(--border);
 }
 .hand-row.selected {
   border-color: var(--accent);
@@ -1182,6 +1206,32 @@ tbody tr:hover td:first-child {
   display: flex;
   align-items: center;
   gap: 8px;
+  justify-content: space-between;
+}
+.hand-row-title {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+.hand-row-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+.hand-row-action {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--ink-2);
+  flex: 0 0 auto;
+  font-size: 11px;
+  padding: 2px 7px;
+}
+.hand-row.selected .hand-row-action {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--surface-1);
+  font-weight: 700;
 }
 .hand-row .tag {
   font-size: 11px;
@@ -1800,6 +1850,13 @@ h3.sec {
   color: var(--danger);
 }
 @media (max-width: 720px) {
+  .edit-mode-banner {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .edit-mode-banner .btn {
+    width: 100%;
+  }
   .honba-panel {
     align-items: flex-start;
     flex-direction: column;
