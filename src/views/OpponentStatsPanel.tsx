@@ -98,7 +98,16 @@ export default function OpponentStatsPanel({ db, players }: { db: DB; players: P
             リー棒移動は供託から和了者への受け渡しです。放銃者がその全額を支払ったことを表しません。
           </p>
           <h3>局ごとの明細</h3>
-          <div className="table-wrap" role="region" aria-label="局ごとの点数内訳" tabIndex={0}>
+          <p id="opponent-detail-hint" className="table-hint">
+            全{details.length}件。明細が長い場合は、表の中を上下にスクロールできます。
+          </p>
+          <div
+            className="table-wrap opponent-detail-scroll"
+            role="region"
+            aria-label="局ごとの点数内訳"
+            aria-describedby="opponent-detail-hint"
+            tabIndex={0}
+          >
             <table className="opponent-table opponent-detail-table">
               <thead>
                 <tr>
