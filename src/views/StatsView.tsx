@@ -34,9 +34,6 @@ function StatsSection({ id, children }: { id: string; children: ReactNode }) {
       tabIndex={-1}
     >
       {children}
-      <a className="stats-back-link" href="#stats-contents">
-        項目一覧へ ↑
-      </a>
     </section>
   )
 }
@@ -121,6 +118,7 @@ export default function StatsView({ db }: { db: DB }) {
         tabIndex={-1}
       >
         <h2 id="stats-contents-title">成績の項目一覧</h2>
+        <p className="stats-toc-hint">左右にスクロールして項目を選べます。</p>
         <ul>
           {STATS_SECTIONS.map(([id, label]) => (
             <li key={id}>

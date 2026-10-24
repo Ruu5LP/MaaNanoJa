@@ -1097,18 +1097,32 @@ tbody tr:hover td:first-child {
 }
 .stats-section {
   min-width: 0;
-  scroll-margin-top: 16px;
+  scroll-margin-top: 150px;
 }
 .stats-section > .card {
   margin-bottom: 0;
 }
 .stats-toc {
-  scroll-margin-top: 16px;
+  position: sticky;
+  top: 8px;
+  z-index: 10;
+  padding: 12px;
+}
+.stats-toc h2 {
+  margin-bottom: 8px;
+}
+.stats-toc-hint {
+  display: none;
+  margin: 0 0 8px;
+  color: var(--ink-3);
+  font-size: 11px;
 }
 .stats-toc ul {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(148px, 1fr);
   gap: 8px;
+  overflow-x: auto;
   padding: 0;
   margin: 0;
   list-style: none;
@@ -1116,23 +1130,25 @@ tbody tr:hover td:first-child {
 .stats-toc a {
   display: flex;
   align-items: center;
+  justify-content: center;
   min-height: 44px;
+  height: 100%;
   padding: 8px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface-2);
   color: var(--ink);
   text-decoration: none;
+  text-align: center;
+  font-size: 12px;
 }
 .stats-toc a:hover {
   border-color: var(--accent);
 }
-.stats-back-link {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  color: var(--ink-2);
-  font-size: 12px;
+@media (max-width: 1100px) {
+  .stats-toc-hint {
+    display: block;
+  }
 }
 .stats-section:target > .card {
   border-color: var(--accent);
