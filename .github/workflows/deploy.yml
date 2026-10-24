@@ -59,8 +59,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: >-
-            ${{ github.event.head_commit.message == 'rollback: restore production stats viewer' && 'rollback f6d1935d-2efc-4faa-a0fd-d88713d48027 --yes --message restore-stats-viewer' || 'deploy' }}
+          command: deploy
           wranglerVersion: '4.118.0'
 
       - name: Smoke test health endpoint
