@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import worker, { parseRevision, readJson, returnTo } from './index'
+import type { Draft, Game } from '../src/lib/domain'
+import { parseRoomSnapshot } from '../src/lib/room-validation'
 
 const players = [
   { id: 'p-1', name: '東' },
@@ -20,6 +22,8 @@ function fakeEnv(
     ownerUserId?: string | null
     sessionUserId?: string | null
     membershipRole?: 'owner' | 'member' | null
+    draft?: Draft
+    games?: Game[]
   } = {},
 ): {
   env: Record<string, unknown>
@@ -31,7 +35,7 @@ function fakeEnv(
     owner_user_id: options.ownerUserId ?? null,
     players_json: JSON.stringify(players),
     rules_json: JSON.stringify(rules),
-    draft_json: null,
+    draft_json: options.draft ? JSON.stringify(options.draft) : null,
     revision: 3,
     last_write_token: '',
     created_at: 0,
@@ -69,6 +73,14 @@ function fakeEnv(
               return null
             },
             async all() {
+              if (sql.includes('FROM games')) {
+                return {
+                  results: (options.games ?? []).map((game) => ({
+                    id: game.id,
+                    game_json: JSON.stringify(game),
+                  })),
+                }
+              }
               return { results: [] }
             },
             async run() {
@@ -96,6 +108,82 @@ function fakeEnv(
 }
 
 describe('Worker request boundaries', () => {
+  it('shares completed stats without login while excluding drafts and notes', async () => {
+    const game: Game = {
+      id: 'shared-game',
+      date: '2026-10-24',
+      note: '非公開メモ',
+      playerIds: players.map((player) => player.id),
+      hands: [
+        {
+          id: 'h1',
+          type: 'ron',
+          loser: 'p-2',
+          wins: [{ winner: 'p-1', han: 1, fu: 30 }],
+          riichi: [],
+        },
+      ],
+      finalPoints: Object.fromEntries(players.map((player) => [player.id, 25_000])),
+    }
+    const fake = fakeEnv({
+      games: [game],
+      draft: {
+        mode: 'live',
+        date: '2026-10-24',
+        note: '入力中のメモ',
+        playerIds: game.playerIds,
+        hands: [],
+        finalPoints: {},
+        form: null,
+      },
+    })
+    fake.env.GOOGLE_CLIENT_ID = 'client-id'
+    fake.env.GOOGLE_CLIENT_SECRET = 'client-secret'
+    const response = await worker.fetch(
+      new Request('https://app.example/api/rooms/ABCD2345/stats') as never,
+      fake.env as never,
+    )
+    expect(response.status).toBe(200)
+    const data = parseRoomSnapshot(await response.json())
+    expect(data.state.draft).toBeNull()
+    expect(data.state.players).toEqual(players)
+    expect(data.games).toHaveLength(1)
+    expect(data.games[0].hands).toEqual(game.hands)
+    expect(data.games[0].note).toBe('')
+    expect(JSON.stringify(data)).not.toContain('入力中のメモ')
+    expect(fake.updates()).toBe(0)
+    expect(fake.batches()).toEqual([])
+  })
+
+  it('does not grant edit access or normal room access to stats viewers', async () => {
+    const fake = fakeEnv()
+    fake.env.GOOGLE_CLIENT_ID = 'client-id'
+    fake.env.GOOGLE_CLIENT_SECRET = 'client-secret'
+    const read = await worker.fetch(
+      new Request('https://app.example/api/rooms/ABCD2345') as never,
+      fake.env as never,
+    )
+    expect(read.status).toBe(401)
+    const write = await worker.fetch(
+      new Request('https://app.example/api/rooms/ABCD2345/state', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Origin: 'https://app.example' },
+        body: JSON.stringify({ revision: 3, state: { players, rules, draft: null } }),
+      }) as never,
+      fake.env as never,
+    )
+    expect(write.status).toBe(401)
+    const statsWrite = await worker.fetch(
+      new Request('https://app.example/api/rooms/ABCD2345/stats', {
+        method: 'POST',
+        headers: { Origin: 'https://app.example' },
+      }) as never,
+      fake.env as never,
+    )
+    expect(statsWrite.status).toBe(405)
+    expect(fake.updates()).toBe(0)
+    expect(fake.batches()).toEqual([])
+  })
   it('keeps OAuth returnTo on the same origin', () => {
     expect(
       returnTo(new Request('https://app.example/auth/google?returnTo=%2F%3Froom%3DABCDEFGH')),

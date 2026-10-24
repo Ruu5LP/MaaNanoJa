@@ -2,6 +2,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import BoardApp from './BoardApp'
+import StatsViewerApp from './StatsViewerApp'
 import LegalView from './views/LegalView'
 import AppErrorBoundary from './components/AppErrorBoundary'
 import { setPageMetadata } from './seo'
@@ -13,6 +14,7 @@ if (!rootEl) throw new Error('#root が見つかりません')
 // ?board=1 で開くと、タブUIの代わりに全画面スコアボード（モニター表示用）を描画する。
 // サーバ側のルーティング変更は不要（クエリparamだけなので通常の "/" と同じ扱い）。
 const isBoard = new URLSearchParams(window.location.search).get('board') === '1'
+const isStatsViewer = new URLSearchParams(window.location.search).get('view') === '1'
 const legalPage =
   window.location.pathname === '/privacy'
     ? 'privacy'
@@ -27,7 +29,15 @@ setPageMetadata(isPrivateView ? 'private' : (legalPage ?? 'home'))
 createRoot(rootEl).render(
   <React.StrictMode>
     <AppErrorBoundary>
-      {isBoard ? <BoardApp /> : legalPage ? <LegalView page={legalPage} /> : <App />}
+      {legalPage ? (
+        <LegalView page={legalPage} />
+      ) : isStatsViewer ? (
+        <StatsViewerApp board={isBoard} />
+      ) : isBoard ? (
+        <BoardApp />
+      ) : (
+        <App />
+      )}
     </AppErrorBoundary>
   </React.StrictMode>,
 )
