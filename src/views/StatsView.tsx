@@ -7,6 +7,7 @@ import {
 } from '../lib/stats'
 import { todayStr } from '../lib/date'
 import type { DB } from '../lib/domain'
+import OpponentStatsPanel from './OpponentStatsPanel'
 import {
   DetailedAnalysisPanel,
   RankDistPanel,
@@ -191,6 +192,11 @@ export default function StatsView({ db }: { db: DB }) {
 
         {/* 局ログの詳細分析 */}
         <DetailedAnalysisPanel stats={stats} hasHandData={hasHandData} />
+
+        <OpponentStatsPanel
+          db={filteredDb}
+          players={stats.map((stat) => ({ id: stat.playerId, name: stat.name }))}
+        />
 
         {/* 半荘ごとのスコア推移 */}
         <ScoreTrendPanel stats={stats} trend={scoreTrend} />
