@@ -28,16 +28,22 @@ export default function OpponentStatsPanel({ db, players }: { db: DB; players: P
   return (
     <section className="card opponent-panel" aria-labelledby="opponent-title">
       <h2 id="opponent-title">相手別のロン・放銃</h2>
-      <label className="opponent-player">
-        表示する人
-        <select value={playerId} onChange={(event) => setSelectedId(event.target.value)}>
+      <fieldset className="opponent-player">
+        <legend>表示する人</legend>
+        <div className="opponent-player-options">
           {players.map((player) => (
-            <option key={player.id} value={player.id}>
+            <button
+              key={player.id}
+              type="button"
+              className={`pill ${player.id === playerId ? 'on' : ''}`}
+              aria-pressed={player.id === playerId}
+              onClick={() => setSelectedId(player.id)}
+            >
               {player.name}
-            </option>
+            </button>
           ))}
-        </select>
-      </label>
+        </div>
+      </fieldset>
       <p className="table-hint">
         矢印は放銃者 → 和了者。単位は点、差し引きは基本点のみです。左右にスクロールできます。
       </p>

@@ -1042,16 +1042,28 @@ tbody tr:hover td:first-child {
 
 /* 相手別の点数移動。括弧に詰めず、方向と各内訳を独立して読めるようにする。 */
 .opponent-player {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 12px;
+  min-width: 0;
+  padding: 0;
+  margin: 0 0 12px;
+  border: 0;
 }
-.opponent-player select {
-  width: auto;
-  max-width: 100%;
+.opponent-player legend {
+  padding: 0;
+  margin-bottom: 8px;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.opponent-player-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
+  gap: 8px;
+  max-width: 680px;
+}
+.opponent-player-options .pill {
+  width: 100%;
   min-height: 44px;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .transfer-direction {
   display: inline-flex;
