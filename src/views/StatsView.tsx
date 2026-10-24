@@ -48,9 +48,14 @@ function signed(x: number | null, digits = 1): string {
 
 export default function StatsView({ db }: { db: DB }) {
   const [period, setPeriod] = useState<StatsPeriod>('all')
+  const [copyMessage, setCopyMessage] = useState('')
   const today = todayStr()
   const boardUrl = new URL(window.location.href)
   boardUrl.searchParams.set('board', '1')
+  const viewerUrl = new URL(window.location.href)
+  viewerUrl.searchParams.set('view', '1')
+  viewerUrl.searchParams.delete('board')
+  viewerUrl.hash = ''
 
   // 今日だけのときは、今日の日付の対局に絞ってから全ての成績表示へ渡す。
   const filteredDb = useMemo(
@@ -81,6 +86,22 @@ export default function StatsView({ db }: { db: DB }) {
         </button>
       </div>
       <span className="spacer" />
+      {viewerUrl.searchParams.has('room') && (
+        <button
+          className="btn"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(viewerUrl.toString())
+              setCopyMessage('閲覧用URLをコピーしました')
+            } catch {
+              setCopyMessage('コピーできませんでした。ブラウザのURLを確認してください。')
+            }
+          }}
+        >
+          成績閲覧用URLをコピー
+        </button>
+      )}
+      {copyMessage && <span role="status">{copyMessage}</span>}
       <a
         className="btn"
         href={`${boardUrl.pathname}${boardUrl.search}`}

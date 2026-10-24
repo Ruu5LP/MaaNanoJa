@@ -86,7 +86,7 @@ interface RoomSnapshotResponse {
   roomCode: string
   revision: number
   state: RoomStateInput
-  games: unknown[]
+  games: ReturnType<typeof parseValidatedGame>[]
 }
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -1110,6 +1110,18 @@ async function handleApi(request: Request, env: AuthEnv): Promise<Response> {
   }
   const code = parts[2]
   if (!isRoomCode(code)) return errorResponse(400, 'ルームコードが不正です')
+
+  // 閲覧用URLで共有するのは確定済みの成績のみ。編集用APIの認証とは分離する。
+  if (parts.length === 4 && parts[3] === 'stats' && request.method === 'GET') {
+    const room = await getRoom(env, code)
+    if (!room) return errorResponse(404, 'ルームが見つかりません')
+    const snapshot = await roomSnapshot(env, { ...room, draft_json: null })
+    return json({
+      ...snapshot,
+      state: { ...snapshot.state, draft: null },
+      games: snapshot.games.map((game) => ({ ...game, note: '' })),
+    })
+  }
 
   if (parts.length === 3 && request.method === 'DELETE') {
     return deleteRoom(env, code, auth)

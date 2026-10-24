@@ -150,6 +150,16 @@ export async function fetchRoomPreview(roomCode: string): Promise<RoomPreview> {
   return payload
 }
 
+/** 閲覧用リンクから確定済みの成績だけを読む。編集・参加は行わない。 */
+export async function fetchRoomStats(roomCode: string): Promise<RoomSnapshot> {
+  const payload = await request(`/api/rooms/${encodeURIComponent(roomCode)}/stats`)
+  try {
+    return parseRoomSnapshot(payload)
+  } catch {
+    throw new CloudRoomError('成績取得の応答が不正です', 502)
+  }
+}
+
 export async function joinRoom(roomCode: string): Promise<void> {
   const payload = await request(`/api/rooms/${encodeURIComponent(roomCode)}/join`, {
     method: 'POST',
