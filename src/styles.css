@@ -1040,6 +1040,145 @@ tbody tr:hover td:first-child {
   color: var(--danger);
 }
 
+/* 相手別の点数移動。括弧に詰めず、方向と各内訳を独立して読めるようにする。 */
+.opponent-player {
+  min-width: 0;
+  padding: 0;
+  margin: 0 0 12px;
+  border: 0;
+}
+.opponent-player legend {
+  padding: 0;
+  margin-bottom: 8px;
+  color: var(--ink-2);
+  font-size: 12px;
+}
+.opponent-player-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr));
+  gap: 8px;
+  max-width: 680px;
+}
+.opponent-player-options .pill {
+  width: 100%;
+  min-height: 44px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.transfer-direction {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.transfer-arrow {
+  color: var(--accent);
+  font-size: 20px;
+  font-weight: 600;
+}
+.opponent-table th,
+.opponent-table td {
+  position: static;
+}
+.opponent-table td:has(.transfer-direction),
+.opponent-table th:nth-child(2) {
+  text-align: left;
+}
+.opponent-table small {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  margin-top: 4px;
+}
+.opponent-table tbody th {
+  font-size: 13px;
+  color: var(--ink);
+}
+.opponent-base {
+  font-size: 16px;
+  font-weight: 600;
+}
+.opponent-note {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin: 10px 0 16px;
+}
+.opponent-detail-scroll {
+  max-height: min(480px, 60vh);
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.opponent-detail-table thead th {
+  position: sticky;
+  top: 0;
+  left: auto;
+  z-index: 1;
+  background: var(--surface);
+  box-shadow: inset 0 -1px var(--border);
+}
+.stats-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.stats-section {
+  min-width: 0;
+  scroll-margin-top: 150px;
+}
+.stats-section > .card {
+  margin-bottom: 0;
+}
+.stats-toc {
+  position: sticky;
+  top: 8px;
+  z-index: 10;
+  padding: 12px;
+}
+.stats-toc h2 {
+  margin-bottom: 8px;
+}
+.stats-toc-hint {
+  display: none;
+  margin: 0 0 8px;
+  color: var(--ink-3);
+  font-size: 11px;
+}
+.stats-toc ul {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(148px, 1fr);
+  gap: 8px;
+  overflow-x: auto;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+.stats-toc a {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  height: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--ink);
+  text-decoration: none;
+  text-align: center;
+  font-size: 12px;
+}
+.stats-toc a:hover {
+  border-color: var(--accent);
+}
+@media (max-width: 1100px) {
+  .stats-toc-hint {
+    display: block;
+  }
+}
+.stats-section:target > .card {
+  border-color: var(--accent);
+}
+
 /* ---- スタッツタイル ---- */
 .tiles {
   display: grid;
@@ -1850,8 +1989,7 @@ h3.sec {
 }
 
 /* ============================================================
-   PC幅（≥1024px）だけ、成績タブを「四分割・一画面」レイアウトにする。
-   スマホ幅では一切効かない（1カラムのまま）＝入力体験は不変。
+   PC幅（≥1024px）の表示幅と対局中のレイアウト。
    ============================================================ */
 @media (min-width: 1024px) {
   /* 大画面ではrootを広げて画面を活かす。 */
@@ -1867,20 +2005,6 @@ h3.sec {
   /* 成績タブだけは全幅を使う。 */
   .view.view-wide {
     max-width: none;
-  }
-
-  /* 成績タブ：4カードを“均一な”2×2に。grid-auto-rows:1fr で各行を同じ高さにし、
-     カードは stretch（既定）で枠いっぱいに伸ばす＝短いカードの下に空白が空かず揃う。 */
-  .stats-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    grid-auto-rows: 1fr;
-    gap: 14px;
-    align-items: stretch;
-  }
-  .stats-grid > .card {
-    margin-bottom: 0;
-    min-width: 0;
   }
 
   /* 着順分布の4セルは、幅に余裕があるPCでは1行4列に。 */

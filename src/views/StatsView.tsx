@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, type ReactNode } from 'react'
 import {
   computeScoreTrend,
   computeStats,
@@ -7,12 +7,36 @@ import {
 } from '../lib/stats'
 import { todayStr } from '../lib/date'
 import type { DB } from '../lib/domain'
+import OpponentStatsPanel from './OpponentStatsPanel'
 import {
   DetailedAnalysisPanel,
   RankDistPanel,
   ScoreTrendPanel,
   TotalScorePanel,
 } from './StatsPanels'
+
+const STATS_SECTIONS = [
+  ['stats-total', '総合ランキング'],
+  ['stats-ranks', '着順の内訳'],
+  ['stats-scores', '順位・スコア'],
+  ['stats-hands', '局データ'],
+  ['stats-analysis', '詳細分析'],
+  ['stats-opponents', '相手別のロン・放銃'],
+  ['stats-trend', 'スコア推移'],
+] as const
+
+function StatsSection({ id, children }: { id: string; children: ReactNode }) {
+  return (
+    <section
+      id={id}
+      className="stats-section"
+      aria-label={STATS_SECTIONS.find(([sectionId]) => sectionId === id)?.[1]}
+      tabIndex={-1}
+    >
+      {children}
+    </section>
+  )
+}
 
 function pct(x: number | null): string {
   return x == null ? '—' : `${(x * 100).toFixed(1)}%`
@@ -83,117 +107,151 @@ export default function StatsView({ db }: { db: DB }) {
 
   const hasHandData = stats.some((s) => s.handsPlayed > 0)
 
-  // PC幅（≥1024px）では view-wide + stats-grid で分析カードを2列に並べる（CSS側）。
-  // スマホでは従来どおり1カラムで縦に積む。
+  // 全ての画面幅で1列にし、上部の項目一覧から各カードへ移動できるようにする。
   return (
     <div className="view view-wide">
       {tabs}
-      <div className="stats-grid">
+      <nav
+        id="stats-contents"
+        className="card stats-toc"
+        aria-labelledby="stats-contents-title"
+        tabIndex={-1}
+      >
+        <h2 id="stats-contents-title">成績の項目一覧</h2>
+        <p className="stats-toc-hint">左右にスクロールして項目を選べます。</p>
+        <ul>
+          {STATS_SECTIONS.map(([id, label]) => (
+            <li key={id}>
+              <a href={`#${id}`}>{label}</a>
+            </li>
+          ))}
+        </ul>
+      </nav>
+      <div className="stats-sections">
         {/* 合計スコアランキング */}
-        <TotalScorePanel stats={stats} />
+        <StatsSection id="stats-total">
+          <TotalScorePanel stats={stats} />
+        </StatsSection>
 
         {/* 着順分布 */}
-        <RankDistPanel stats={stats} />
+        <StatsSection id="stats-ranks">
+          <RankDistPanel stats={stats} />
+        </StatsSection>
 
         {/* 順位系の表 */}
-        <div className="card">
-          <h2>順位・スコア</h2>
-          <p className="table-hint">スマホでは左右にスクロールできます。</p>
-          <div className="table-wrap">
-            <table className="stats-detail-table">
-              <thead>
-                <tr>
-                  <th>プレイヤー</th>
-                  <th>戦</th>
-                  <th>合計</th>
-                  <th>平均</th>
-                  <th>平均順位</th>
-                  <th>トップ率</th>
-                  <th>連対率</th>
-                  <th>ラス率</th>
-                  <th>トビ率</th>
-                  <th>平均素点</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.map((s) => (
-                  <tr key={s.playerId}>
-                    <td>{s.name}</td>
-                    <td className="num">{s.games}</td>
-                    <td className={`num ${s.totalScore >= 0 ? 'pos' : 'neg'}`}>
-                      {signed(s.totalScore)}
-                    </td>
-                    <td className={`num ${s.avgScore >= 0 ? 'pos' : 'neg'}`}>
-                      {signed(s.avgScore)}
-                    </td>
-                    <td className="num">{s.avgRank.toFixed(2)}</td>
-                    <td className="num">{pct(s.topRate)}</td>
-                    <td className="num">{pct(s.rentaiRate)}</td>
-                    <td className="num">{pct(s.lastRate)}</td>
-                    <td className="num">{pct(s.tobiRate)}</td>
-                    <td className="num">{s.avgRaw.toLocaleString()}</td>
+        <StatsSection id="stats-scores">
+          <div className="card">
+            <h2>順位・スコア</h2>
+            <p className="table-hint">スマホでは左右にスクロールできます。</p>
+            <div className="table-wrap">
+              <table className="stats-detail-table">
+                <thead>
+                  <tr>
+                    <th>プレイヤー</th>
+                    <th>戦</th>
+                    <th>合計</th>
+                    <th>平均</th>
+                    <th>平均順位</th>
+                    <th>トップ率</th>
+                    <th>連対率</th>
+                    <th>ラス率</th>
+                    <th>トビ率</th>
+                    <th>平均素点</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {stats.map((s) => (
+                    <tr key={s.playerId}>
+                      <td>{s.name}</td>
+                      <td className="num">{s.games}</td>
+                      <td className={`num ${s.totalScore >= 0 ? 'pos' : 'neg'}`}>
+                        {signed(s.totalScore)}
+                      </td>
+                      <td className={`num ${s.avgScore >= 0 ? 'pos' : 'neg'}`}>
+                        {signed(s.avgScore)}
+                      </td>
+                      <td className="num">{s.avgRank.toFixed(2)}</td>
+                      <td className="num">{pct(s.topRate)}</td>
+                      <td className="num">{pct(s.rentaiRate)}</td>
+                      <td className="num">{pct(s.lastRate)}</td>
+                      <td className="num">{pct(s.tobiRate)}</td>
+                      <td className="num">{s.avgRaw.toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
+        </StatsSection>
 
         {/* 局データ（局ログがある場合） */}
-        <div className="card">
-          <h2>局データ（放銃・和了・立直）</h2>
-          {!hasHandData ? (
-            <p className="muted">
-              局ログ付きで記録した半荘がまだありません。「記録」→「局ログで記録」で1局ずつ残すと、
-              ここに放銃率・和了率などが出ます。
-            </p>
-          ) : (
-            <>
-              <p className="table-hint">スマホでは左右にスクロールできます。</p>
-              <div className="table-wrap">
-                <table className="stats-detail-table">
-                  <thead>
-                    <tr>
-                      <th>プレイヤー</th>
-                      <th>局数</th>
-                      <th>和了率</th>
-                      <th>放銃率</th>
-                      <th>立直率</th>
-                      <th>ツモ率</th>
-                      <th>平均和了</th>
-                      <th>平均放銃</th>
-                      <th>テンパイ率</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.map((s) => (
-                      <tr key={s.playerId}>
-                        <td>{s.name}</td>
-                        <td className="num">{s.handsPlayed || '—'}</td>
-                        <td className="num">{pct(s.agariRate)}</td>
-                        <td className="num">{pct(s.houjuRate)}</td>
-                        <td className="num">{pct(s.riichiRate)}</td>
-                        <td className="num">{pct(s.tsumoRate)}</td>
-                        <td className="num">{s.avgAgari?.toLocaleString() ?? '—'}</td>
-                        <td className="num">{s.avgHouju?.toLocaleString() ?? '—'}</td>
-                        <td className="num">{pct(s.tenpaiRate)}</td>
+        <StatsSection id="stats-hands">
+          <div className="card">
+            <h2>局データ（放銃・和了・立直）</h2>
+            {!hasHandData ? (
+              <p className="muted">
+                局ログ付きで記録した半荘がまだありません。「記録」→「局ログで記録」で1局ずつ残すと、
+                ここに放銃率・和了率などが出ます。
+              </p>
+            ) : (
+              <>
+                <p className="table-hint">スマホでは左右にスクロールできます。</p>
+                <div className="table-wrap">
+                  <table className="stats-detail-table">
+                    <thead>
+                      <tr>
+                        <th>プレイヤー</th>
+                        <th>局数</th>
+                        <th>和了率</th>
+                        <th>放銃率</th>
+                        <th>立直率</th>
+                        <th>ツモ率</th>
+                        <th>平均和了</th>
+                        <th>平均放銃</th>
+                        <th>テンパイ率</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-          <p className="muted" style={{ marginTop: 8 }}>
-            率はいずれも「参加した局数」に対する割合。テンパイ率は流局時のテンパイ割合。
-          </p>
-        </div>
+                    </thead>
+                    <tbody>
+                      {stats.map((s) => (
+                        <tr key={s.playerId}>
+                          <td>{s.name}</td>
+                          <td className="num">{s.handsPlayed || '—'}</td>
+                          <td className="num">{pct(s.agariRate)}</td>
+                          <td className="num">{pct(s.houjuRate)}</td>
+                          <td className="num">{pct(s.riichiRate)}</td>
+                          <td className="num">{pct(s.tsumoRate)}</td>
+                          <td className="num">{s.avgAgari?.toLocaleString() ?? '—'}</td>
+                          <td className="num">{s.avgHouju?.toLocaleString() ?? '—'}</td>
+                          <td className="num">{pct(s.tenpaiRate)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+            <p className="muted" style={{ marginTop: 8 }}>
+              率はいずれも「参加した局数」に対する割合。テンパイ率は流局時のテンパイ割合。
+            </p>
+          </div>
+        </StatsSection>
 
         {/* 局ログの詳細分析 */}
-        <DetailedAnalysisPanel stats={stats} hasHandData={hasHandData} />
+        <StatsSection id="stats-analysis">
+          <DetailedAnalysisPanel stats={stats} hasHandData={hasHandData} />
+        </StatsSection>
+
+        <StatsSection id="stats-opponents">
+          <OpponentStatsPanel
+            db={filteredDb}
+            players={stats.map((stat) => ({ id: stat.playerId, name: stat.name }))}
+          />
+        </StatsSection>
 
         {/* 半荘ごとのスコア推移 */}
-        <ScoreTrendPanel stats={stats} trend={scoreTrend} />
+        <StatsSection id="stats-trend">
+          <ScoreTrendPanel stats={stats} trend={scoreTrend} />
+        </StatsSection>
       </div>
     </div>
   )
